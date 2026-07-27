@@ -16,18 +16,21 @@ function artwork(url: string | null): string | null {
   return url ? url.replace("-large", "-t120x120") : null;
 }
 
-/** Clickable list of tracks; a click plays the track (or toggles it). */
+/**
+ * Clickable list of tracks; a click plays the track (or toggles it). The whole
+ * list becomes the player queue, so next/prev and autoplay walk it.
+ */
 export function TrackList({ tracks }: { tracks: Track[] }) {
   return (
     <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
       {tracks.map((track) => (
-        <TrackRow key={track.id} track={track} />
+        <TrackRow key={track.id} track={track} queue={tracks} />
       ))}
     </ul>
   );
 }
 
-function TrackRow({ track }: { track: Track }) {
+function TrackRow({ track, queue }: { track: Track; queue: Track[] }) {
   const art = artwork(track.artwork_url);
   const playTrack = usePlayerStore((s) => s.playTrack);
   const isCurrent = usePlayerStore((s) => s.current?.id === track.id);
@@ -36,7 +39,7 @@ function TrackRow({ track }: { track: Track }) {
   return (
     <li>
       <button
-        onClick={() => void playTrack(track)}
+        onClick={() => void playTrack(track, queue)}
         className={cn(
           "group flex w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-accent",
           isCurrent ? "bg-accent" : "bg-card",
