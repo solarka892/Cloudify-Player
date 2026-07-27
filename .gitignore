@@ -46,3 +46,6 @@ venv/
 
 # Local project guidance for Claude Code (kept out of the repo)
 CLAUDE.md
+
+# --- Tauri generated schemas ---
+src-tauri/gen/

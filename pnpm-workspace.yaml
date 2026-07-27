@@ -1,0 +1,4 @@
+# pnpm 11+ reads project settings from here (not the "pnpm" field in package.json).
+# Allow esbuild (pulled in by Vite) to run its postinstall build script.
+allowBuilds:
+  esbuild: true
