@@ -80,20 +80,112 @@ export interface Track {
   artist: string | null;
 }
 
-/** Fetch the given user's liked tracks (first page). Requires login. */
+/** A SoundCloud user (search result, following, …). */
+export interface User {
+  id: number;
+  username: string;
+  avatar_url: string | null;
+  permalink_url: string | null;
+  followers_count: number | null;
+  track_count: number | null;
+}
+
+/** A playlist or album. */
+export interface Playlist {
+  id: number;
+  title: string;
+  track_count: number;
+  artwork_url: string | null;
+  permalink_url: string | null;
+  owner: string | null;
+  is_album: boolean;
+}
+
+/** One page of search results. `next_offset` is null at the end. */
+export interface SearchPage<T> {
+  items: T[];
+  next_offset: number | null;
+  total: number | null;
+}
+
+/** Fetch the given user's liked tracks (all pages). Requires login. */
 export function scGetLikes(userId: number, limit?: number): Promise<Track[]> {
   return invoke<Track[]>("sc_get_likes", { userId, limit });
 }
 
+/** Fetch the given user's liked playlists and albums. Requires login. */
+export function scGetLikedPlaylists(
+  userId: number,
+  limit?: number,
+): Promise<Playlist[]> {
+  return invoke<Playlist[]>("sc_get_liked_playlists", { userId, limit });
+}
+
+/** Fetch the playlists a user created. */
+export function scGetPlaylists(
+  userId: number,
+  limit?: number,
+): Promise<Playlist[]> {
+  return invoke<Playlist[]>("sc_get_playlists", { userId, limit });
+}
+
+/** Fetch a playlist's tracks, in playlist order. */
+export function scGetPlaylistTracks(playlistId: number): Promise<Track[]> {
+  return invoke<Track[]>("sc_get_playlist_tracks", { playlistId });
+}
+
+/** Fetch the users someone follows. */
+export function scGetFollowings(
+  userId: number,
+  limit?: number,
+): Promise<User[]> {
+  return invoke<User[]>("sc_get_followings", { userId, limit });
+}
+
+/** Fetch a user's uploaded tracks. */
+export function scGetUserTracks(
+  userId: number,
+  limit?: number,
+): Promise<Track[]> {
+  return invoke<Track[]>("sc_get_user_tracks", { userId, limit });
+}
+
 /**
- * Search tracks by free-text query. Public data — no login needed. A blank
- * query resolves to an empty list.
+ * Search tracks. Public data — no login needed. A blank query resolves to an
+ * empty page; page on with the returned `next_offset`.
  */
 export function scSearchTracks(
   query: string,
+  offset?: number,
   limit?: number,
-): Promise<Track[]> {
-  return invoke<Track[]>("sc_search_tracks", { query, limit });
+): Promise<SearchPage<Track>> {
+  return invoke<SearchPage<Track>>("sc_search_tracks", {
+    query,
+    offset,
+    limit,
+  });
+}
+
+/** Search users. Public. */
+export function scSearchUsers(
+  query: string,
+  offset?: number,
+  limit?: number,
+): Promise<SearchPage<User>> {
+  return invoke<SearchPage<User>>("sc_search_users", { query, offset, limit });
+}
+
+/** Search playlists. Public. */
+export function scSearchPlaylists(
+  query: string,
+  offset?: number,
+  limit?: number,
+): Promise<SearchPage<Playlist>> {
+  return invoke<SearchPage<Playlist>>("sc_search_playlists", {
+    query,
+    offset,
+    limit,
+  });
 }
 
 /**

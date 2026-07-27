@@ -27,7 +27,14 @@ pub fn run() {
             commands::sc_get_me,
             commands::sc_set_token,
             commands::sc_get_likes,
+            commands::sc_get_liked_playlists,
+            commands::sc_get_playlists,
+            commands::sc_get_playlist_tracks,
+            commands::sc_get_followings,
+            commands::sc_get_user_tracks,
             commands::sc_search_tracks,
+            commands::sc_search_users,
+            commands::sc_search_playlists,
             commands::sc_get_stream_url
         ])
         .run(tauri::generate_context!())

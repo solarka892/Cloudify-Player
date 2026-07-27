@@ -9,8 +9,10 @@ this, the code in `src-tauri/src/sc_api/` is unmaintainable in a month.
 
 - **Base URL:** `https://api-v2.soundcloud.com`
 - **Auth for public data:** `client_id` query param (see below).
-- **Auth for user data (likes/playlists/...):** OAuth token via
-  `Authorization: OAuth <token>` header (not yet reversed — TODO).
+- **Auth for user data (`/me`, private items, actions):** OAuth token via
+  `Authorization: OAuth <token>` header — see "Auth model" below. Most
+  read-only user data (likes, playlists, followings) is public and needs only
+  `client_id`; we send the token anyway so private items show up.
 - **User-Agent:** send a normal browser UA. Bot-like UAs get different markup.
 
 ---
@@ -100,22 +102,29 @@ GET <transcoding.url>?client_id=<CID>&track_authorization=<track.track_authoriza
 > The signed CDN URL is short-lived — resolve it lazily right before playback,
 > don't cache it. `track_authorization` comes from the track object itself.
 
-### `GET /search/tracks` — search ✅ implemented
+### `GET /search/{tracks,users,playlists}` — search ✅ verified (2026-07-27)
 
 ```
-GET /search/tracks?q=lofi+hip+hop&client_id=<CID>&limit=3
+GET /search/tracks?q=lofi&client_id=<CID>&limit=50&offset=0
+GET /search/users?q=forss&client_id=<CID>&limit=50&offset=0
+GET /search/playlists?q=lofi&client_id=<CID>&limit=50&offset=0
 ```
 
-Returns `{ collection: [ <track>... ], total_results, next_href }`. Unlike
-`/users/{id}/likes`, the collection holds track objects directly (no `like`
-wrapper). **No login needed** — `client_id` is enough.
+All three return `{ collection: [ <object>... ], total_results, next_href }`
+and hold the objects directly (no `like`-style wrapper). **No login needed.**
 
-Implemented: `sc_api::search::search_tracks` (single page, `limit` clamped to
-200, blank query short-circuits to an empty list). Command `sc_search_tracks`,
-debounced 350 ms in the UI (`features/search/SearchView.tsx`).
-**TODO:** follow `next_href` for paging / infinite scroll; expose `total_results`.
+**Paging is by numeric `offset`** — SoundCloud's own `next_href` is just
+`…&limit=50&offset=50`, verified to return non-overlapping pages. We therefore
+expose `offset` (a number) to the frontend instead of a cursor URL, keeping
+api-v2 URLs out of the UI layer.
 
-Sibling endpoints (untested but expected): `/search/users`, `/search/playlists`, `/search` (all).
+Implemented: `sc_api::search::{search_tracks, search_users, search_playlists}`
+sharing one generic `search()`; returns `SearchPage { items, next_offset, total }`.
+Blank query short-circuits without a request, `limit` clamped to 200. Commands
+`sc_search_tracks` / `sc_search_users` / `sc_search_playlists`; the UI debounces
+350 ms and pages with a "load more" button.
+
+`/search` (all kinds at once) still untested — the UI filters by kind anyway.
 
 ### `GET /users/{id}/likes` — a user's likes ✅ verified (2026-07-27)
 
@@ -130,10 +139,72 @@ either a `track` or a `playlist` object.
 **Pagination:** pass `linked_partitioning=1`; follow `next_href` (already a full URL
 with cursor) until it's absent. Sibling: `/users/{id}/tracks` (own uploads).
 
-Implemented: `sc_api::likes::get_liked_tracks` — follows `next_href` across all
-pages (200/page, capped at `max`), extracts `.track`, skips playlist likes.
-Command `sc_get_likes`. **TODO:** stream pages to the UI / infinite scroll
-instead of one blocking full fetch.
+Implemented: `sc_api::likes::get_liked_tracks` — extracts `.track`, skips
+playlist likes. Command `sc_get_likes`. **TODO:** stream pages to the UI /
+infinite scroll instead of one blocking full fetch.
+
+Paging for this and every other collection endpoint lives in one place:
+`sc_api::paging::collect_all` (`linked_partitioning=1`, 200/page, follows
+`next_href`, capped at `max`, sends the OAuth token when given one).
+
+### `GET /users/{id}/playlist_likes` — liked playlists ✅ verified (2026-07-27)
+
+```
+GET /users/{id}/playlist_likes?client_id=<CID>&limit=200&linked_partitioning=1
+```
+
+Returns `{ collection: [ { kind: "like", created_at, playlist } ], next_href }` —
+the playlist-only counterpart of `/users/{id}/likes`.
+Implemented: `sc_api::likes::get_liked_playlists`, command `sc_get_liked_playlists`.
+
+### `GET /users/{id}/playlists` — playlists a user created ✅ verified (2026-07-27)
+
+```
+GET /users/{id}/playlists?client_id=<CID>&limit=200&linked_partitioning=1
+```
+
+Returns playlist objects directly. Albums are included and flagged `is_album`;
+`/users/{id}/playlists_without_albums` and `/users/{id}/albums` exist as the
+split variants (both 200 OK, not used).
+Implemented: `sc_api::playlists::get_user_playlists`, command `sc_get_playlists`.
+
+**Playlist object — notable fields:** `id`, `title`, `track_count`,
+`artwork_url` (often null → we fall back to the first track's art, then the
+owner's avatar), `is_album`, `user`, `tracks[]`.
+
+### `GET /playlists/{id}` + `GET /tracks?ids=` — a playlist's tracks ✅ verified (2026-07-27)
+
+```
+GET /playlists/{id}?client_id=<CID>&representation=full
+GET /tracks?ids=1,2,3&client_id=<CID>
+```
+
+⚠️ **Only the first ~5 entries of `tracks[]` are hydrated.** The rest arrive as
+stubs — `{ id, kind, policy, monetization_model }` — and must be fetched in
+bulk. Measured on a 478-track playlist: 5 full + 473 stubs.
+
+`GET /tracks?ids=` takes a comma-separated list and returns full track objects,
+**not necessarily in the requested order**, so we re-sort by the playlist's own
+order. We batch 50 ids per request (SoundCloud's web app does the same; larger
+batches risk URL-length rejection).
+
+Implemented: `sc_api::playlists::get_playlist_tracks`, command
+`sc_get_playlist_tracks`. Covered by the live test
+`sc_api::tests::large_playlist_hydrates_every_batch` (478/478 hydrated).
+
+### `GET /users/{id}/followings` — who a user follows ✅ verified (2026-07-27)
+
+```
+GET /users/{id}/followings?client_id=<CID>&limit=200&linked_partitioning=1
+```
+
+Returns user objects. Public — no login needed.
+Implemented: `sc_api::users::get_followings`, command `sc_get_followings`.
+
+### `GET /users/{id}/tracks` — a user's uploads ✅ verified (2026-07-27)
+
+Returns track objects, newest first. Public.
+Implemented: `sc_api::users::get_user_tracks`, command `sc_get_user_tracks`.
 
 ---
 
@@ -185,16 +256,36 @@ token is stale → prompt re-login (and `client_id::get(force=true)`).
 - [x] ~~Stream URL resolution from a `transcoding.url`~~ — done (see above).
 - [ ] HLS manifest handling in the app (`hls.js`) & CDN signing lifetime (URLs expire).
 - [ ] Rate limits / when `client_id` gets throttled.
-- [ ] `/search/users`, `/search/playlists` (expected to work, untested).
-- [ ] search pagination (`next_href`) — currently one page only.
+- [x] ~~`/search/users`, `/search/playlists`~~ — done.
+- [x] ~~search pagination~~ — done (numeric `offset`).
+- [ ] `/search` (all kinds in one response) — untested.
+- [ ] reposts (`/stream/users/{id}/reposts`), the personal feed.
 
 ---
 
 ## Shared shapes
 
-Every endpoint that yields tracks maps SoundCloud's fat track object into one
-projection: `sc_api::track::Track` (`{ id, title, duration, artwork_url,
-permalink_url, artist }`), re-exported as `sc_api::Track` and mirrored by the
-`Track` interface in `src/lib/tauri.ts`. Add a field there once and likes,
-search and anything later all get it. Missing `artwork_url` falls back to the
-uploader's `avatar_url` (search results often have no track art).
+Every endpoint maps SoundCloud's fat objects into three projections that live
+in `sc_api::models` (re-exported as `sc_api::{Track, User, Playlist}`) and are
+mirrored by the interfaces in `src/lib/tauri.ts`:
+
+| Projection | Fields |
+|------------|--------|
+| `Track` | `id, title, duration, artwork_url, permalink_url, artist` |
+| `User` | `id, username, avatar_url, permalink_url, followers_count, track_count` |
+| `Playlist` | `id, title, track_count, artwork_url, permalink_url, owner, is_album` |
+
+Add a field once and every endpoint gets it. Artwork falls back where the API
+leaves gaps: a track borrows its uploader's avatar, a playlist borrows its
+first track's art and then the owner's avatar.
+
+## Live tests
+
+`src-tauri/src/sc_api/tests.rs` holds `#[ignore]`d tests that hit the real API —
+the fastest way to find out whether SoundCloud changed something:
+
+```sh
+cd src-tauri && cargo test -- --ignored --nocapture
+```
+
+They only touch public data (no login) and are excluded from CI.

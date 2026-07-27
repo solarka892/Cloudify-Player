@@ -22,16 +22,31 @@
     "manualChecking": "Проверка токена…"
   },
   "library": {
-    "likes": "Мои лайки",
+    "likes": "Лайки",
+    "playlists": "Плейлисты",
+    "following": "Подписки",
+    "ownPlaylists": "Мои плейлисты",
+    "likedPlaylists": "Лайкнутые плейлисты",
+    "playlist": "Плейлист",
+    "album": "Альбом",
+    "tracksShort": "тр.",
     "loading": "Загрузка…",
     "empty": "Пока нет лайкнутых треков",
+    "noPlaylists": "Пока нет плейлистов",
+    "noFollowing": "Пока нет подписок",
     "error": "Не удалось загрузить библиотеку",
     "refresh": "Обновить"
+  },
+  "detail": {
+    "playAll": "Слушать",
+    "empty": "Здесь пусто",
+    "error": "Не удалось загрузить треки"
   },
   "nav": {
     "library": "Библиотека",
     "search": "Поиск",
-    "settings": "Настройки"
+    "settings": "Настройки",
+    "back": "Назад"
   },
   "settings": {
     "appearance": "Внешний вид",
@@ -54,11 +69,16 @@
     "queue": "Очередь"
   },
   "search": {
-    "placeholder": "Поиск треков на SoundCloud",
-    "hint": "Введите запрос, чтобы найти треки",
+    "placeholder": "Поиск на SoundCloud",
+    "hint": "Введите запрос, чтобы начать поиск",
     "loading": "Ищем…",
     "empty": "Ничего не найдено",
     "error": "Не удалось выполнить поиск",
-    "clear": "Очистить"
+    "clear": "Очистить",
+    "kindTracks": "Треки",
+    "kindPlaylists": "Плейлисты",
+    "kindUsers": "Люди",
+    "loadMore": "Показать ещё",
+    "found": "найдено"
   }
 }

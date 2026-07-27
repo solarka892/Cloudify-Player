@@ -22,16 +22,31 @@
     "manualChecking": "Validating token…"
   },
   "library": {
-    "likes": "My likes",
+    "likes": "Likes",
+    "playlists": "Playlists",
+    "following": "Following",
+    "ownPlaylists": "My playlists",
+    "likedPlaylists": "Liked playlists",
+    "playlist": "Playlist",
+    "album": "Album",
+    "tracksShort": "tracks",
     "loading": "Loading…",
     "empty": "No liked tracks yet",
+    "noPlaylists": "No playlists yet",
+    "noFollowing": "Not following anyone yet",
     "error": "Failed to load library",
     "refresh": "Refresh"
+  },
+  "detail": {
+    "playAll": "Play",
+    "empty": "Nothing here",
+    "error": "Failed to load tracks"
   },
   "nav": {
     "library": "Library",
     "search": "Search",
-    "settings": "Settings"
+    "settings": "Settings",
+    "back": "Back"
   },
   "settings": {
     "appearance": "Appearance",
@@ -54,11 +69,16 @@
     "queue": "Queue"
   },
   "search": {
-    "placeholder": "Search SoundCloud tracks",
-    "hint": "Type a query to find tracks",
+    "placeholder": "Search SoundCloud",
+    "hint": "Type a query to start searching",
     "loading": "Searching…",
     "empty": "Nothing found",
     "error": "Search failed",
-    "clear": "Clear"
+    "clear": "Clear",
+    "kindTracks": "Tracks",
+    "kindPlaylists": "Playlists",
+    "kindUsers": "People",
+    "loadMore": "Load more",
+    "found": "found"
   }
 }

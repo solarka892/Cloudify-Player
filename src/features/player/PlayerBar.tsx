@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { t } from "@/i18n";
-import { cn } from "@/lib/utils";
+import { artwork, cn } from "@/lib/utils";
 
 /** Format seconds as m:ss. */
 function formatTime(seconds: number): string {
@@ -21,9 +21,6 @@ function formatTime(seconds: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-function artwork(url: string | null): string | null {
-  return url ? url.replace("-large", "-t120x120") : null;
-}
 
 export function PlayerBar() {
   const current = usePlayerStore((s) => s.current);

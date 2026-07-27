@@ -14,7 +14,9 @@ import { cn } from "@/lib/utils";
 import { LibraryView } from "@/features/library/LibraryView";
 import { SearchView } from "@/features/search/SearchView";
 import { SettingsView } from "@/features/settings/SettingsView";
+import { DetailView } from "@/features/detail/DetailView";
 import { PlayerBar } from "@/features/player/PlayerBar";
+import { useNavStore } from "@/stores/useNavStore";
 
 /** Which section of the app is on screen (only meaningful once logged in). */
 type View = "library" | "search" | "settings";
@@ -48,6 +50,8 @@ function App() {
   const [clientId, setClientId] = useState<ClientIdStatus>({ state: "idle" });
   const [auth, setAuth] = useState<AuthStatus>({ state: "unknown" });
   const [view, setView] = useState<View>("library");
+  const detail = useNavStore((s) => s.detail);
+  const closeDetail = useNavStore((s) => s.back);
 
   const refreshMe = useCallback(async () => {
     try {
@@ -132,10 +136,23 @@ function App() {
 
       {auth.state === "loggedIn" ? (
         <>
-          <NavTabs view={view} onChange={setView} />
-          {view === "library" && <LibraryView userId={auth.me.id} />}
-          {view === "search" && <SearchView />}
-          {view === "settings" && <SettingsView />}
+          <NavTabs
+            view={view}
+            onChange={(next) => {
+              // Leaving a tab abandons whatever was drilled into.
+              closeDetail();
+              setView(next);
+            }}
+          />
+          {detail ? (
+            <DetailView detail={detail} />
+          ) : (
+            <>
+              {view === "library" && <LibraryView userId={auth.me.id} />}
+              {view === "search" && <SearchView />}
+              {view === "settings" && <SettingsView />}
+            </>
+          )}
         </>
       ) : (
         <div className="flex flex-col items-center gap-3">

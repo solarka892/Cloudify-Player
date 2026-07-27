@@ -11,6 +11,19 @@ use crate::{auth, sc_api};
 const BROWSER_LOGIN_TIMEOUT: Duration = Duration::from_secs(180);
 const BROWSER_POLL_INTERVAL: Duration = Duration::from_millis(1500);
 
+/// The stored OAuth token, or an error for commands that require a login.
+fn require_token() -> Result<String, String> {
+    auth::load_token()
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "not logged in".to_string())
+}
+
+/// The stored token if there is one. Public endpoints send it when available
+/// (so private items show up) but must not fail without it.
+fn optional_token() -> Option<String> {
+    auth::load_token().ok().flatten()
+}
+
 /// Returns the app version from Cargo metadata. Used by the frontend to smoke
 /// test that the JS↔Rust bridge works.
 #[tauri::command]
@@ -47,9 +60,7 @@ pub fn sc_is_logged_in() -> Result<bool, auth::AuthError> {
 /// Fetch the logged-in user (`/me`). Errors if not logged in.
 #[tauri::command]
 pub async fn sc_get_me() -> Result<sc_api::me::Me, String> {
-    let token = auth::load_token()
-        .map_err(|e| e.to_string())?
-        .ok_or_else(|| "not logged in".to_string())?;
+    let token = require_token()?;
     sc_api::me::get(&token).await.map_err(|e| e.to_string())
 }
 
@@ -89,22 +100,102 @@ pub async fn sc_get_stream_url(track_id: u64) -> Result<String, String> {
 /// login. `limit` bounds very large accounts; defaults to 5000.
 #[tauri::command]
 pub async fn sc_get_likes(user_id: u64, limit: Option<u32>) -> Result<Vec<sc_api::Track>, String> {
-    let token = auth::load_token()
-        .map_err(|e| e.to_string())?
-        .ok_or_else(|| "not logged in".to_string())?;
+    let token = require_token()?;
     sc_api::likes::get_liked_tracks(&token, user_id, limit.unwrap_or(5000))
         .await
         .map_err(|e| e.to_string())
 }
 
-/// Search SoundCloud tracks by free-text query. Public data — works logged out.
-/// A blank query returns an empty list. `limit` defaults to 50.
+/// Fetch the logged-in user's liked playlists and albums. Requires login.
+#[tauri::command]
+pub async fn sc_get_liked_playlists(
+    user_id: u64,
+    limit: Option<u32>,
+) -> Result<Vec<sc_api::Playlist>, String> {
+    let token = require_token()?;
+    sc_api::likes::get_liked_playlists(&token, user_id, limit.unwrap_or(1000))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Fetch the playlists a user created. Public, but the token is sent when we
+/// have one so the user's own private sets show up too.
+#[tauri::command]
+pub async fn sc_get_playlists(
+    user_id: u64,
+    limit: Option<u32>,
+) -> Result<Vec<sc_api::Playlist>, String> {
+    let token = optional_token();
+    sc_api::playlists::get_user_playlists(token.as_deref(), user_id, limit.unwrap_or(1000))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Fetch a playlist's tracks, in playlist order. Public.
+#[tauri::command]
+pub async fn sc_get_playlist_tracks(playlist_id: u64) -> Result<Vec<sc_api::Track>, String> {
+    let token = optional_token();
+    sc_api::playlists::get_playlist_tracks(token.as_deref(), playlist_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Fetch the users someone follows. Public.
+#[tauri::command]
+pub async fn sc_get_followings(
+    user_id: u64,
+    limit: Option<u32>,
+) -> Result<Vec<sc_api::User>, String> {
+    let token = optional_token();
+    sc_api::users::get_followings(token.as_deref(), user_id, limit.unwrap_or(2000))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Fetch a user's uploaded tracks. Public.
+#[tauri::command]
+pub async fn sc_get_user_tracks(
+    user_id: u64,
+    limit: Option<u32>,
+) -> Result<Vec<sc_api::Track>, String> {
+    sc_api::users::get_user_tracks(user_id, limit.unwrap_or(500))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Search tracks. Public — works logged out. A blank query returns an empty
+/// page. `limit` defaults to 50; page with the returned `next_offset`.
 #[tauri::command]
 pub async fn sc_search_tracks(
     query: String,
     limit: Option<u32>,
-) -> Result<Vec<sc_api::Track>, String> {
-    sc_api::search::search_tracks(&query, limit.unwrap_or(50))
+    offset: Option<u32>,
+) -> Result<sc_api::search::SearchPage<sc_api::Track>, String> {
+    sc_api::search::search_tracks(&query, limit.unwrap_or(50), offset.unwrap_or(0))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Search users. Public.
+#[tauri::command]
+pub async fn sc_search_users(
+    query: String,
+    limit: Option<u32>,
+    offset: Option<u32>,
+) -> Result<sc_api::search::SearchPage<sc_api::User>, String> {
+    sc_api::search::search_users(&query, limit.unwrap_or(50), offset.unwrap_or(0))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Search playlists. Public.
+#[tauri::command]
+pub async fn sc_search_playlists(
+    query: String,
+    limit: Option<u32>,
+    offset: Option<u32>,
+) -> Result<sc_api::search::SearchPage<sc_api::Playlist>, String> {
+    sc_api::search::search_playlists(&query, limit.unwrap_or(50), offset.unwrap_or(0))
         .await
         .map_err(|e| e.to_string())
 }

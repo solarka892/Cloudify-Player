@@ -49,3 +49,8 @@ tokio = { version = "1", features = ["time"] }
 # Read the oauth_token cookie from a Firefox-family browser's cookies.sqlite
 # (browser login flow). Bundled = no system SQLite dependency.
 rusqlite = { version = "0.32", features = ["bundled"] }
+
+[dev-dependencies]
+# Network smoke tests for the api-v2 client are `#[ignore]`d by default; run
+# them with `cargo test -- --ignored` when SoundCloud's API might have shifted.
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

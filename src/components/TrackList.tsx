@@ -1,7 +1,7 @@
 import { Music, Pause, Play } from "lucide-react";
 import type { Track } from "@/lib/tauri";
 import { usePlayerStore } from "@/stores/usePlayerStore";
-import { cn } from "@/lib/utils";
+import { artwork, cn } from "@/lib/utils";
 
 /** Format milliseconds as m:ss. */
 function formatDuration(ms: number): string {
@@ -11,10 +11,6 @@ function formatDuration(ms: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-/** Bump SoundCloud artwork to a crisper size. */
-function artwork(url: string | null): string | null {
-  return url ? url.replace("-large", "-t120x120") : null;
-}
 
 /**
  * Clickable list of tracks; a click plays the track (or toggles it). The whole
