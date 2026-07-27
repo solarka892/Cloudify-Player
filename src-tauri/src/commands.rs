@@ -46,3 +46,19 @@ pub async fn sc_get_me() -> Result<sc_api::me::Me, String> {
         .ok_or_else(|| "not logged in".to_string())?;
     sc_api::me::get(&token).await.map_err(|e| e.to_string())
 }
+
+/// Manual login: validate a user-provided OAuth token against `/me`, and store
+/// it only if valid. This is the reliable fallback when SoundCloud blocks the
+/// embedded login with a captcha — the user logs in in their real browser and
+/// pastes the `oauth_token` cookie value here. The token is never logged.
+#[tauri::command]
+pub async fn sc_set_token(token: String) -> Result<sc_api::me::Me, String> {
+    let token = token.trim();
+    if token.is_empty() {
+        return Err("empty token".to_string());
+    }
+    // Validate before persisting so we never store a bad token.
+    let me = sc_api::me::get(token).await.map_err(|e| e.to_string())?;
+    auth::save_token(token).map_err(|e| e.to_string())?;
+    Ok(me)
+}

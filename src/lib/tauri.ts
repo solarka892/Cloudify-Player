@@ -50,3 +50,12 @@ export function scIsLoggedIn(): Promise<boolean> {
 export function scGetMe(): Promise<Me> {
   return invoke<Me>("sc_get_me");
 }
+
+/**
+ * Manual login: validate + store a user-provided OAuth token. Reliable fallback
+ * when the embedded login is blocked by a captcha. Rejects if the token is
+ * invalid. Returns the logged-in user on success.
+ */
+export function scSetToken(token: string): Promise<Me> {
+  return invoke<Me>("sc_set_token", { token });
+}

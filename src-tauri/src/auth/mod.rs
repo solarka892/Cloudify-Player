@@ -26,26 +26,13 @@ const TOKEN_COOKIE: &str = "oauth_token";
 const LOGIN_TIMEOUT: Duration = Duration::from_secs(300);
 const POLL_INTERVAL: Duration = Duration::from_millis(800);
 
-/// Injected into the login window before SoundCloud's own scripts run. SC probes
-/// media devices (captcha/anti-fraud), which WebKitGTK surfaces as a system
-/// camera/mic permission prompt. We never use media, so stub the APIs out — the
-/// page still works, the prompt never appears.
-const DENY_MEDIA_JS: &str = r#"
-(() => {
-  const deny = () => Promise.reject(
-    new DOMException('Media access disabled by Cloudify Player', 'NotAllowedError')
-  );
-  try {
-    if (navigator.mediaDevices) {
-      navigator.mediaDevices.getUserMedia = deny;
-      navigator.mediaDevices.getDisplayMedia = deny;
-      navigator.mediaDevices.enumerateDevices = () => Promise.resolve([]);
-    }
-    navigator.getUserMedia = navigator.webkitGetUserMedia =
-      navigator.mozGetUserMedia = (_c, _ok, err) => { if (err) err(new Error('denied')); };
-  } catch (_) {}
-})();
-"#;
+/// Present the embedded webview as a normal desktop Chrome browser. WebKitGTK's
+/// default UA triggers SoundCloud's anti-bot verification; a real-looking UA
+/// (and NOT tampering with `navigator.*`, which anti-fraud detects) is the best
+/// shot at passing. If SC still shows a captcha, use the manual-token path.
+const BROWSER_UA: &str =
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) \
+     Chrome/131.0.0.0 Safari/537.36";
 
 #[derive(Debug, thiserror::Error)]
 pub enum AuthError {
@@ -112,7 +99,7 @@ pub async fn login(app: AppHandle) -> Result<(), AuthError> {
         )
         .title("SoundCloud — вход")
         .inner_size(480.0, 720.0)
-        .initialization_script(DENY_MEDIA_JS)
+        .user_agent(BROWSER_UA)
         .build()?;
     }
 

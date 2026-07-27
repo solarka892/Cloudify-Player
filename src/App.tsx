@@ -6,6 +6,7 @@ import {
   scIsLoggedIn,
   scLogin,
   scLogout,
+  scSetToken,
   type Me,
 } from "@/lib/tauri";
 import { t } from "@/i18n";
@@ -80,6 +81,16 @@ function App() {
     }
   }
 
+  async function manualLogin(token: string) {
+    setAuth({ state: "loggingIn" });
+    try {
+      const me = await scSetToken(token);
+      setAuth({ state: "loggedIn", me });
+    } catch (e) {
+      setAuth({ state: "error", message: String(e) });
+    }
+  }
+
   async function logout() {
     await scLogout();
     setAuth({ state: "loggedOut" });
@@ -96,7 +107,12 @@ function App() {
 
       <StatusPill status={backend} />
 
-      <AuthSection status={auth} onLogin={login} onLogout={logout} />
+      <AuthSection
+        status={auth}
+        onLogin={login}
+        onManualLogin={manualLogin}
+        onLogout={logout}
+      />
 
       <div className="flex flex-col items-center gap-3">
         <button
@@ -138,12 +154,17 @@ function StatusPill({ status }: { status: BackendStatus }) {
 function AuthSection({
   status,
   onLogin,
+  onManualLogin,
   onLogout,
 }: {
   status: AuthStatus;
   onLogin: () => void;
+  onManualLogin: (token: string) => void;
   onLogout: () => void;
 }) {
+  const [showManual, setShowManual] = useState(false);
+  const [token, setToken] = useState("");
+
   if (status.state === "unknown") return null;
 
   if (status.state === "loggedIn") {
@@ -180,7 +201,7 @@ function AuthSection({
 
   const loggingIn = status.state === "loggingIn";
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className="flex w-full max-w-md flex-col items-center gap-3">
       <button
         onClick={onLogin}
         disabled={loggingIn}
@@ -188,6 +209,43 @@ function AuthSection({
       >
         {loggingIn ? t.auth.loggingIn : t.auth.login}
       </button>
+
+      <button
+        onClick={() => setShowManual((v) => !v)}
+        className="text-xs text-muted-foreground underline-offset-4 hover:underline"
+      >
+        {t.auth.manualToggle}
+      </button>
+
+      {showManual && (
+        <form
+          className="flex w-full flex-col gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (token.trim()) onManualLogin(token.trim());
+          }}
+        >
+          <p className="text-center text-xs text-muted-foreground">
+            {t.auth.manualHint}
+          </p>
+          <input
+            value={token}
+            onChange={(e) => setToken(e.currentTarget.value)}
+            placeholder={t.auth.manualPlaceholder}
+            spellCheck={false}
+            autoComplete="off"
+            className="w-full rounded-md border border-border bg-card px-3 py-2 font-mono text-xs text-card-foreground outline-none focus:ring-1 focus:ring-ring"
+          />
+          <button
+            type="submit"
+            disabled={loggingIn || !token.trim()}
+            className="rounded-md border border-border bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-accent disabled:opacity-50"
+          >
+            {loggingIn ? t.auth.manualChecking : t.auth.manualSubmit}
+          </button>
+        </form>
+      )}
+
       {status.state === "error" && (
         <p className="max-w-md text-center text-sm text-red-400">
           {t.auth.loginFailed}: {status.message}

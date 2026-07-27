@@ -23,7 +23,8 @@ pub fn run() {
             commands::sc_login,
             commands::sc_logout,
             commands::sc_is_logged_in,
-            commands::sc_get_me
+            commands::sc_get_me,
+            commands::sc_set_token
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
