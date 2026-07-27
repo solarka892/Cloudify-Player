@@ -60,6 +60,10 @@
   --ui-scale: 100%;
 
   /* backdrop layer */
+  /* How opaque list rows are over the page. Low enough to read as a layer,
+     high enough to keep text legible over a busy backdrop. */
+  --row-alpha: 72%;
+
   --backdrop-image: none;
   --backdrop-blur: 40px;
   --backdrop-dim: 0.55;
@@ -248,13 +252,6 @@
     box-shadow: var(--shadow-2);
   }
 
-  /* Rows far outside the viewport skip layout and paint entirely. The size
-     hint keeps the scrollbar honest while they're skipped. */
-  .row-cv {
-    content-visibility: auto;
-    contain-intrinsic-size: auto 56px;
-  }
-
   /* Section headings; uppercase and tracked out in skins that ask for it. */
   .label {
     text-transform: var(--label-transform);
@@ -271,6 +268,12 @@
     display: flex;
     flex-direction: column;
     gap: calc(1.5rem * var(--density));
+  }
+
+  /* A list row: the card colour, thinned so the backdrop shows through. */
+  .bg-row {
+    background: var(--card);
+    background: color-mix(in srgb, var(--card) var(--row-alpha), transparent);
   }
 
   .brand-gradient {
@@ -356,4 +359,143 @@
 }
 .pop-in {
   animation: pop-in var(--motion-fast) cubic-bezier(0.22, 0.8, 0.3, 1);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Motion, applied broadly.
+
+   Every interactive element animates its state changes by default, so a new
+   button is animated without anyone remembering to add a class. Transitions
+   only cost anything when a property actually changes, so this is close to
+   free at rest.
+   ───────────────────────────────────────────────────────────────────────── */
+@layer base {
+  button,
+  a,
+  input,
+  select,
+  summary,
+  [role="button"],
+  [role="menuitem"],
+  [role="tab"] {
+    transition:
+      background-color var(--motion-fast) ease,
+      border-color var(--motion-fast) ease,
+      color var(--motion-fast) ease,
+      opacity var(--motion-fast) ease,
+      box-shadow var(--motion-fast) ease,
+      transform var(--motion-fast) cubic-bezier(0.22, 0.8, 0.3, 1);
+  }
+
+  /* Tactile press, everywhere. Disabled controls stay put. */
+  button:not(:disabled):active,
+  [role="button"]:not([aria-disabled="true"]):active {
+    transform: scale(0.97);
+  }
+
+  /* Sliders get a thumb that reacts too. */
+  input[type="range"]::-webkit-slider-thumb {
+    transition: transform var(--motion-fast) ease;
+  }
+  input[type="range"]:active::-webkit-slider-thumb {
+    transform: scale(1.25);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* The heart, when it fills. */
+@keyframes heart-pop {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.32);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.heart-pop {
+  animation: heart-pop var(--motion-slow) cubic-bezier(0.22, 0.8, 0.3, 1);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Apple mode.
+
+   Tokens carry colour, radius and blur; these rules carry the things tokens
+   can't express — pill fields, hairline separators, the tighter display type
+   and iOS's easing curve, which is what actually makes motion read as Apple.
+   ───────────────────────────────────────────────────────────────────────── */
+:root[data-apple="1"] {
+  /* The curve UIKit uses for sheets and transitions. */
+  --ease-apple: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+:root[data-apple="1"] .view-enter {
+  animation: apple-enter var(--motion-slow) var(--ease-apple);
+}
+@keyframes apple-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.995);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+:root[data-apple="1"] .pop-in {
+  animation: apple-pop var(--motion-slow) var(--ease-apple);
+}
+@keyframes apple-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+:root[data-apple="1"] button:not(:disabled):active {
+  transform: scale(0.94);
+}
+
+/* Text fields become capsules, as in Music and Settings. */
+:root[data-apple="1"] input[type="text"],
+:root[data-apple="1"] input[type="search"],
+:root[data-apple="1"] input:not([type]) {
+  border-radius: 999px;
+  border-color: transparent;
+  background: var(--secondary);
+}
+
+/* Hairline separators instead of full-weight borders. */
+:root[data-apple="1"] .divide-border > :not([hidden]) ~ :not([hidden]) {
+  border-color: color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+/* Display type: heavier and optically tighter, the way SF is set. */
+:root[data-apple="1"] h1 {
+  letter-spacing: -0.024em;
+  font-weight: 700;
+}
+:root[data-apple="1"] h2 {
+  letter-spacing: -0.019em;
+  font-weight: 650;
+}
+
+/* Rows sit a little more solid so the vibrancy behind them still reads. */
+:root[data-apple="1"] {
+  --row-alpha: 78%;
 }

@@ -15,15 +15,17 @@ export function PlaylistList({ playlists }: { playlists: Playlist[] }) {
       {visible.map((playlist) => {
         const art = artwork(playlist.artwork_url);
         return (
-          <li className="row-cv" key={playlist.id}>
+          <li key={playlist.id}>
             <button
               onClick={() => openPlaylist(playlist)}
-              className="flex w-full items-center gap-3 bg-card px-3 py-2 text-left transition-colors hover:bg-accent"
+              className="flex w-full items-center gap-3 bg-row px-3 py-2 text-left transition-[background-color] duration-[var(--motion-fast)] hover:bg-accent"
             >
               {art ? (
                 <img
                   src={art}
                   alt=""
+                  loading="lazy"
+                  decoding="async"
                   className="h-10 w-10 shrink-0 rounded object-cover"
                 />
               ) : (

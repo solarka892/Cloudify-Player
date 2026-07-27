@@ -194,6 +194,7 @@ export const useSettingsStore = create<SettingsState>()(
           density: theme.density,
           uiScale: theme.uiScale,
           glass: theme.glass,
+          apple: theme.apple,
           // Artwork accent sits under the user's own edits, above the palette.
           overrides: {
             ...(theme.accentFromArtwork && artworkAccent
@@ -254,8 +255,13 @@ export const useSettingsStore = create<SettingsState>()(
           if (patch.apple === true) {
             next.skin = "apple";
             next.glass = !next.appleReduceTransparency;
+            // Apple's own apps are light by default; the mode switch still
+            // works afterwards, so this is a starting point, not a lock.
+            next.palette = "apple";
+            next.mode = "light";
           } else if (patch.apple === false && next.skin === "apple") {
             next.skin = "aurora";
+            if (next.palette === "apple") next.palette = "midnight";
           }
 
           set({ theme: appleOverrides(next) });
@@ -417,6 +423,7 @@ export const useSettingsStore = create<SettingsState>()(
     density: s.theme.density,
     uiScale: s.theme.uiScale,
     glass: s.theme.glass,
+    apple: s.theme.apple,
     overrides: s.theme.overrides,
   });
   applyBackdrop({

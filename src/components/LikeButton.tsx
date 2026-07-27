@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { Heart } from "lucide-react";
 import type { Track } from "@/lib/tauri";
 import { useLibraryStore } from "@/stores/useLibraryStore";
@@ -20,6 +21,18 @@ export function LikeButton({
 }) {
   const liked = useLibraryStore((s) => s.likedIds.has(track.id));
   const toggleLike = useLibraryStore((s) => s.toggleLike);
+  const [popping, setPopping] = useState(false);
+  const wasLiked = useRef(liked);
+
+  // Pop only on the transition into "liked", never on the way out or on mount.
+  useEffect(() => {
+    if (liked && !wasLiked.current) {
+      setPopping(true);
+      const timer = setTimeout(() => setPopping(false), 400);
+      return () => clearTimeout(timer);
+    }
+    wasLiked.current = liked;
+  }, [liked]);
 
   const icon = size === "md" ? "h-5 w-5" : "h-4 w-4";
 
@@ -37,7 +50,7 @@ export function LikeButton({
         className,
       )}
     >
-      <Heart className={cn(icon, liked && "fill-current")} />
+      <Heart className={cn(icon, liked && "fill-current", popping && "heart-pop")} />
     </button>
   );
 }

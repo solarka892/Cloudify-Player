@@ -12,8 +12,10 @@ export function useIncremental<T>(items: T[], chunk = 60) {
   const [count, setCount] = useState(chunk);
   const sentinel = useRef<HTMLDivElement>(null);
 
-  // A new list (filter changed, section switched) starts from the top again.
-  useEffect(() => setCount(chunk), [items, chunk]);
+  // Keyed on length, not identity: callers rebuild the array on every render
+  // (a filter, a `.slice()`), and resetting on identity would collapse the
+  // rendered window back to one chunk mid-scroll.
+  useEffect(() => setCount(chunk), [items.length, chunk]);
 
   useEffect(() => {
     const node = sentinel.current;

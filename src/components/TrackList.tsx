@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useState } from "react";
 import { Download, Music, Pause, Play } from "lucide-react";
 import type { Track } from "@/lib/tauri";
 import { usePlayerStore } from "@/stores/usePlayerStore";
@@ -64,7 +64,7 @@ export function TrackList({ tracks }: { tracks: Track[] }) {
   );
 }
 
-function TrackRow({
+const TrackRow = memo(function TrackRow({
   track,
   queue,
   onContextMenu,
@@ -81,12 +81,12 @@ function TrackRow({
   const liked = useLibraryStore((s) => s.likedIds.has(track.id));
 
   return (
-    <li className="row-cv" onContextMenu={onContextMenu}>
+    <li onContextMenu={onContextMenu}>
       <button
         onClick={() => void playTrack(track, queue)}
         className={cn(
-          "group flex w-full items-center gap-3 px-3 py-2 text-left transition-colors duration-[var(--motion-fast)] hover:bg-accent",
-          isCurrent ? "bg-accent" : "bg-card",
+          "group flex w-full items-center gap-3 px-3 py-2 text-left transition-[background-color] duration-[var(--motion-fast)] hover:bg-accent",
+          isCurrent ? "bg-accent" : "bg-row",
         )}
       >
         <div className="relative h-10 w-10 shrink-0">
@@ -95,6 +95,9 @@ function TrackRow({
               src={art}
               alt=""
               loading="lazy"
+              decoding="async"
+              width={40}
+              height={40}
               className="h-10 w-10 rounded-[var(--radius-control)] object-cover"
             />
           ) : (
@@ -150,4 +153,4 @@ function TrackRow({
       </button>
     </li>
   );
-}
+});

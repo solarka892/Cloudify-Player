@@ -22,15 +22,17 @@ export function UserList({ users }: { users: User[] }) {
       {visible.map((user) => {
         const avatar = artwork(user.avatar_url);
         return (
-          <li className="row-cv" key={user.id}>
+          <li key={user.id}>
             <button
               onClick={() => openUser(user)}
-              className="flex w-full items-center gap-3 bg-card px-3 py-2 text-left transition-colors hover:bg-accent"
+              className="flex w-full items-center gap-3 bg-row px-3 py-2 text-left transition-[background-color] duration-[var(--motion-fast)] hover:bg-accent"
             >
               {avatar ? (
                 <img
                   src={avatar}
                   alt=""
+                  loading="lazy"
+                  decoding="async"
                   className="h-10 w-10 shrink-0 rounded-full object-cover"
                 />
               ) : (
