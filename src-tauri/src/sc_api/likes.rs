@@ -50,45 +50,70 @@ struct LikeItem {
 struct LikesResponse {
     #[serde(default)]
     collection: Vec<LikeItem>,
+    /// Full URL of the next page (with cursor), or absent on the last page.
+    #[serde(default)]
+    next_href: Option<String>,
 }
 
-/// Fetch the first page of `user_id`'s liked tracks (up to `limit`).
+/// Per-request page size (api-v2 caps this around 200).
+const PAGE_SIZE: u32 = 200;
+
+/// Fetch `user_id`'s liked tracks, following `next_href` pagination until the
+/// end (or `max` tracks, a safety bound against very large accounts).
 pub async fn get_liked_tracks(
     token: &str,
     user_id: u64,
-    limit: u32,
+    max: u32,
 ) -> Result<Vec<Track>, ScApiError> {
     let cid = client_id::get(false).await?;
     let client = reqwest::Client::builder().user_agent(USER_AGENT).build()?;
+    let auth = format!("OAuth {token}");
 
-    let limit_s = limit.to_string();
-    let resp: LikesResponse = client
-        .get(format!("{API_V2}/users/{user_id}/likes"))
-        .query(&[
-            ("client_id", cid.as_str()),
-            ("limit", limit_s.as_str()),
-            ("linked_partitioning", "1"),
-        ])
-        .header("Authorization", format!("OAuth {token}"))
-        .send()
-        .await?
-        .error_for_status()?
-        .json()
-        .await?;
+    let mut tracks = Vec::new();
+    let mut next_url: Option<String> = None;
+    let page_size = PAGE_SIZE.to_string();
 
-    let tracks = resp
-        .collection
-        .into_iter()
-        .filter_map(|item| item.track)
-        .map(|t| Track {
-            id: t.id,
-            title: t.title,
-            duration: t.duration,
-            artwork_url: t.artwork_url,
-            permalink_url: t.permalink_url,
-            artist: t.user.map(|u| u.username),
-        })
-        .collect();
+    loop {
+        let mut req = client.get(match &next_url {
+            Some(url) => url.clone(),
+            None => format!("{API_V2}/users/{user_id}/likes"),
+        });
+        req = req.header("Authorization", auth.as_str());
+        // The first request needs the query params; `next_href` already carries
+        // them, but re-add client_id if SC omitted it from the cursor URL.
+        match &next_url {
+            None => {
+                req = req.query(&[
+                    ("client_id", cid.as_str()),
+                    ("limit", page_size.as_str()),
+                    ("linked_partitioning", "1"),
+                ]);
+            }
+            Some(url) if !url.contains("client_id=") => {
+                req = req.query(&[("client_id", cid.as_str())]);
+            }
+            Some(_) => {}
+        }
 
+        let resp: LikesResponse = req.send().await?.error_for_status()?.json().await?;
+
+        tracks.extend(resp.collection.into_iter().filter_map(|item| item.track).map(
+            |t| Track {
+                id: t.id,
+                title: t.title,
+                duration: t.duration,
+                artwork_url: t.artwork_url,
+                permalink_url: t.permalink_url,
+                artist: t.user.map(|u| u.username),
+            },
+        ));
+
+        match resp.next_href {
+            Some(next) if (tracks.len() as u32) < max => next_url = Some(next),
+            _ => break,
+        }
+    }
+
+    tracks.truncate(max as usize);
     Ok(tracks)
 }

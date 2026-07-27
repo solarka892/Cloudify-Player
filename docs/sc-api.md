@@ -122,9 +122,10 @@ either a `track` or a `playlist` object.
 **Pagination:** pass `linked_partitioning=1`; follow `next_href` (already a full URL
 with cursor) until it's absent. Sibling: `/users/{id}/tracks` (own uploads).
 
-Implemented: `sc_api::likes::get_liked_tracks` (first page; extracts `.track`
-from each item, skips playlist likes). Command `sc_get_likes`. **TODO:** follow
-`next_href` for full pagination / infinite scroll.
+Implemented: `sc_api::likes::get_liked_tracks` — follows `next_href` across all
+pages (200/page, capped at `max`), extracts `.track`, skips playlist likes.
+Command `sc_get_likes`. **TODO:** stream pages to the UI / infinite scroll
+instead of one blocking full fetch.
 
 ---
 

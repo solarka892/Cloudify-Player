@@ -39,7 +39,14 @@ export function LibraryView({ userId }: { userId: number }) {
 
   return (
     <section className="flex w-full max-w-2xl flex-col gap-3">
-      <h2 className="text-lg font-semibold">{t.library.likes}</h2>
+      <h2 className="text-lg font-semibold">
+        {t.library.likes}
+        {state.status === "ok" && (
+          <span className="ml-2 text-sm font-normal text-muted-foreground">
+            {state.tracks.length}
+          </span>
+        )}
+      </h2>
 
       {state.status === "loading" && (
         <p className="text-sm text-muted-foreground">{t.library.loading}</p>

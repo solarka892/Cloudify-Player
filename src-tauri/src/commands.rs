@@ -85,7 +85,8 @@ pub async fn sc_get_stream_url(track_id: u64) -> Result<String, String> {
         .map_err(|e| e.to_string())
 }
 
-/// Fetch the logged-in user's liked tracks (first page). Requires login.
+/// Fetch the logged-in user's liked tracks (all pages, up to `limit`). Requires
+/// login. `limit` bounds very large accounts; defaults to 5000.
 #[tauri::command]
 pub async fn sc_get_likes(
     user_id: u64,
@@ -94,7 +95,7 @@ pub async fn sc_get_likes(
     let token = auth::load_token()
         .map_err(|e| e.to_string())?
         .ok_or_else(|| "not logged in".to_string())?;
-    sc_api::likes::get_liked_tracks(&token, user_id, limit.unwrap_or(50))
+    sc_api::likes::get_liked_tracks(&token, user_id, limit.unwrap_or(5000))
         .await
         .map_err(|e| e.to_string())
 }
