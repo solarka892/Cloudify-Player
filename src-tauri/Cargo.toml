@@ -51,6 +51,9 @@ tokio = { version = "1", features = ["time"] }
 # any other player too.
 id3 = "1"
 
+# Open a URL in the user's default browser, correctly on all three platforms.
+open = "5"
+
 # Read the oauth_token cookie from a Firefox-family browser's cookies.sqlite
 # (browser login flow). Bundled = no system SQLite dependency.
 rusqlite = { version = "0.32", features = ["bundled"] }

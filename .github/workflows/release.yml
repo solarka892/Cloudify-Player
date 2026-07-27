@@ -19,8 +19,15 @@ jobs:
           # the artifacts to run on older distros too.
           - platform: ubuntu-22.04
             label: Linux (.AppImage, .deb, .rpm)
+            args: ""
           - platform: windows-latest
             label: Windows (.exe, .msi)
+            args: ""
+          # One universal binary rather than two downloads: it carries both
+          # Apple Silicon and Intel slices, and Tauri builds it in one pass.
+          - platform: macos-latest
+            label: macOS (.dmg, universal)
+            args: "--target universal-apple-darwin"
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v7
@@ -35,6 +42,9 @@ jobs:
           cache: pnpm
 
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          # A universal binary needs both Apple targets present.
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -68,5 +78,11 @@ jobs:
 
             Linux: `.AppImage` (portable), `.deb`, `.rpm`.
             Windows: `.exe` (NSIS installer) or `.msi`.
+            macOS: `.dmg` (universal — Apple Silicon and Intel).
+
+            The macOS build is **not code-signed**, so Gatekeeper will refuse it
+            on first launch. Either right-click the app and choose Open, or run
+            `xattr -cr /Applications/cloudify.app` once.
           releaseDraft: true
           prerelease: false
+          args: ${{ matrix.args }}

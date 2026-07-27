@@ -45,9 +45,20 @@ Grab a build from [Releases](https://github.com/solarka892/Cloudify-Player/relea
 |----------|-------|
 | Linux    | `.AppImage` (portable), `.deb`, `.rpm` |
 | Windows  | `.exe` (installer), `.msi` |
+| macOS    | `.dmg` (universal — Apple Silicon and Intel) |
 
 Distributed through GitHub releases only — never through the App Store or Play
 Store.
+
+### macOS: the app isn't signed
+
+Signing needs a paid Apple Developer account, so Gatekeeper refuses the build
+on first launch ("cloudify is damaged"). It isn't. Either right-click the app
+and choose **Open**, or clear the quarantine flag once:
+
+```sh
+xattr -cr /Applications/cloudify.app
+```
 
 ### Linux runtime requirements
 

@@ -6,6 +6,10 @@
 //! cookies in a `cookies.sqlite` SQLite DB. The user explicitly opts into this
 //! (it reads their browser profile). Only the SoundCloud `oauth_token` is read;
 //! the token is never logged.
+//!
+//! Profile locations differ per platform, so the candidate roots below are
+//! `cfg`-gated. Getting this wrong doesn't fail loudly — the scan simply finds
+//! nothing and the user is left waiting on a login that can never complete.
 
 use std::path::{Path, PathBuf};
 
@@ -14,10 +18,12 @@ use super::AuthError;
 const SIGNIN_URL: &str = "https://soundcloud.com/signin";
 
 /// Open SoundCloud's sign-in page in the user's default browser.
+///
+/// `open::that` picks the right mechanism per platform — `xdg-open`, `open`
+/// and `ShellExecute` respectively. Shelling out to `xdg-open` directly, as
+/// this used to, is a no-op on macOS and Windows.
 pub fn open_signin() -> Result<(), AuthError> {
-    std::process::Command::new("xdg-open")
-        .arg(SIGNIN_URL)
-        .spawn()
+    open::that(SIGNIN_URL)
         .map_err(|e| AuthError::Browser(format!("failed to open browser: {e}")))?;
     Ok(())
 }
@@ -33,17 +39,14 @@ pub fn find_token() -> Option<String> {
     None
 }
 
-/// Candidate `cookies.sqlite` paths across Firefox-family profiles.
-fn cookie_dbs() -> Vec<PathBuf> {
-    let mut dbs = Vec::new();
-    let Some(home) = std::env::var_os("HOME").map(PathBuf::from) else {
-        return dbs;
-    };
-
-    // Each root holds one directory per profile; the DB is directly inside.
-    // Note: on some setups (e.g. this one) browsers keep profiles under
-    // ~/.config/<browser> rather than the classic ~/.<browser>.
-    let roots = [
+/// Where Firefox-family browsers keep their profile directories.
+///
+/// Linux additionally covers `~/.config/<browser>` (some distributions and
+/// Zen put profiles there rather than in the classic dotfile location) and
+/// Flatpak sandboxes.
+#[cfg(all(unix, not(target_os = "macos")))]
+fn profile_roots(home: &Path) -> Vec<PathBuf> {
+    vec![
         home.join(".config/zen"),
         home.join(".config/mozilla/firefox"),
         home.join(".config/librewolf"),
@@ -52,7 +55,48 @@ fn cookie_dbs() -> Vec<PathBuf> {
         home.join(".librewolf"),
         home.join(".var/app/io.github.zen_browser.zen/.zen"),
         home.join(".var/app/org.mozilla.firefox/.mozilla/firefox"),
-    ];
+    ]
+}
+
+#[cfg(target_os = "macos")]
+fn profile_roots(home: &Path) -> Vec<PathBuf> {
+    let support = home.join("Library/Application Support");
+    vec![
+        support.join("Firefox/Profiles"),
+        support.join("zen/Profiles"),
+        support.join("LibreWolf/Profiles"),
+        support.join("Waterfox/Profiles"),
+    ]
+}
+
+#[cfg(target_os = "windows")]
+fn profile_roots(home: &Path) -> Vec<PathBuf> {
+    // %APPDATA% is the canonical location; fall back to the usual path under
+    // the home directory when the variable is missing.
+    let roaming = std::env::var_os("APPDATA")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| home.join("AppData/Roaming"));
+    vec![
+        roaming.join("Mozilla/Firefox/Profiles"),
+        roaming.join("zen/Profiles"),
+        roaming.join("librewolf/Profiles"),
+        roaming.join("Waterfox/Profiles"),
+    ]
+}
+
+/// Candidate `cookies.sqlite` paths across Firefox-family profiles.
+fn cookie_dbs() -> Vec<PathBuf> {
+    let mut dbs = Vec::new();
+    // Windows has no HOME; USERPROFILE is its equivalent.
+    let Some(home) = std::env::var_os("HOME")
+        .or_else(|| std::env::var_os("USERPROFILE"))
+        .map(PathBuf::from)
+    else {
+        return dbs;
+    };
+
+    // Each root holds one directory per profile; the DB is directly inside.
+    let roots = profile_roots(&home);
 
     for root in roots {
         let Ok(entries) = std::fs::read_dir(&root) else {
