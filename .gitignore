@@ -1,0 +1,45 @@
+# --- Node / frontend ---
+node_modules/
+dist/
+dist-ssr/
+*.local
+.vite/
+.pnpm-store/
+pnpm-debug.log*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Rust / Tauri ---
+src-tauri/target/
+target/
+**/*.rs.bk
+*.pdb
+
+# --- Env & secrets (NEVER commit client_id, tokens, keys) ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets.*
+
+# --- SQLite local cache ---
+*.sqlite
+*.sqlite-*
+*.db
+
+# --- Editor / OS ---
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# --- Python (recon scripts) ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
