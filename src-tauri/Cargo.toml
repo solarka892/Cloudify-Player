@@ -45,3 +45,7 @@ keyring = { version = "3", features = [
 
 # For the login-cookie polling loop (Tauri's async runtime provides the driver).
 tokio = { version = "1", features = ["time"] }
+
+# Read the oauth_token cookie from a Firefox-family browser's cookies.sqlite
+# (browser login flow). Bundled = no system SQLite dependency.
+rusqlite = { version = "0.32", features = ["bundled"] }

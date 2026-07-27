@@ -3,7 +3,13 @@
 //! Keep commands thin: validate input, delegate to a module (`sc_api`, `auth`,
 //! …), map errors to something serialisable. No SoundCloud URLs here.
 
+use std::time::{Duration, Instant};
+
 use crate::{auth, sc_api};
+
+/// How long to wait for the user to finish logging in in their browser.
+const BROWSER_LOGIN_TIMEOUT: Duration = Duration::from_secs(180);
+const BROWSER_POLL_INTERVAL: Duration = Duration::from_millis(1500);
 
 /// Returns the app version from Cargo metadata. Used by the frontend to smoke
 /// test that the JS↔Rust bridge works.
@@ -45,6 +51,29 @@ pub async fn sc_get_me() -> Result<sc_api::me::Me, String> {
         .map_err(|e| e.to_string())?
         .ok_or_else(|| "not logged in".to_string())?;
     sc_api::me::get(&token).await.map_err(|e| e.to_string())
+}
+
+/// Browser login: open SoundCloud in the user's real browser and wait until the
+/// `oauth_token` cookie appears in the browser's cookie store, then validate and
+/// store it. Reliable because the anti-bot captcha passes in a real browser.
+#[tauri::command]
+pub async fn sc_login_browser() -> Result<sc_api::me::Me, String> {
+    auth::browser::open_signin().map_err(|e| e.to_string())?;
+
+    let deadline = Instant::now() + BROWSER_LOGIN_TIMEOUT;
+    loop {
+        if let Some(token) = auth::browser::find_token() {
+            // Only accept a token that actually works (skips stale cookies).
+            if let Ok(me) = sc_api::me::get(&token).await {
+                auth::save_token(&token).map_err(|e| e.to_string())?;
+                return Ok(me);
+            }
+        }
+        if Instant::now() >= deadline {
+            return Err("timed out waiting for SoundCloud login in the browser".to_string());
+        }
+        tokio::time::sleep(BROWSER_POLL_INTERVAL).await;
+    }
 }
 
 /// Manual login: validate a user-provided OAuth token against `/me`, and store

@@ -15,6 +15,8 @@ use keyring::Entry;
 use serde::{Serialize, Serializer};
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 
+pub mod browser;
+
 const KEYRING_SERVICE: &str = "com.cloudifyplayer.app";
 const KEYRING_ACCOUNT: &str = "soundcloud-oauth-token";
 
@@ -47,6 +49,9 @@ pub enum AuthError {
 
     #[error("login timed out")]
     Timeout,
+
+    #[error("browser error: {0}")]
+    Browser(String),
 }
 
 impl Serialize for AuthError {

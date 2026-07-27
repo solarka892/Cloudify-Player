@@ -133,27 +133,24 @@ with cursor) until it's absent. Sibling: `/users/{id}/tracks` (own uploads).
 
 ### How we obtain the OAuth token (MVP #4)
 
-No usable public OAuth app exists for us, so we reuse the web app's session:
+No usable public OAuth app exists for us (registration closed since 2015, so a
+real `redirect_uri`/browser OAuth flow is impossible). We reuse the web app's
+session — the token is the **`oauth_token` cookie** SoundCloud sets after login,
+used as `Authorization: OAuth <token>`. Stored in the OS keyring, never logged.
+Three ways to capture it, in `src-tauri/src/auth/`:
 
-1. Open SoundCloud's real sign-in page in an embedded webview
-   (`https://soundcloud.com/signin`). SC handles email / SSO / 2FA / captcha.
-2. After login the web app sets an **`oauth_token` cookie**. We read it from the
-   webview's runtime cookie store via Tauri's `WebviewWindow::cookies()` (works
-   for HttpOnly cookies, which JS cannot read).
-3. Store it in the OS keyring; use it as `Authorization: OAuth <token>`.
+1. **Browser (primary)** — `sc_login_browser`: open `soundcloud.com/signin` in
+   the user's real default browser (where SC's Arkose anti-bot captcha passes
+   normally), then read `oauth_token` from the browser's cookie store. Firefox
+   family only (`cookies.sqlite`; see `auth/browser.rs`). Opt-in by the user.
+2. **Manual token** — `sc_set_token`: user pastes the `oauth_token` copied from
+   their browser's DevTools. Validated against `/me` before storing.
+3. **Embedded webview** — `sc_login`: opens SC signin in a Tauri webview and
+   reads the cookie via `WebviewWindow::cookies()`. **Usually blocked**: SC's
+   Arkose captcha flags WebKitGTK as a bot and the challenge is unsolvable in
+   the embedded view. Kept as a dormant fallback, not wired into the UI.
 
-Implemented in `src-tauri/src/auth/`. Commands: `sc_login`, `sc_logout`,
-`sc_is_logged_in`, `sc_get_me`.
-
-> The login window injects a script that stubs out `navigator.mediaDevices`
-> (getUserMedia/etc). SC probes media devices for its captcha/anti-fraud, which
-> WebKitGTK otherwise surfaces as a system camera/mic permission prompt. We
-> never use media, so the prompt is suppressed while the page keeps working.
->
-> A true external-browser OAuth flow is **not possible**: it needs a registered
-> `redirect_uri`, and SoundCloud's app registration has been closed since 2015.
-> The token can only be captured from a webview we control — hence the in-app
-> login window.
+Other commands: `sc_logout`, `sc_is_logged_in`, `sc_get_me`.
 
 ### `GET /me` — the logged-in user ✅ implemented (needs live login to verify)
 

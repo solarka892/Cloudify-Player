@@ -21,6 +21,7 @@ pub fn run() {
             commands::get_app_version,
             commands::get_client_id,
             commands::sc_login,
+            commands::sc_login_browser,
             commands::sc_logout,
             commands::sc_is_logged_in,
             commands::sc_get_me,

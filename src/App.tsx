@@ -4,7 +4,7 @@ import {
   getClientId,
   scGetMe,
   scIsLoggedIn,
-  scLogin,
+  scLoginBrowser,
   scLogout,
   scSetToken,
   type Me,
@@ -74,8 +74,8 @@ function App() {
   async function login() {
     setAuth({ state: "loggingIn" });
     try {
-      await scLogin();
-      await refreshMe();
+      const me = await scLoginBrowser();
+      setAuth({ state: "loggedIn", me });
     } catch (e) {
       setAuth({ state: "error", message: String(e) });
     }

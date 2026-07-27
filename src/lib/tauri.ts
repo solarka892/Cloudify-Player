@@ -36,6 +36,15 @@ export function scLogin(): Promise<void> {
   return invoke<void>("sc_login");
 }
 
+/**
+ * Browser login: opens SoundCloud in the user's real browser and waits until
+ * the oauth_token cookie appears in the browser's cookie store, then validates
+ * and stores it. Resolves with the logged-in user.
+ */
+export function scLoginBrowser(): Promise<Me> {
+  return invoke<Me>("sc_login_browser");
+}
+
 /** Remove the stored token. */
 export function scLogout(): Promise<void> {
   return invoke<void>("sc_logout");

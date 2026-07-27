@@ -10,7 +10,7 @@
   },
   "auth": {
     "login": "Sign in to SoundCloud",
-    "loggingIn": "Waiting for sign-in…",
+    "loggingIn": "Complete sign-in in your browser…",
     "logout": "Sign out",
     "loggedInAs": "Signed in as",
     "loginFailed": "Sign-in failed",

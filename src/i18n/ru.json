@@ -10,7 +10,7 @@
   },
   "auth": {
     "login": "Войти в SoundCloud",
-    "loggingIn": "Ожидание входа…",
+    "loggingIn": "Войдите в открывшемся браузере…",
     "logout": "Выйти",
     "loggedInAs": "Вы вошли как",
     "loginFailed": "Не удалось войти",
