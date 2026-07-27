@@ -12,6 +12,7 @@
 //!
 //! Reverse-engineering notes & verified endpoints: `docs/sc-api.md`.
 
+pub mod actions;
 pub mod client_id;
 pub mod discover;
 pub mod likes;
@@ -28,7 +29,7 @@ mod paging;
 mod tests;
 
 pub use error::ScApiError;
-pub use models::{Playlist, Track, User};
+pub use models::{Playlist, Profile, Track, User};
 
 /// Base URL of SoundCloud's internal API.
 pub(crate) const API_V2: &str = "https://api-v2.soundcloud.com";

@@ -2,14 +2,17 @@ import { useEffect } from "react";
 import {
   Download,
   ExternalLink,
+  Heart,
   Link as LinkIcon,
   ListEnd,
+  ListPlus,
   ListStart,
   Radio,
 } from "lucide-react";
 import type { Track } from "@/lib/tauri";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
+import { useLibraryStore } from "@/stores/useLibraryStore";
 import { toast } from "@/stores/useToastStore";
 import { t } from "@/i18n";
 
@@ -28,15 +31,19 @@ const ESTIMATED_HEIGHT = 260;
 export function TrackContextMenu({
   target,
   onClose,
+  onAddToPlaylist,
 }: {
   target: MenuTarget;
   onClose: () => void;
+  onAddToPlaylist: (track: Track) => void;
 }) {
   const addNext = usePlayerStore((s) => s.addNext);
   const addLast = usePlayerStore((s) => s.addLast);
   const startRadio = usePlayerStore((s) => s.startRadio);
   const downloadedIds = useDownloadsStore((s) => s.ids);
   const startDownload = useDownloadsStore((s) => s.start);
+  const toggleLike = useLibraryStore((s) => s.toggleLike);
+  const liked = useLibraryStore((s) => s.likedIds.has(target.track.id));
 
   const { track } = target;
   const isDownloaded = downloadedIds.has(track.id);
@@ -70,6 +77,19 @@ export function TrackContextMenu({
       onClick={(e) => e.stopPropagation()}
       role="menu"
     >
+      <Item
+        Icon={Heart}
+        label={liked ? t.track.unlike : t.track.like}
+        onClick={() => run(() => void toggleLike(track))}
+      />
+      <Item
+        Icon={ListPlus}
+        label={t.track.addToPlaylist}
+        onClick={() => run(() => onAddToPlaylist(track))}
+      />
+
+      <div className="my-1 h-px bg-border" />
+
       <Item
         Icon={ListStart}
         label={t.track.playNext}

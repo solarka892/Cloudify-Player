@@ -315,3 +315,106 @@ pub fn list_downloads(
 pub fn delete_download(app: tauri::AppHandle, track_id: u64) -> Result<(), String> {
     crate::downloads::remove(&app, track_id).map_err(|e| e.to_string())
 }
+
+// ───────────────────────────────────────────────────── profiles & writes ────
+
+/// The full profile behind a user page. Public.
+#[tauri::command]
+pub async fn sc_get_profile(user_id: u64) -> Result<sc_api::Profile, String> {
+    sc_api::users::get_profile(user_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Like or unlike a track. Requires login.
+#[tauri::command]
+pub async fn sc_like_track(track_id: u64, on: bool) -> Result<(), String> {
+    let token = require_token()?;
+    sc_api::actions::like_track(&token, track_id, on)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Like or unlike a playlist or album. Requires login.
+#[tauri::command]
+pub async fn sc_like_playlist(playlist_id: u64, on: bool) -> Result<(), String> {
+    let token = require_token()?;
+    sc_api::actions::like_playlist(&token, playlist_id, on)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Follow or unfollow a user. Requires login.
+#[tauri::command]
+pub async fn sc_follow_user(user_id: u64, on: bool) -> Result<(), String> {
+    let token = require_token()?;
+    sc_api::actions::follow_user(&token, user_id, on)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Create a playlist, optionally seeded with tracks. Returns its id.
+#[tauri::command]
+pub async fn sc_create_playlist(
+    title: String,
+    track_ids: Vec<u64>,
+    public: Option<bool>,
+) -> Result<u64, String> {
+    let token = require_token()?;
+    sc_api::actions::create_playlist(&token, &title, &track_ids, public.unwrap_or(false))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Add a track to a playlist.
+///
+/// SoundCloud replaces the whole track list on every edit, so this reads the
+/// current contents first and posts the union — appending is a read-modify-write.
+#[tauri::command]
+pub async fn sc_add_to_playlist(playlist_id: u64, track_id: u64) -> Result<(), String> {
+    let token = require_token()?;
+    let existing = sc_api::playlists::get_playlist_tracks(Some(&token), playlist_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let mut ids: Vec<u64> = existing.iter().map(|t| t.id).collect();
+    if ids.contains(&track_id) {
+        return Ok(()); // already there; a no-op beats a duplicate
+    }
+    ids.push(track_id);
+
+    sc_api::actions::set_playlist_tracks(&token, playlist_id, &ids)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Remove a track from a playlist. Same read-modify-write as adding.
+#[tauri::command]
+pub async fn sc_remove_from_playlist(playlist_id: u64, track_id: u64) -> Result<(), String> {
+    let token = require_token()?;
+    let existing = sc_api::playlists::get_playlist_tracks(Some(&token), playlist_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let ids: Vec<u64> = existing
+        .iter()
+        .map(|t| t.id)
+        .filter(|&id| id != track_id)
+        .collect();
+
+    sc_api::actions::set_playlist_tracks(&token, playlist_id, &ids)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Fetch the users who follow someone. Public.
+#[tauri::command]
+pub async fn sc_get_followers(
+    user_id: u64,
+    limit: Option<u32>,
+) -> Result<Vec<sc_api::User>, String> {
+    let token = optional_token();
+    sc_api::users::get_followers(token.as_deref(), user_id, limit.unwrap_or(2000))
+        .await
+        .map_err(|e| e.to_string())
+}

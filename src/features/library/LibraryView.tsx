@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { HardDriveDownload, Radio, RefreshCw, Trash2 } from "lucide-react";
+import { HardDriveDownload, Radio, RefreshCw, Search, Trash2 } from "lucide-react";
 import { scStationTracks, type Track } from "@/lib/tauri";
 import { TrackList } from "@/components/TrackList";
 import { PlaylistList } from "@/components/PlaylistList";
 import { UserList } from "@/components/UserList";
+import { DownloadAllButton } from "@/components/DownloadAllButton";
 import { useLibraryStore, type Section } from "@/stores/useLibraryStore";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
 import { usePlayerStore } from "@/stores/usePlayerStore";
@@ -28,6 +29,40 @@ const SECTIONS: { id: SectionId; label: string }[] = [
   { id: "downloads", label: t.library.downloads },
   { id: "following", label: t.library.following },
 ];
+
+/** Case-insensitive substring match over a title-ish field. */
+function useFilter<T>(items: T[], key: (item: T) => string) {
+  const [query, setQuery] = useState("");
+  const needle = query.trim().toLowerCase();
+  const filtered = needle
+    ? items.filter((item) => key(item).toLowerCase().includes(needle))
+    : items;
+  return { query, setQuery, filtered };
+}
+
+/** Search box shown above a filterable section. */
+function FilterBox({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <div className="relative min-w-0 flex-1">
+      <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+      <input
+        value={value}
+        onChange={(e) => onChange(e.currentTarget.value)}
+        placeholder={placeholder}
+        spellCheck={false}
+        className="w-full rounded-[var(--radius-control)] border border-border bg-card py-1.5 pl-8 pr-2 text-sm outline-none transition-[box-shadow] duration-[var(--motion-fast)] focus:ring-1 focus:ring-ring"
+      />
+    </div>
+  );
+}
 
 export function LibraryView({ userId }: { userId: number }) {
   const [section, setSection] = useState<SectionId>("likes");
@@ -71,14 +106,28 @@ function LikesSection({ userId }: { userId: number }) {
     void load(userId);
   }, [userId, load]);
 
+  const { query, setQuery, filtered } = useFilter(likes.items, (t) =>
+    `${t.title} ${t.artist ?? ""}`,
+  );
+
   return (
     <Shell
       section={likes}
-      count={likes.items.length}
+      count={filtered.length}
       onRefresh={() => void refresh(userId)}
       emptyLabel={t.library.empty}
+      tools={
+        <>
+          <FilterBox
+            value={query}
+            onChange={setQuery}
+            placeholder={t.library.searchLikes}
+          />
+          <DownloadAllButton tracks={filtered} />
+        </>
+      }
     >
-      <TrackList tracks={likes.items} />
+      <TrackList tracks={filtered} />
     </Shell>
   );
 }
@@ -100,8 +149,14 @@ function PlaylistsSection({
     void load(userId);
   }, [userId, load]);
 
-  const mine = own.items.filter((p) => p.is_album === albums);
-  const theirs = liked.items.filter((p) => p.is_album === albums);
+  const [query, setQuery] = useState("");
+  const needle = query.trim().toLowerCase();
+  const match = (p: { title: string; owner: string | null }) =>
+    !needle ||
+    `${p.title} ${p.owner ?? ""}`.toLowerCase().includes(needle);
+
+  const mine = own.items.filter((p) => p.is_album === albums && match(p));
+  const theirs = liked.items.filter((p) => p.is_album === albums && match(p));
 
   return (
     <Shell
@@ -109,6 +164,13 @@ function PlaylistsSection({
       count={mine.length + theirs.length}
       onRefresh={() => void refresh(userId)}
       emptyLabel={t.library.noPlaylists}
+      tools={
+        <FilterBox
+          value={query}
+          onChange={setQuery}
+          placeholder={t.library.searchPlaylists}
+        />
+      }
     >
       <div className="flex flex-col gap-4">
         {mine.length > 0 && (
@@ -141,14 +203,28 @@ function HistorySection({ userId }: { userId: number }) {
     void load(userId);
   }, [userId, load]);
 
+  const { query, setQuery, filtered } = useFilter(history.items, (t) =>
+    `${t.title} ${t.artist ?? ""}`,
+  );
+
   return (
     <Shell
       section={history}
-      count={history.items.length}
+      count={filtered.length}
       onRefresh={() => void refresh(userId)}
       emptyLabel={t.library.noHistory}
+      tools={
+        <>
+          <FilterBox
+            value={query}
+            onChange={setQuery}
+            placeholder={t.library.searchTracks}
+          />
+          <DownloadAllButton tracks={filtered} />
+        </>
+      }
     >
-      <TrackList tracks={history.items} />
+      <TrackList tracks={filtered} />
     </Shell>
   );
 }
@@ -302,8 +378,14 @@ function DownloadsSection() {
     void load();
   }, [load]);
 
+  const [query, setQuery] = useState("");
+  const needle = query.trim().toLowerCase();
   const pending = Object.values(active);
-  const tracks: Track[] = items;
+  const tracks: Track[] = needle
+    ? items.filter((i) =>
+        `${i.title} ${i.artist ?? ""}`.toLowerCase().includes(needle),
+      )
+    : items;
   const totalMb = items.reduce((sum, i) => sum + i.bytes, 0) / 1_000_000;
 
   return (
@@ -315,6 +397,11 @@ function DownloadsSection() {
             ? `${items.length} · ${totalMb.toFixed(1)} ${t.downloads.size}`
             : t.downloads.hint}
         </span>
+        <FilterBox
+          value={query}
+          onChange={setQuery}
+          placeholder={t.library.searchTracks}
+        />
         <button
           onClick={() => void load()}
           disabled={status === "loading"}
@@ -393,14 +480,26 @@ function FollowingSection({ userId }: { userId: number }) {
     void load(userId);
   }, [userId, load]);
 
+  const { query, setQuery, filtered } = useFilter(
+    followings.items,
+    (u) => u.username,
+  );
+
   return (
     <Shell
       section={followings}
-      count={followings.items.length}
+      count={filtered.length}
       onRefresh={() => void refresh(userId)}
       emptyLabel={t.library.noFollowing}
+      tools={
+        <FilterBox
+          value={query}
+          onChange={setQuery}
+          placeholder={t.library.searchPeople}
+        />
+      }
     >
-      <UserList users={followings.items} />
+      <UserList users={filtered} />
     </Shell>
   );
 }
@@ -411,19 +510,23 @@ function Shell({
   count,
   onRefresh,
   emptyLabel,
+  tools,
   children,
 }: {
   section: Section<unknown>;
   count: number;
   onRefresh: () => void;
   emptyLabel: string;
+  /** Search box, bulk actions — anything section-specific. */
+  tools?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const loading = section.status === "loading";
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        {tools}
         <span className="text-sm text-muted-foreground">
           {count > 0 ? count : ""}
         </span>

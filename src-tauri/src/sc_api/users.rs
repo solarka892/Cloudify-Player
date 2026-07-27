@@ -6,10 +6,27 @@
 
 use super::{
     client_id, http_client,
-    models::{RawTrack, RawUser, Track, User},
+    models::{Profile, RawProfile, RawTrack, RawUser, Track, User},
     paging::collect_all,
     ScApiError, API_V2,
 };
+
+/// The full profile behind a user page. Public.
+pub async fn get_profile(user_id: u64) -> Result<Profile, ScApiError> {
+    let cid = client_id::get(false).await?;
+    let client = http_client()?;
+
+    let raw: RawProfile = client
+        .get(format!("{API_V2}/users/{user_id}"))
+        .query(&[("client_id", cid.as_str())])
+        .send()
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
+
+    Ok(Profile::from(raw))
+}
 
 /// Fetch the users `user_id` follows.
 pub async fn get_followings(
@@ -23,6 +40,27 @@ pub async fn get_followings(
     let raw: Vec<RawUser> = collect_all(
         &client,
         format!("{API_V2}/users/{user_id}/followings"),
+        token,
+        &cid,
+        max as usize,
+    )
+    .await?;
+
+    Ok(raw.into_iter().map(User::from).collect())
+}
+
+/// Fetch the users who follow `user_id`. Public — same shape as followings.
+pub async fn get_followers(
+    token: Option<&str>,
+    user_id: u64,
+    max: u32,
+) -> Result<Vec<User>, ScApiError> {
+    let cid = client_id::get(false).await?;
+    let client = http_client()?;
+
+    let raw: Vec<RawUser> = collect_all(
+        &client,
+        format!("{API_V2}/users/{user_id}/followers"),
         token,
         &cid,
         max as usize,

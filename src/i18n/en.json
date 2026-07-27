@@ -60,12 +60,23 @@
     "albums": "Albums",
     "noHistory": "No history yet",
     "stationsHint": "An endless stream seeded by a track or an artist",
-    "startStation": "Start station"
+    "startStation": "Start station",
+    "searchLikes": "Search likes",
+    "searchTracks": "Search tracks",
+    "searchPlaylists": "Search playlists",
+    "searchPeople": "Search people"
   },
   "profile": {
     "you": "Your profile",
     "tracks": "Tracks",
-    "noTracks": "No uploaded tracks"
+    "noTracks": "No uploaded tracks",
+    "followers": "Followers",
+    "following": "Following",
+    "about": "About",
+    "follow": "Follow",
+    "unfollow": "Unfollow",
+    "followFailed": "Could not change that",
+    "playlists": "Playlists"
   },
   "detail": {
     "playAll": "Play",
@@ -190,7 +201,10 @@
     "remove": "Delete from disk",
     "size": "MB",
     "downloading": "Downloading",
-    "failed": "Download failed"
+    "failed": "Download failed",
+    "all": "Download all",
+    "allDone": "Downloaded",
+    "failedCount": "failed"
   },
   "audio": {
     "title": "Sound",
@@ -238,6 +252,16 @@
     "downloaded": "Already downloaded",
     "copyLink": "Copy link",
     "openOnSc": "Open on SoundCloud",
-    "linkCopied": "Link copied"
+    "linkCopied": "Link copied",
+    "like": "Like",
+    "unlike": "Unlike",
+    "likeFailed": "Could not like that",
+    "addedToPlaylist": "Added to playlist",
+    "addFailed": "Could not add",
+    "playlistCreated": "Playlist created",
+    "findPlaylist": "Find a playlist",
+    "newPlaylist": "New playlist",
+    "create": "Create",
+    "addToPlaylist": "Add to playlist"
   }
 }

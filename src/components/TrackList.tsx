@@ -4,6 +4,8 @@ import type { Track } from "@/lib/tauri";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
 import { TrackContextMenu, type MenuTarget } from "./TrackContextMenu";
+import { LikeButton } from "./LikeButton";
+import { AddToPlaylistDialog } from "./AddToPlaylistDialog";
 import { useIncremental } from "@/hooks/useIncremental";
 import { artwork, cn } from "@/lib/utils";
 import { t } from "@/i18n";
@@ -24,6 +26,7 @@ function formatDuration(ms: number): string {
  */
 export function TrackList({ tracks }: { tracks: Track[] }) {
   const [menu, setMenu] = useState<MenuTarget | null>(null);
+  const [addTo, setAddTo] = useState<Track | null>(null);
   const { visible, sentinel, hasMore } = useIncremental(tracks);
 
   return (
@@ -45,7 +48,17 @@ export function TrackList({ tracks }: { tracks: Track[] }) {
       {/* Grows the rendered window as it scrolls into view. */}
       {hasMore && <div ref={sentinel} className="h-8" aria-hidden />}
 
-      {menu && <TrackContextMenu target={menu} onClose={() => setMenu(null)} />}
+      {menu && (
+        <TrackContextMenu
+          target={menu}
+          onClose={() => setMenu(null)}
+          onAddToPlaylist={setAddTo}
+        />
+      )}
+
+      {addTo && (
+        <AddToPlaylistDialog track={addTo} onClose={() => setAddTo(null)} />
+      )}
     </>
   );
 }
@@ -112,21 +125,21 @@ function TrackRow({
           )}
         </div>
 
-        {isDownloaded && (
-          <Download
-            className="ml-auto h-3.5 w-3.5 shrink-0 text-brand"
-            aria-label={t.player.downloaded}
-          />
-        )}
-
-        <span
-          className={cn(
-            "shrink-0 font-mono text-xs tabular-nums text-muted-foreground",
-            !isDownloaded && "ml-auto",
+        <div className="ml-auto flex shrink-0 items-center gap-1">
+          {isDownloaded && (
+            <Download
+              className="h-3.5 w-3.5 text-brand"
+              aria-label={t.player.downloaded}
+            />
           )}
-        >
-          {formatDuration(track.duration)}
-        </span>
+          {/* Hidden until hover so a long list stays calm. */}
+          <span className="opacity-0 transition-opacity duration-[var(--motion-fast)] group-hover:opacity-100 [&:has(.fill-current)]:opacity-100">
+            <LikeButton track={track} />
+          </span>
+          <span className="font-mono text-xs tabular-nums text-muted-foreground">
+            {formatDuration(track.duration)}
+          </span>
+        </div>
       </button>
     </li>
   );

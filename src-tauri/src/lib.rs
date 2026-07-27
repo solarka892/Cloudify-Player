@@ -46,7 +46,15 @@ pub fn run() {
             commands::get_lyrics,
             commands::download_track,
             commands::list_downloads,
-            commands::delete_download
+            commands::delete_download,
+            commands::sc_get_profile,
+            commands::sc_like_track,
+            commands::sc_like_playlist,
+            commands::sc_follow_user,
+            commands::sc_create_playlist,
+            commands::sc_add_to_playlist,
+            commands::sc_remove_from_playlist,
+            commands::sc_get_followers
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

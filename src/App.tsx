@@ -148,7 +148,7 @@ function App() {
           )}
           {view === "search" && <SearchView />}
           {view === "library" && <LibraryView userId={me.id} />}
-          {view === "profile" && <ProfileView me={me} />}
+          {view === "profile" && <ProfileView userId={me.id} isSelf />}
           {view === "settings" && (
             <>
               <SettingsView />

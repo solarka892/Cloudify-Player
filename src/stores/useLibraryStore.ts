@@ -1,6 +1,10 @@
 import { create } from "zustand";
 import {
+  scAddToPlaylist,
+  scCreatePlaylist,
+  scFollowUser,
   scGetFollowings,
+  scLikeTrack,
   scGetLikedPlaylists,
   scGetLikes,
   scGetPlaylists,
@@ -46,6 +50,10 @@ interface LibraryState {
   followings: Section<User>;
   /** Recently played, newest first. */
   history: Section<Track>;
+  /** Track ids the user has liked — the source of truth for every heart. */
+  likedIds: Set<number>;
+  /** User ids the user follows. */
+  followingIds: Set<number>;
 
   /** Fetch unless already loaded (or loading) for this user. */
   loadLikes: (userId: number) => Promise<void>;
@@ -57,6 +65,15 @@ interface LibraryState {
   refreshPlaylists: (userId: number) => Promise<void>;
   refreshFollowings: (userId: number) => Promise<void>;
   refreshHistory: (userId: number) => Promise<void>;
+
+  /** Like or unlike, updating the UI first and reverting if the call fails. */
+  toggleLike: (track: Track) => Promise<void>;
+  /** Follow or unfollow, same optimistic treatment. */
+  toggleFollow: (user: User) => Promise<void>;
+  /** Add a track to an existing playlist and reflect it in the cached list. */
+  addToPlaylist: (playlistId: number, track: Track) => Promise<void>;
+  /** Create a playlist, seeded with `track` when given one. */
+  createPlaylist: (title: string, track?: Track) => Promise<void>;
 }
 
 export const useLibraryStore = create<LibraryState>((set, get) => {
@@ -70,6 +87,8 @@ export const useLibraryStore = create<LibraryState>((set, get) => {
       likedPlaylists: emptySection(),
       followings: emptySection(),
       history: emptySection(),
+      likedIds: new Set(),
+      followingIds: new Set(),
     });
   }
 
@@ -116,13 +135,13 @@ export const useLibraryStore = create<LibraryState>((set, get) => {
   }
 
   const loadLikesFor = (userId: number) =>
-    fetchInto(userId, ["likes"], async () => ({
-      likes: {
-        items: await scGetLikes(userId),
-        status: "ok" as const,
-        error: null,
-      },
-    }));
+    fetchInto(userId, ["likes"], async () => {
+      const items = await scGetLikes(userId);
+      return {
+        likes: { items, status: "ok" as const, error: null },
+        likedIds: new Set(items.map((t) => t.id)),
+      };
+    });
 
   const loadPlaylistsFor = (userId: number) =>
     fetchInto(userId, ["ownPlaylists", "likedPlaylists"], async () => {
@@ -146,13 +165,13 @@ export const useLibraryStore = create<LibraryState>((set, get) => {
     }));
 
   const loadFollowingsFor = (userId: number) =>
-    fetchInto(userId, ["followings"], async () => ({
-      followings: {
-        items: await scGetFollowings(userId),
-        status: "ok" as const,
-        error: null,
-      },
-    }));
+    fetchInto(userId, ["followings"], async () => {
+      const items = await scGetFollowings(userId);
+      return {
+        followings: { items, status: "ok" as const, error: null },
+        followingIds: new Set(items.map((u) => u.id)),
+      };
+    });
 
   return {
     userId: null,
@@ -161,6 +180,8 @@ export const useLibraryStore = create<LibraryState>((set, get) => {
     likedPlaylists: emptySection(),
     followings: emptySection(),
     history: emptySection(),
+    likedIds: new Set(),
+    followingIds: new Set(),
 
     async loadLikes(userId) {
       if (isFresh(get().likes, userId)) return;
@@ -194,6 +215,107 @@ export const useLibraryStore = create<LibraryState>((set, get) => {
     async refreshHistory(userId) {
       if (get().history.status === "loading") return;
       await loadHistoryFor(userId);
+    },
+
+    async toggleLike(track) {
+      const on = !get().likedIds.has(track.id);
+      const ids = new Set(get().likedIds);
+      const before = get().likes.items;
+
+      // Optimistic: a heart that waits on a round trip feels broken.
+      if (on) ids.add(track.id);
+      else ids.delete(track.id);
+      set({
+        likedIds: ids,
+        likes: {
+          ...get().likes,
+          items: on
+            ? [track, ...before.filter((t) => t.id !== track.id)]
+            : before.filter((t) => t.id !== track.id),
+        },
+      });
+
+      try {
+        await scLikeTrack(track.id, on);
+      } catch (e) {
+        const reverted = new Set(get().likedIds);
+        if (on) reverted.delete(track.id);
+        else reverted.add(track.id);
+        set({
+          likedIds: reverted,
+          likes: { ...get().likes, items: before },
+        });
+        throw e;
+      }
+    },
+
+    async toggleFollow(user) {
+      const on = !get().followingIds.has(user.id);
+      const ids = new Set(get().followingIds);
+      const before = get().followings.items;
+
+      if (on) ids.add(user.id);
+      else ids.delete(user.id);
+      set({
+        followingIds: ids,
+        followings: {
+          ...get().followings,
+          items: on
+            ? [user, ...before.filter((u) => u.id !== user.id)]
+            : before.filter((u) => u.id !== user.id),
+        },
+      });
+
+      try {
+        await scFollowUser(user.id, on);
+      } catch (e) {
+        const reverted = new Set(get().followingIds);
+        if (on) reverted.delete(user.id);
+        else reverted.add(user.id);
+        set({
+          followingIds: reverted,
+          followings: { ...get().followings, items: before },
+        });
+        throw e;
+      }
+    },
+
+    async addToPlaylist(playlistId, track) {
+      await scAddToPlaylist(playlistId, track.id);
+      // Keep the cached count honest without refetching the whole section.
+      set({
+        ownPlaylists: {
+          ...get().ownPlaylists,
+          items: get().ownPlaylists.items.map((p) =>
+            p.id === playlistId ? { ...p, track_count: p.track_count + 1 } : p,
+          ),
+        },
+      });
+    },
+
+    async createPlaylist(title, track) {
+      const id = await scCreatePlaylist(title, track ? [track.id] : []);
+      const userId = get().userId;
+      set({
+        ownPlaylists: {
+          ...get().ownPlaylists,
+          status: "ok",
+          items: [
+            {
+              id,
+              title,
+              track_count: track ? 1 : 0,
+              artwork_url: track?.artwork_url ?? null,
+              permalink_url: null,
+              owner: null,
+              is_album: false,
+            },
+            ...get().ownPlaylists.items,
+          ],
+        },
+      });
+      // The server fills in artwork and the permalink; pick those up quietly.
+      if (userId != null) void loadPlaylistsFor(userId);
     },
   };
 });

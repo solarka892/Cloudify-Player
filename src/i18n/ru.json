@@ -60,12 +60,23 @@
     "albums": "Альбомы",
     "noHistory": "История пуста",
     "stationsHint": "Бесконечный поток на основе трека или артиста",
-    "startStation": "Включить станцию"
+    "startStation": "Включить станцию",
+    "searchLikes": "Поиск по лайкам",
+    "searchTracks": "Поиск по трекам",
+    "searchPlaylists": "Поиск по плейлистам",
+    "searchPeople": "Поиск по людям"
   },
   "profile": {
     "you": "Ваш профиль",
     "tracks": "Треки",
-    "noTracks": "Загруженных треков нет"
+    "noTracks": "Загруженных треков нет",
+    "followers": "Подписчики",
+    "following": "Подписки",
+    "about": "О себе",
+    "follow": "Подписаться",
+    "unfollow": "Отписаться",
+    "followFailed": "Не удалось изменить подписку",
+    "playlists": "Плейлисты"
   },
   "detail": {
     "playAll": "Слушать",
@@ -190,7 +201,10 @@
     "remove": "Удалить с диска",
     "size": "МБ",
     "downloading": "Скачивается",
-    "failed": "Не удалось скачать"
+    "failed": "Не удалось скачать",
+    "all": "Скачать всё",
+    "allDone": "Скачано",
+    "failedCount": "с ошибкой"
   },
   "audio": {
     "title": "Звук",
@@ -238,6 +252,16 @@
     "downloaded": "Уже скачано",
     "copyLink": "Скопировать ссылку",
     "openOnSc": "Открыть на SoundCloud",
-    "linkCopied": "Ссылка скопирована"
+    "linkCopied": "Ссылка скопирована",
+    "like": "Лайк",
+    "unlike": "Убрать лайк",
+    "likeFailed": "Не удалось поставить лайк",
+    "addedToPlaylist": "Добавлено в плейлист",
+    "addFailed": "Не удалось добавить",
+    "playlistCreated": "Плейлист создан",
+    "findPlaylist": "Найти плейлист",
+    "newPlaylist": "Новый плейлист",
+    "create": "Создать",
+    "addToPlaylist": "Добавить в плейлист"
   }
 }

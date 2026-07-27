@@ -21,6 +21,7 @@ import {
   ShuffleButton,
   VolumeControl,
 } from "./controls";
+import { LikeButton } from "@/components/LikeButton";
 import { t } from "@/i18n";
 import { artwork, cn } from "@/lib/utils";
 
@@ -142,6 +143,7 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
 
           {/* Secondary actions */}
           <div className="flex flex-wrap items-center justify-center gap-2">
+            <LikeButton track={current} size="md" />
             <VolumeControl />
 
             <button

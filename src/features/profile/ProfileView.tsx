@@ -1,71 +1,159 @@
 import { useEffect, useState } from "react";
-import { ExternalLink, User as UserIcon } from "lucide-react";
-import { scGetUserTracks, type Me, type Track } from "@/lib/tauri";
-import { PlaylistTile, TileGrid } from "@/components/ArtTile";
+import { BadgeCheck, ExternalLink, MapPin, User as UserIcon } from "lucide-react";
+import {
+  scGetFollowers,
+  scGetFollowings,
+  scGetLikes,
+  scGetPlaylists,
+  scGetProfile,
+  scGetUserTracks,
+  type Playlist,
+  type Profile,
+  type Track,
+  type User,
+} from "@/lib/tauri";
+import { PlaylistList } from "@/components/PlaylistList";
 import { TrackList } from "@/components/TrackList";
 import { UserList } from "@/components/UserList";
+import { DownloadAllButton } from "@/components/DownloadAllButton";
 import { useLibraryStore } from "@/stores/useLibraryStore";
+import { toast } from "@/stores/useToastStore";
 import { t } from "@/i18n";
 import { artwork, cn } from "@/lib/utils";
 
-type Tab = "tracks" | "playlists" | "likes" | "following";
+type Tab = "tracks" | "playlists" | "likes" | "followers" | "following";
 
 /** Compact number formatting: 12500 → 12.5K. */
-function formatCount(n: number | null): string {
+function formatCount(n: number | null | undefined): string {
   if (n == null) return "—";
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n);
 }
 
-export function ProfileView({ me }: { me: Me }) {
+interface Loaded {
+  tracks: Track[];
+  playlists: Playlist[];
+  likes: Track[];
+  followers: User[];
+  following: User[];
+}
+
+const EMPTY: Loaded = {
+  tracks: [],
+  playlists: [],
+  likes: [],
+  followers: [],
+  following: [],
+};
+
+/**
+ * A user page, for the signed-in user and for anyone else.
+ *
+ * Each tab fetches only when it is first opened — a profile with 50k followers
+ * should not pay for that list unless someone asks to see it.
+ */
+export function ProfileView({
+  userId,
+  isSelf = false,
+}: {
+  userId: number;
+  isSelf?: boolean;
+}) {
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [tab, setTab] = useState<Tab>("tracks");
-  const [uploads, setUploads] = useState<Track[]>([]);
+  const [data, setData] = useState<Loaded>(EMPTY);
+  const [loading, setLoading] = useState<Tab | null>(null);
 
-  const likes = useLibraryStore((s) => s.likes);
-  const own = useLibraryStore((s) => s.ownPlaylists);
-  const followings = useLibraryStore((s) => s.followings);
-  const loadLikes = useLibraryStore((s) => s.loadLikes);
-  const loadPlaylists = useLibraryStore((s) => s.loadPlaylists);
-  const loadFollowings = useLibraryStore((s) => s.loadFollowings);
-
-  useEffect(() => {
-    void loadLikes(me.id);
-    void loadPlaylists(me.id);
-    void loadFollowings(me.id);
-  }, [me.id, loadLikes, loadPlaylists, loadFollowings]);
+  const following = useLibraryStore((s) => s.followingIds.has(userId));
+  const toggleFollow = useLibraryStore((s) => s.toggleFollow);
 
   useEffect(() => {
     let cancelled = false;
-    scGetUserTracks(me.id)
-      .then((tracks) => !cancelled && setUploads(tracks))
-      .catch(() => !cancelled && setUploads([]));
+    setProfile(null);
+    setData(EMPTY);
+    setTab("tracks");
+    scGetProfile(userId)
+      .then((p) => !cancelled && setProfile(p))
+      .catch(() => undefined);
     return () => {
       cancelled = true;
     };
-  }, [me.id]);
+  }, [userId]);
 
-  const avatar = artwork(me.avatar_url, "t300x300");
+  // Lazy per tab: fetch the first time a tab is shown, then keep it.
+  useEffect(() => {
+    let cancelled = false;
+    const already =
+      (tab === "tracks" && data.tracks.length > 0) ||
+      (tab === "playlists" && data.playlists.length > 0) ||
+      (tab === "likes" && data.likes.length > 0) ||
+      (tab === "followers" && data.followers.length > 0) ||
+      (tab === "following" && data.following.length > 0);
+    if (already) return;
 
-  const tabs: { id: Tab; label: string; count: number }[] = [
-    { id: "tracks", label: t.profile.tracks, count: uploads.length },
-    { id: "playlists", label: t.library.playlists, count: own.items.length },
-    { id: "likes", label: t.library.likes, count: likes.items.length },
-    { id: "following", label: t.library.following, count: followings.items.length },
+    const fetcher: Record<Tab, () => Promise<Partial<Loaded>>> = {
+      tracks: async () => ({ tracks: await scGetUserTracks(userId) }),
+      playlists: async () => ({ playlists: await scGetPlaylists(userId) }),
+      likes: async () => ({ likes: await scGetLikes(userId) }),
+      followers: async () => ({ followers: await scGetFollowers(userId) }),
+      following: async () => ({ following: await scGetFollowings(userId) }),
+    };
+
+    setLoading(tab);
+    fetcher[tab]()
+      .then((patch) => !cancelled && setData((d) => ({ ...d, ...patch })))
+      .catch(() => undefined)
+      .finally(() => !cancelled && setLoading(null));
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, userId, data]);
+
+  const avatar = artwork(profile?.avatar_url ?? null, "t300x300");
+  const banner = profile?.banner_url ?? null;
+
+  const tabs: { id: Tab; label: string; count: number | null | undefined }[] = [
+    { id: "tracks", label: t.profile.tracks, count: profile?.track_count },
+    { id: "playlists", label: t.profile.playlists, count: profile?.playlist_count },
+    { id: "likes", label: t.library.likes, count: profile?.likes_count },
+    { id: "followers", label: t.profile.followers, count: profile?.followers_count },
+    { id: "following", label: t.profile.following, count: profile?.followings_count },
   ];
 
   return (
     <div className="stack-lg">
-      {/* Header — the cover is the avatar, blown up and blurred behind it. */}
+      {/* Header: banner, avatar, identity, counts. */}
       <section className="panel panel-raised relative overflow-hidden rounded-[var(--radius-hero)]">
-        {avatar && (
+        {banner ? (
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-0 scale-125 bg-cover bg-center opacity-25 blur-2xl"
-            style={{ backgroundImage: `url("${avatar}")` }}
+            className="absolute inset-x-0 top-0 h-40 bg-cover bg-center"
+            style={{ backgroundImage: `url("${banner}")` }}
+          />
+        ) : (
+          avatar && (
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 scale-125 bg-cover bg-center opacity-25 blur-2xl"
+              style={{ backgroundImage: `url("${avatar}")` }}
+            />
+          )
+        )}
+        {banner && (
+          <div
+            aria-hidden
+            className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-transparent to-[var(--card)]"
           />
         )}
-        <div className="relative flex flex-wrap items-end gap-5 p-6">
+
+        <div
+          className={cn(
+            "relative flex flex-wrap items-end gap-5 p-6",
+            banner && "pt-28",
+          )}
+        >
           {avatar ? (
             <img
               src={avatar}
@@ -80,30 +168,37 @@ export function ProfileView({ me }: { me: Me }) {
 
           <div className="min-w-0 flex-1">
             <div className="label text-xs font-semibold text-muted-foreground">
-              {t.profile.you}
+              {isSelf ? t.profile.you : t.nav.profile}
             </div>
             <h1
-              className="truncate text-3xl font-bold tracking-tight"
+              className="flex items-center gap-2 truncate text-3xl font-bold tracking-tight"
               style={{ fontFamily: "var(--font-display)" }}
             >
-              {me.username}
+              {profile?.username ?? "…"}
+              {profile?.verified && (
+                <BadgeCheck className="h-5 w-5 shrink-0 text-brand" />
+              )}
             </h1>
+
+            {profile?.full_name && (
+              <p className="text-sm text-muted-foreground">{profile.full_name}</p>
+            )}
+
             <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-              <span>
-                <b className="text-foreground">{formatCount(me.followers_count)}</b>{" "}
-                {t.auth.followers}
-              </span>
-              <span>
-                <b className="text-foreground">{formatCount(uploads.length)}</b>{" "}
-                {t.profile.tracks}
-              </span>
-              <span>
-                <b className="text-foreground">{formatCount(likes.items.length)}</b>{" "}
-                {t.library.likes}
-              </span>
-              {me.permalink_url && (
+              <Stat value={profile?.followers_count} label={t.profile.followers} />
+              <Stat value={profile?.followings_count} label={t.profile.following} />
+              <Stat value={profile?.track_count} label={t.profile.tracks} />
+              {(profile?.city || profile?.country_code) && (
+                <span className="inline-flex items-center gap-1">
+                  <MapPin className="h-3.5 w-3.5" />
+                  {[profile.city, profile.country_code]
+                    .filter(Boolean)
+                    .join(", ")}
+                </span>
+              )}
+              {profile?.permalink_url && (
                 <a
-                  href={me.permalink_url}
+                  href={profile.permalink_url}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-1 transition-colors duration-[var(--motion-fast)] hover:text-foreground"
@@ -113,61 +208,127 @@ export function ProfileView({ me }: { me: Me }) {
                 </a>
               )}
             </div>
+
+            {profile?.description && (
+              <p className="mt-3 max-w-2xl whitespace-pre-wrap text-sm text-muted-foreground">
+                {profile.description}
+              </p>
+            )}
           </div>
+
+          {!isSelf && profile && (
+            <button
+              onClick={() =>
+                void toggleFollow({
+                  id: profile.id,
+                  username: profile.username,
+                  avatar_url: profile.avatar_url,
+                  permalink_url: profile.permalink_url,
+                  followers_count: profile.followers_count,
+                  track_count: profile.track_count,
+                }).catch(() => toast(t.profile.followFailed, "error"))
+              }
+              className={cn(
+                "shrink-0 rounded-[var(--radius-control)] px-4 py-2 text-sm font-semibold transition-[opacity,transform] duration-[var(--motion-fast)] hover:opacity-90 active:scale-95",
+                following
+                  ? "border border-border bg-secondary text-secondary-foreground"
+                  : "brand-gradient text-white",
+              )}
+            >
+              {following ? t.profile.unfollow : t.profile.follow}
+            </button>
+          )}
         </div>
       </section>
 
-      <nav className="flex gap-4 border-b border-border">
+      <nav className="flex gap-4 overflow-x-auto border-b border-border">
         {tabs.map((item) => (
           <button
             key={item.id}
             onClick={() => setTab(item.id)}
             className={cn(
-              "-mb-px flex items-center gap-1.5 border-b-2 px-1 pb-2 text-sm font-medium transition-colors duration-[var(--motion-fast)]",
+              "-mb-px flex shrink-0 items-center gap-1.5 border-b-2 px-1 pb-2 text-sm font-medium transition-colors duration-[var(--motion-fast)]",
               tab === item.id
                 ? "border-brand text-foreground"
                 : "border-transparent text-muted-foreground hover:text-foreground",
             )}
           >
             <span className="label">{item.label}</span>
-            {item.count > 0 && (
-              <span className="text-xs text-muted-foreground">{item.count}</span>
+            {item.count != null && item.count > 0 && (
+              <span className="text-xs text-muted-foreground">
+                {formatCount(item.count)}
+              </span>
             )}
           </button>
         ))}
       </nav>
 
-      {tab === "tracks" &&
-        (uploads.length > 0 ? (
-          <TrackList tracks={uploads} />
-        ) : (
-          <p className="text-sm text-muted-foreground">{t.profile.noTracks}</p>
-        ))}
+      {loading === tab && (
+        <p className="text-sm text-muted-foreground">{t.library.loading}</p>
+      )}
+
+      {tab === "tracks" && data.tracks.length > 0 && (
+        <>
+          <div className="flex justify-end">
+            <DownloadAllButton tracks={data.tracks} />
+          </div>
+          <TrackList tracks={data.tracks} />
+        </>
+      )}
+      {tab === "tracks" && loading !== tab && data.tracks.length === 0 && (
+        <Empty>{t.profile.noTracks}</Empty>
+      )}
 
       {tab === "playlists" &&
-        (own.items.length > 0 ? (
-          <TileGrid>
-            {own.items.map((playlist) => (
-              <PlaylistTile key={playlist.id} playlist={playlist} />
-            ))}
-          </TileGrid>
+        (data.playlists.length > 0 ? (
+          <PlaylistList playlists={data.playlists} />
         ) : (
-          <p className="text-sm text-muted-foreground">{t.library.noPlaylists}</p>
+          loading !== tab && <Empty>{t.library.noPlaylists}</Empty>
         ))}
 
-      {tab === "likes" &&
-        (likes.items.length > 0 ? (
-          <TrackList tracks={likes.items} />
+      {tab === "likes" && data.likes.length > 0 && (
+        <>
+          <div className="flex justify-end">
+            <DownloadAllButton tracks={data.likes} />
+          </div>
+          <TrackList tracks={data.likes} />
+        </>
+      )}
+      {tab === "likes" && loading !== tab && data.likes.length === 0 && (
+        <Empty>{t.library.empty}</Empty>
+      )}
+
+      {tab === "followers" &&
+        (data.followers.length > 0 ? (
+          <UserList users={data.followers} />
         ) : (
-          <p className="text-sm text-muted-foreground">{t.library.empty}</p>
+          loading !== tab && <Empty>{t.library.noFollowing}</Empty>
         ))}
 
       {tab === "following" &&
-        (followings.items.length > 0 ? (
-          <UserList users={followings.items} />
+        (data.following.length > 0 ? (
+          <UserList users={data.following} />
         ) : (
-          <p className="text-sm text-muted-foreground">{t.library.noFollowing}</p>
+          loading !== tab && <Empty>{t.library.noFollowing}</Empty>
         ))}
     </div>
   );
+}
+
+function Stat({
+  value,
+  label,
+}: {
+  value: number | null | undefined;
+  label: string;
+}) {
+  return (
+    <span>
+      <b className="text-foreground">{formatCount(value)}</b> {label}
+    </span>
+  );
+}
+
+function Empty({ children }: { children: React.ReactNode }) {
+  return <p className="text-sm text-muted-foreground">{children}</p>;
 }

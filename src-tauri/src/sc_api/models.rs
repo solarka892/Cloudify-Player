@@ -98,6 +98,105 @@ impl From<RawUser> for User {
     }
 }
 
+/// The full profile behind a user page: everything soundcloud.com shows in
+/// its header. Distinct from `User`, which is the list-row projection.
+#[derive(Debug, Serialize)]
+pub struct Profile {
+    pub id: u64,
+    pub username: String,
+    pub full_name: Option<String>,
+    pub description: Option<String>,
+    pub city: Option<String>,
+    pub country_code: Option<String>,
+    pub avatar_url: Option<String>,
+    /// Banner image, pulled out of the nested `visuals` block.
+    pub banner_url: Option<String>,
+    pub permalink_url: Option<String>,
+    pub verified: bool,
+    pub followers_count: Option<u64>,
+    pub followings_count: Option<u64>,
+    pub track_count: Option<u64>,
+    pub playlist_count: Option<u64>,
+    pub likes_count: Option<u64>,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct RawVisual {
+    #[serde(default)]
+    pub visual_url: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct RawVisuals {
+    #[serde(default)]
+    pub visuals: Vec<RawVisual>,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct RawBadges {
+    #[serde(default)]
+    pub verified: bool,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct RawProfile {
+    pub id: u64,
+    pub username: String,
+    #[serde(default)]
+    pub full_name: Option<String>,
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub city: Option<String>,
+    #[serde(default)]
+    pub country_code: Option<String>,
+    #[serde(default)]
+    pub avatar_url: Option<String>,
+    #[serde(default)]
+    pub visuals: Option<RawVisuals>,
+    #[serde(default)]
+    pub permalink_url: Option<String>,
+    #[serde(default)]
+    pub verified: Option<bool>,
+    #[serde(default)]
+    pub badges: Option<RawBadges>,
+    #[serde(default)]
+    pub followers_count: Option<u64>,
+    #[serde(default)]
+    pub followings_count: Option<u64>,
+    #[serde(default)]
+    pub track_count: Option<u64>,
+    #[serde(default)]
+    pub playlist_count: Option<u64>,
+    #[serde(default)]
+    pub likes_count: Option<u64>,
+}
+
+impl From<RawProfile> for Profile {
+    fn from(p: RawProfile) -> Self {
+        Profile {
+            id: p.id,
+            username: p.username,
+            // Empty strings are as good as absent for every field below.
+            full_name: p.full_name.filter(|v| !v.trim().is_empty()),
+            description: p.description.filter(|v| !v.trim().is_empty()),
+            city: p.city.filter(|v| !v.trim().is_empty()),
+            country_code: p.country_code.filter(|v| !v.trim().is_empty()),
+            avatar_url: p.avatar_url,
+            banner_url: p
+                .visuals
+                .and_then(|v| v.visuals.into_iter().find_map(|x| x.visual_url)),
+            permalink_url: p.permalink_url,
+            verified: p.verified.unwrap_or(false) || p.badges.is_some_and(|b| b.verified),
+            followers_count: p.followers_count,
+            followings_count: p.followings_count,
+            track_count: p.track_count,
+            playlist_count: p.playlist_count,
+            likes_count: p.likes_count,
+        }
+    }
+}
+
 // ------------------------------------------------------------- playlist ----
 
 #[derive(Debug, Serialize)]

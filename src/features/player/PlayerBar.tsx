@@ -3,6 +3,7 @@ import { ChevronUp, Download, ListMusic, Mic2, Music } from "lucide-react";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
 import { useNavStore } from "@/stores/useNavStore";
+import { LikeButton } from "@/components/LikeButton";
 import { NowPlaying } from "./NowPlaying";
 import { QueuePanel } from "./QueuePanel";
 import { LyricsPanel } from "./Lyrics";
@@ -89,6 +90,8 @@ export function PlayerBar() {
                 </span>
               )}
             </div>
+
+            <LikeButton track={current} />
 
             <button
               onClick={() => void startDownload(current)}

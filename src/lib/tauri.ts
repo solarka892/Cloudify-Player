@@ -305,3 +305,83 @@ export function onDownloadProgress(
 export function localFileUrl(path: string): string {
   return convertFileSrc(path);
 }
+
+// ────────────────────────────────────────────────────────── profiles ────
+
+/** A full user page: what soundcloud.com shows in its profile header. */
+export interface Profile {
+  id: number;
+  username: string;
+  full_name: string | null;
+  description: string | null;
+  city: string | null;
+  country_code: string | null;
+  avatar_url: string | null;
+  banner_url: string | null;
+  permalink_url: string | null;
+  verified: boolean;
+  followers_count: number | null;
+  followings_count: number | null;
+  track_count: number | null;
+  playlist_count: number | null;
+  likes_count: number | null;
+}
+
+/** Fetch a user's full profile. Public. */
+export function scGetProfile(userId: number): Promise<Profile> {
+  return invoke<Profile>("sc_get_profile", { userId });
+}
+
+// ──────────────────────────────────────────────────────────── actions ────
+
+/** Like or unlike a track. Requires login. */
+export function scLikeTrack(trackId: number, on: boolean): Promise<void> {
+  return invoke<void>("sc_like_track", { trackId, on });
+}
+
+/** Like or unlike a playlist or album. Requires login. */
+export function scLikePlaylist(playlistId: number, on: boolean): Promise<void> {
+  return invoke<void>("sc_like_playlist", { playlistId, on });
+}
+
+/** Follow or unfollow a user. Requires login. */
+export function scFollowUser(userId: number, on: boolean): Promise<void> {
+  return invoke<void>("sc_follow_user", { userId, on });
+}
+
+/** Create a playlist, optionally seeded with tracks. Resolves with its id. */
+export function scCreatePlaylist(
+  title: string,
+  trackIds: number[],
+  isPublic = false,
+): Promise<number> {
+  return invoke<number>("sc_create_playlist", {
+    title,
+    trackIds,
+    public: isPublic,
+  });
+}
+
+/** Add a track to a playlist (read-modify-write on SoundCloud's side). */
+export function scAddToPlaylist(
+  playlistId: number,
+  trackId: number,
+): Promise<void> {
+  return invoke<void>("sc_add_to_playlist", { playlistId, trackId });
+}
+
+/** Remove a track from a playlist. */
+export function scRemoveFromPlaylist(
+  playlistId: number,
+  trackId: number,
+): Promise<void> {
+  return invoke<void>("sc_remove_from_playlist", { playlistId, trackId });
+}
+
+/** Fetch the users who follow someone. Public. */
+export function scGetFollowers(
+  userId: number,
+  limit?: number,
+): Promise<User[]> {
+  return invoke<User[]>("sc_get_followers", { userId, limit });
+}
