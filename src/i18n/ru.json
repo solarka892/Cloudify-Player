@@ -1,0 +1,11 @@
+{
+  "app": {
+    "name": "Cloudify Player",
+    "tagline": "Неофициальный клиент SoundCloud"
+  },
+  "status": {
+    "backendConnected": "Бэкенд подключён",
+    "backendChecking": "Проверка бэкенда…",
+    "backendError": "Нет связи с бэкендом"
+  }
+}

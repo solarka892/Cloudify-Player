@@ -1,0 +1,11 @@
+{
+  "app": {
+    "name": "Cloudify Player",
+    "tagline": "Unofficial SoundCloud client"
+  },
+  "status": {
+    "backendConnected": "Backend connected",
+    "backendChecking": "Checking backend…",
+    "backendError": "Backend unreachable"
+  }
+}
