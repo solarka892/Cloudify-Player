@@ -131,11 +131,36 @@ with cursor) until it's absent. Sibling: `/users/{id}/tracks` (own uploads).
 - **OAuth token** (`Authorization: OAuth <token>`): the *logged-in user's* own data and
   actions — `/me`, private tracks, liking/reposting/following, personal feed.
 
+### How we obtain the OAuth token (MVP #4)
+
+No usable public OAuth app exists for us, so we reuse the web app's session:
+
+1. Open SoundCloud's real sign-in page in an embedded webview
+   (`https://soundcloud.com/signin`). SC handles email / SSO / 2FA / captcha.
+2. After login the web app sets an **`oauth_token` cookie**. We read it from the
+   webview's runtime cookie store via Tauri's `WebviewWindow::cookies()` (works
+   for HttpOnly cookies, which JS cannot read).
+3. Store it in the OS keyring; use it as `Authorization: OAuth <token>`.
+
+Implemented in `src-tauri/src/auth/`. Commands: `sc_login`, `sc_logout`,
+`sc_is_logged_in`, `sc_get_me`.
+
+### `GET /me` — the logged-in user ✅ implemented (needs live login to verify)
+
+```
+GET /me?client_id=<CID>        (header: Authorization: OAuth <token>)
+```
+
+Returns the full user object. We project `{ id, username, avatar_url,
+permalink_url, followers_count }` (`sc_api::me::Me`). A `401`/`403` means the
+token is stale → prompt re-login (and `client_id::get(force=true)`).
+
 ---
 
 ## TODO (to reverse next)
 
-- [ ] OAuth flow / token header for private data (`/me`, like/repost/follow actions).
+- [x] ~~OAuth token capture (embedded webview + `oauth_token` cookie) + `/me`~~ — done, pending live verification.
+- [ ] like/repost/follow actions (need OAuth); handle `401` → refresh flow.
 - [x] ~~`/users/{id}/likes` pagination~~ — done (`linked_partitioning=1` + `next_href`).
 - [x] ~~Stream URL resolution from a `transcoding.url`~~ — done (see above).
 - [ ] HLS manifest handling in the app (`hls.js`) & CDN signing lifetime (URLs expire).

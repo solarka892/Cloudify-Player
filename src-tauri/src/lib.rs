@@ -19,7 +19,11 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             commands::get_app_version,
-            commands::get_client_id
+            commands::get_client_id,
+            commands::sc_login,
+            commands::sc_logout,
+            commands::sc_is_logged_in,
+            commands::sc_get_me
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

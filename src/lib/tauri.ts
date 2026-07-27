@@ -21,3 +21,32 @@ export function getAppVersion(): Promise<string> {
 export function getClientId(force = false): Promise<string> {
   return invoke<string>("get_client_id", { force });
 }
+
+/** The logged-in SoundCloud user (subset of the `/me` object). */
+export interface Me {
+  id: number;
+  username: string;
+  avatar_url: string | null;
+  permalink_url: string | null;
+  followers_count: number | null;
+}
+
+/** Open the embedded SC login window; resolves once the token is captured. */
+export function scLogin(): Promise<void> {
+  return invoke<void>("sc_login");
+}
+
+/** Remove the stored token. */
+export function scLogout(): Promise<void> {
+  return invoke<void>("sc_logout");
+}
+
+/** Whether a token is currently stored. */
+export function scIsLoggedIn(): Promise<boolean> {
+  return invoke<boolean>("sc_is_logged_in");
+}
+
+/** Fetch the logged-in user; rejects if not logged in or token invalid. */
+export function scGetMe(): Promise<Me> {
+  return invoke<Me>("sc_get_me");
+}

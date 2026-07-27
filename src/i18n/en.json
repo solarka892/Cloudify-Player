@@ -7,5 +7,13 @@
     "backendConnected": "Backend connected",
     "backendChecking": "Checking backend…",
     "backendError": "Backend unreachable"
+  },
+  "auth": {
+    "login": "Sign in to SoundCloud",
+    "loggingIn": "Waiting for sign-in…",
+    "logout": "Sign out",
+    "loggedInAs": "Signed in as",
+    "loginFailed": "Sign-in failed",
+    "followers": "followers"
   }
 }

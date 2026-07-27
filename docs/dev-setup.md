@@ -53,6 +53,18 @@ cross-platform entry point.
 First `tauri dev` compiles the whole Rust/Tauri tree (~1 min). Subsequent runs
 are incremental (seconds).
 
+### Login / keyring requirement
+
+OAuth tokens are stored via the `keyring` crate → on Linux this uses the
+**Secret Service** (D-Bus). A provider must be running, e.g. `gnome-keyring`
+(`gnome-keyring-daemon`) or KWallet's secretservice bridge. If sign-in fails
+with a keyring/Secret Service error, no provider is running:
+
+```fish
+sudo pacman -S --needed gnome-keyring
+# ensure it starts in the session (PAM or your compositor autostart)
+```
+
 ## Recon script
 
 The SoundCloud api-v2 probe is standalone, stdlib-only Python:

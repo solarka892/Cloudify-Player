@@ -29,6 +29,19 @@ reqwest = { version = "0.12", default-features = false, features = [
     "charset",
     "gzip",
     "brotli",
+    "json",
 ] }
 regex = "1"
 thiserror = "2"
+
+# OAuth token storage. Secret Service on Linux (persistent, needs a running
+# provider e.g. gnome-keyring), native stores on macOS/Windows.
+keyring = { version = "3", features = [
+    "apple-native",
+    "windows-native",
+    "sync-secret-service",
+    "crypto-rust",
+] }
+
+# For the login-cookie polling loop (Tauri's async runtime provides the driver).
+tokio = { version = "1", features = ["time"] }
