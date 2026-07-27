@@ -13,3 +13,41 @@
 //! Reverse-engineering notes & verified endpoints: `docs/sc-api.md`.
 
 pub mod client_id;
+
+pub use error::ScApiError;
+
+mod error {
+    use serde::{Serialize, Serializer};
+
+    /// Errors surfaced by the SoundCloud API layer. Serialises to its display
+    /// string so it can cross the Tauri bridge to the frontend.
+    #[derive(Debug, thiserror::Error)]
+    pub enum ScApiError {
+        #[error("network error: {0}")]
+        Http(#[from] reqwest::Error),
+
+        #[error("regex error: {0}")]
+        Regex(#[from] regex::Error),
+
+        #[error("no JS bundles found on the SoundCloud homepage")]
+        NoBundles,
+
+        #[error("client_id not found in any JS bundle")]
+        ClientIdNotFound,
+    }
+
+    impl Serialize for ScApiError {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            serializer.serialize_str(&self.to_string())
+        }
+    }
+}
+
+/// Browser-like User-Agent. SoundCloud serves different markup to obvious bots,
+/// so every request from this module carries it.
+pub(crate) const USER_AGENT: &str =
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) \
+     Chrome/126.0.0.0 Safari/537.36";

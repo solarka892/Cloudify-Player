@@ -22,8 +22,13 @@ tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
-# HTTP + async are added once we implement sc_api::client_id (MVP #3):
-#   reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
-#   tokio   = { version = "1", features = ["macros", "rt-multi-thread"] }
-#   regex   = "1"
-# Kept out for now so the skeleton builds fast and clean.
+# SoundCloud api-v2 client (sc_api). reqwest uses rustls to avoid an OpenSSL
+# system dependency; async requests run on Tauri's ambient tokio runtime.
+reqwest = { version = "0.12", default-features = false, features = [
+    "rustls-tls",
+    "charset",
+    "gzip",
+    "brotli",
+] }
+regex = "1"
+thiserror = "2"

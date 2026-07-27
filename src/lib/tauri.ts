@@ -13,3 +13,11 @@ import { invoke } from "@tauri-apps/api/core";
 export function getAppVersion(): Promise<string> {
   return invoke<string>("get_app_version");
 }
+
+/**
+ * Auto-extract SoundCloud's `client_id` (cached 24h in the backend).
+ * The returned value is secret-ish — mask it before showing/logging.
+ */
+export function getClientId(force = false): Promise<string> {
+  return invoke<string>("get_client_id", { force });
+}

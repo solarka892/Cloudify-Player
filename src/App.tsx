@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getAppVersion } from "@/lib/tauri";
+import { getAppVersion, getClientId } from "@/lib/tauri";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 
@@ -8,16 +8,37 @@ type BackendStatus =
   | { state: "ok"; version: string }
   | { state: "error"; message: string };
 
+type ClientIdStatus =
+  | { state: "idle" }
+  | { state: "loading" }
+  | { state: "ok"; masked: string; length: number }
+  | { state: "error"; message: string };
+
+/** Mask a secret-ish value: keep first 4 + last 3 chars. */
+function mask(value: string): string {
+  if (value.length <= 8) return "•".repeat(value.length);
+  return `${value.slice(0, 4)}…${value.slice(-3)}`;
+}
+
 function App() {
   const [backend, setBackend] = useState<BackendStatus>({ state: "checking" });
+  const [clientId, setClientId] = useState<ClientIdStatus>({ state: "idle" });
 
   useEffect(() => {
     getAppVersion()
       .then((version) => setBackend({ state: "ok", version }))
-      .catch((e) =>
-        setBackend({ state: "error", message: String(e) }),
-      );
+      .catch((e) => setBackend({ state: "error", message: String(e) }));
   }, []);
+
+  async function checkClientId() {
+    setClientId({ state: "loading" });
+    try {
+      const id = await getClientId();
+      setClientId({ state: "ok", masked: mask(id), length: id.length });
+    } catch (e) {
+      setClientId({ state: "error", message: String(e) });
+    }
+  }
 
   return (
     <main className="flex h-full w-full flex-col items-center justify-center gap-6 bg-background text-foreground">
@@ -29,6 +50,19 @@ function App() {
       </div>
 
       <StatusPill status={backend} />
+
+      <div className="flex flex-col items-center gap-3">
+        <button
+          onClick={checkClientId}
+          disabled={clientId.state === "loading"}
+          className="rounded-md border border-border bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-accent disabled:opacity-50"
+        >
+          {clientId.state === "loading"
+            ? "Извлечение…"
+            : "Извлечь client_id"}
+        </button>
+        <ClientIdResult status={clientId} />
+      </div>
     </main>
   );
 }
@@ -38,7 +72,7 @@ function StatusPill({ status }: { status: BackendStatus }) {
     status.state === "ok"
       ? `${t.status.backendConnected} · v${status.version}`
       : status.state === "error"
-        ? `${t.status.backendError}`
+        ? t.status.backendError
         : t.status.backendChecking;
 
   const dot =
@@ -53,6 +87,25 @@ function StatusPill({ status }: { status: BackendStatus }) {
       <span className={cn("h-2 w-2 rounded-full", dot)} />
       {label}
     </div>
+  );
+}
+
+function ClientIdResult({ status }: { status: ClientIdStatus }) {
+  if (status.state === "idle") return null;
+  if (status.state === "loading")
+    return <p className="text-sm text-muted-foreground">SoundCloud…</p>;
+  if (status.state === "error")
+    return (
+      <p className="max-w-md text-center text-sm text-red-400">
+        {status.message}
+      </p>
+    );
+  return (
+    <p className="font-mono text-sm text-muted-foreground">
+      client_id:{" "}
+      <span className="text-foreground">{status.masked}</span>{" "}
+      <span className="text-xs">({status.length} симв.)</span>
+    </p>
   );
 }
 

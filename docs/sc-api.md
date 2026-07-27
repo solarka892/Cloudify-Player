@@ -40,6 +40,9 @@ Re-run anytime: `python3 recon/sc_recon.py` (add `--json` for machine output).
 
 > The `client_id` and bundle filenames rotate. Never hardcode — always re-derive.
 
+Implemented in Rust: `src-tauri/src/sc_api/client_id.rs` (in-memory cache, 24h
+TTL, `force` bypass). Exposed via the `get_client_id` Tauri command.
+
 ---
 
 ## Endpoints (verified)
