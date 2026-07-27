@@ -15,9 +15,12 @@
 pub mod client_id;
 pub mod likes;
 pub mod me;
+pub mod search;
 pub mod stream;
+pub mod track;
 
 pub use error::ScApiError;
+pub use track::Track;
 
 /// Base URL of SoundCloud's internal API.
 pub(crate) const API_V2: &str = "https://api-v2.soundcloud.com";

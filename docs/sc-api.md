@@ -100,13 +100,21 @@ GET <transcoding.url>?client_id=<CID>&track_authorization=<track.track_authoriza
 > The signed CDN URL is short-lived — resolve it lazily right before playback,
 > don't cache it. `track_authorization` comes from the track object itself.
 
-### `GET /search/tracks` — search
+### `GET /search/tracks` — search ✅ implemented
 
 ```
 GET /search/tracks?q=lofi+hip+hop&client_id=<CID>&limit=3
 ```
 
-Returns `{ collection: [ <track>... ], total_results, next_href }`.
+Returns `{ collection: [ <track>... ], total_results, next_href }`. Unlike
+`/users/{id}/likes`, the collection holds track objects directly (no `like`
+wrapper). **No login needed** — `client_id` is enough.
+
+Implemented: `sc_api::search::search_tracks` (single page, `limit` clamped to
+200, blank query short-circuits to an empty list). Command `sc_search_tracks`,
+debounced 350 ms in the UI (`features/search/SearchView.tsx`).
+**TODO:** follow `next_href` for paging / infinite scroll; expose `total_results`.
+
 Sibling endpoints (untested but expected): `/search/users`, `/search/playlists`, `/search` (all).
 
 ### `GET /users/{id}/likes` — a user's likes ✅ verified (2026-07-27)
@@ -178,3 +186,15 @@ token is stale → prompt re-login (and `client_id::get(force=true)`).
 - [ ] HLS manifest handling in the app (`hls.js`) & CDN signing lifetime (URLs expire).
 - [ ] Rate limits / when `client_id` gets throttled.
 - [ ] `/search/users`, `/search/playlists` (expected to work, untested).
+- [ ] search pagination (`next_href`) — currently one page only.
+
+---
+
+## Shared shapes
+
+Every endpoint that yields tracks maps SoundCloud's fat track object into one
+projection: `sc_api::track::Track` (`{ id, title, duration, artwork_url,
+permalink_url, artist }`), re-exported as `sc_api::Track` and mirrored by the
+`Track` interface in `src/lib/tauri.ts`. Add a field there once and likes,
+search and anything later all get it. Missing `artwork_url` falls back to the
+uploader's `avatar_url` (search results often have no track art).

@@ -86,6 +86,17 @@ export function scGetLikes(userId: number, limit?: number): Promise<Track[]> {
 }
 
 /**
+ * Search tracks by free-text query. Public data — no login needed. A blank
+ * query resolves to an empty list.
+ */
+export function scSearchTracks(
+  query: string,
+  limit?: number,
+): Promise<Track[]> {
+  return invoke<Track[]>("sc_search_tracks", { query, limit });
+}
+
+/**
  * Resolve a track to a directly-playable (progressive mp3) URL. The URL is
  * short-lived — resolve right before playback, don't cache.
  */

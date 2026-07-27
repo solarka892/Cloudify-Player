@@ -26,5 +26,17 @@
     "loading": "Loading…",
     "empty": "No liked tracks yet",
     "error": "Failed to load library"
+  },
+  "nav": {
+    "library": "Library",
+    "search": "Search"
+  },
+  "search": {
+    "placeholder": "Search SoundCloud tracks",
+    "hint": "Type a query to find tracks",
+    "loading": "Searching…",
+    "empty": "Nothing found",
+    "error": "Search failed",
+    "clear": "Clear"
   }
 }

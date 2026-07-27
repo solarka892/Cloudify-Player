@@ -88,14 +88,23 @@ pub async fn sc_get_stream_url(track_id: u64) -> Result<String, String> {
 /// Fetch the logged-in user's liked tracks (all pages, up to `limit`). Requires
 /// login. `limit` bounds very large accounts; defaults to 5000.
 #[tauri::command]
-pub async fn sc_get_likes(
-    user_id: u64,
-    limit: Option<u32>,
-) -> Result<Vec<sc_api::likes::Track>, String> {
+pub async fn sc_get_likes(user_id: u64, limit: Option<u32>) -> Result<Vec<sc_api::Track>, String> {
     let token = auth::load_token()
         .map_err(|e| e.to_string())?
         .ok_or_else(|| "not logged in".to_string())?;
     sc_api::likes::get_liked_tracks(&token, user_id, limit.unwrap_or(5000))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Search SoundCloud tracks by free-text query. Public data — works logged out.
+/// A blank query returns an empty list. `limit` defaults to 50.
+#[tauri::command]
+pub async fn sc_search_tracks(
+    query: String,
+    limit: Option<u32>,
+) -> Result<Vec<sc_api::Track>, String> {
+    sc_api::search::search_tracks(&query, limit.unwrap_or(50))
         .await
         .map_err(|e| e.to_string())
 }

@@ -12,7 +12,11 @@ import {
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { LibraryView } from "@/features/library/LibraryView";
+import { SearchView } from "@/features/search/SearchView";
 import { PlayerBar } from "@/features/player/PlayerBar";
+
+/** Which section of the app is on screen (only meaningful once logged in). */
+type View = "library" | "search";
 
 type BackendStatus =
   | { state: "checking" }
@@ -42,6 +46,7 @@ function App() {
   const [backend, setBackend] = useState<BackendStatus>({ state: "checking" });
   const [clientId, setClientId] = useState<ClientIdStatus>({ state: "idle" });
   const [auth, setAuth] = useState<AuthStatus>({ state: "unknown" });
+  const [view, setView] = useState<View>("library");
 
   const refreshMe = useCallback(async () => {
     try {
@@ -125,7 +130,14 @@ function App() {
       />
 
       {auth.state === "loggedIn" ? (
-        <LibraryView userId={auth.me.id} />
+        <>
+          <NavTabs view={view} onChange={setView} />
+          {view === "library" ? (
+            <LibraryView userId={auth.me.id} />
+          ) : (
+            <SearchView />
+          )}
+        </>
       ) : (
         <div className="flex flex-col items-center gap-3">
           <button
@@ -142,6 +154,38 @@ function App() {
 
       {loggedIn && <PlayerBar />}
     </div>
+  );
+}
+
+function NavTabs({
+  view,
+  onChange,
+}: {
+  view: View;
+  onChange: (view: View) => void;
+}) {
+  const tabs: { id: View; label: string }[] = [
+    { id: "library", label: t.nav.library },
+    { id: "search", label: t.nav.search },
+  ];
+
+  return (
+    <nav className="flex gap-1 rounded-lg border border-border bg-card p-1">
+      {tabs.map((tab) => (
+        <button
+          key={tab.id}
+          onClick={() => onChange(tab.id)}
+          className={cn(
+            "rounded-md px-4 py-1.5 text-sm font-medium transition-colors",
+            view === tab.id
+              ? "bg-secondary text-secondary-foreground"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </nav>
   );
 }
 
