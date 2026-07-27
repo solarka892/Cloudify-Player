@@ -121,6 +121,53 @@ def probe_search(client_id: str, query: str) -> tuple[int, object]:
     return http_get_json(url)
 
 
+def probe_stream(client_id: str, track: dict) -> tuple[int, str | None]:
+    """Resolve the progressive transcoding of a track to a signed CDN URL, then
+    Range-request the first bytes to confirm it's real audio. Returns
+    (http_status_of_cdn, cdn_url)."""
+    auth = track.get("track_authorization", "")
+    transcodings = (track.get("media") or {}).get("transcodings", [])
+    prog = next(
+        (t for t in transcodings
+         if (t.get("format") or {}).get("protocol") == "progressive"),
+        None,
+    )
+    if not prog:
+        return 0, None
+    resolve_url = prog["url"] + "?" + urllib.parse.urlencode(
+        {"client_id": client_id, "track_authorization": auth}
+    )
+    status, body = http_get_json(resolve_url)
+    if status != 200 or not isinstance(body, dict):
+        return status, None
+    cdn = body.get("url")
+    if not cdn:
+        return status, None
+    # Range-request the first bytes; MP3 frames start with 0xFF 0xFB.
+    req = urllib.request.Request(
+        cdn, headers={"User-Agent": UA, "Range": "bytes=0-15"}
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            head = resp.read(4)
+            ok = head[:1] == b"\xff"
+            return (206 if ok and resp.status in (200, 206) else resp.status), cdn
+    except urllib.error.HTTPError as e:
+        return e.code, cdn
+
+
+def probe_likes(client_id: str, user_id: int) -> tuple[int, int, bool]:
+    """Fetch a public user's likes with pagination. Returns
+    (status, item_count, has_next_href)."""
+    url = f"{API_V2}/users/{user_id}/likes?" + urllib.parse.urlencode(
+        {"client_id": client_id, "limit": 2, "linked_partitioning": 1}
+    )
+    status, body = http_get_json(url)
+    if isinstance(body, dict):
+        return status, len(body.get("collection", [])), bool(body.get("next_href"))
+    return status, 0, False
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="SoundCloud api-v2 recon")
     ap.add_argument("--query", default="lofi hip hop",
@@ -162,7 +209,8 @@ def main() -> int:
     log("→ Probing api-v2 /resolve ...")
     r_status, r_body = probe_public_track(client_id)
     result["resolve_status"] = r_status
-    kind = r_body.get("kind") if isinstance(r_body, dict) else None
+    track = r_body if isinstance(r_body, dict) else {}
+    kind = track.get("kind")
     log(f"  HTTP {r_status}  kind={kind}")
 
     log(f"→ Probing api-v2 /search/tracks q={args.query!r} ...")
@@ -177,7 +225,23 @@ def main() -> int:
             user = (t.get("user") or {}).get("username", "?")
             log(f"    • {title} — {user}")
 
-    result["ok"] = r_status == 200 and s_status == 200
+    stream_status = 0
+    likes_status = 0
+    if track.get("kind") == "track":
+        log("→ Probing stream resolution (progressive) ...")
+        stream_status, cdn = probe_stream(client_id, track)
+        result["stream_status"] = stream_status
+        log(f"  HTTP {stream_status}  audio={'yes' if stream_status in (200, 206) else 'no'}")
+
+        log("→ Probing public likes pagination ...")
+        likes_status, n, has_next = probe_likes(client_id, track.get("user_id", 0))
+        result["likes_status"] = likes_status
+        result["likes_has_next"] = has_next
+        log(f"  HTTP {likes_status}  items={n}  next_href={has_next}")
+
+    result["ok"] = all(
+        st == 200 for st in (r_status, s_status, likes_status)
+    ) and stream_status in (200, 206)
 
     if args.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))

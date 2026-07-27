@@ -79,8 +79,23 @@ Returns the full object (`kind` = `track` | `user` | `playlist`).
 Playback plan:
 - **`progressive` mp3** → easiest; direct `<audio>`/Web Audio, no HLS needed.
 - **`hls` variants** → need `hls.js`. Prefer for adaptive / when progressive absent.
-- To get the actual stream URL: `GET <transcoding.url>?client_id=<CID>&track_authorization=<track_authorization>`
-  → returns `{ "url": "<signed cdn url>" }`. **(TODO: verify & document.)**
+
+### Resolving a transcoding to a playable URL ✅ verified (2026-07-27)
+
+```
+GET <transcoding.url>?client_id=<CID>&track_authorization=<track.track_authorization>
+→ 200 { "url": "<signed CDN url>" }
+```
+
+| transcoding | resolved CDN host | notes |
+|-------------|-------------------|-------|
+| `progressive` mp3 | `cf-media.sndcdn.com/<id>.128.mp3?Policy=...` | signed; supports HTTP Range → `206`. First bytes `FF FB` = real MP3. Play directly. |
+| `hls` mp3 | `cf-hls-media.sndcdn.com/playlist/<id>.128.mp3/playlist...` | m3u8 → `hls.js` |
+| `hls` aac | `playback.media-streaming.soundcloud.cloud/<id>/aac_...` | m3u8 → `hls.js` |
+| `hls` `audio/mpegurl` (`abr_sq`) | — | returned **404** on resolve; skip this preset. |
+
+> The signed CDN URL is short-lived — resolve it lazily right before playback,
+> don't cache it. `track_authorization` comes from the track object itself.
 
 ### `GET /search/tracks` — search
 
@@ -91,12 +106,35 @@ GET /search/tracks?q=lofi+hip+hop&client_id=<CID>&limit=3
 Returns `{ collection: [ <track>... ], total_results, next_href }`.
 Sibling endpoints (untested but expected): `/search/users`, `/search/playlists`, `/search` (all).
 
+### `GET /users/{id}/likes` — a user's likes ✅ verified (2026-07-27)
+
+```
+GET /users/{id}/likes?client_id=<CID>&limit=2&linked_partitioning=1
+```
+
+Returns `{ collection: [ { kind: "like", created_at, track?|playlist? } ], next_href }`.
+Works with **just `client_id` for public users** — no auth needed. Each item wraps
+either a `track` or a `playlist` object.
+
+**Pagination:** pass `linked_partitioning=1`; follow `next_href` (already a full URL
+with cursor) until it's absent. Sibling: `/users/{id}/tracks` (own uploads).
+
+---
+
+## Auth model (what needs OAuth vs. not)
+
+- **`client_id` only** (no login): resolve, search, public user likes/tracks/playlists,
+  stream URL resolution, playback. — All verified working.
+- **OAuth token** (`Authorization: OAuth <token>`): the *logged-in user's* own data and
+  actions — `/me`, private tracks, liking/reposting/following, personal feed.
+
 ---
 
 ## TODO (to reverse next)
 
-- [ ] OAuth flow / token header for private data (likes, playlists, me).
-- [ ] `GET /users/{id}/likes` and `/users/{id}/tracks` pagination (`next_href`, `linked_partitioning=1`).
-- [ ] Stream URL resolution from a `transcoding.url` (+ `track_authorization`).
-- [ ] HLS manifest handling & CDN signing lifetime.
+- [ ] OAuth flow / token header for private data (`/me`, like/repost/follow actions).
+- [x] ~~`/users/{id}/likes` pagination~~ — done (`linked_partitioning=1` + `next_href`).
+- [x] ~~Stream URL resolution from a `transcoding.url`~~ — done (see above).
+- [ ] HLS manifest handling in the app (`hls.js`) & CDN signing lifetime (URLs expire).
 - [ ] Rate limits / when `client_id` gets throttled.
+- [ ] `/search/users`, `/search/playlists` (expected to work, untested).
