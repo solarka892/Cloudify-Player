@@ -16,7 +16,7 @@
     "loginFailed": "Не удалось войти",
     "followers": "подписчиков",
     "manualToggle": "Войти по токену вручную",
-    "manualHint": "Залогиньтесь на soundcloud.com в браузере → DevTools (F12) → Application → Cookies → скопируйте значение oauth_token",
+    "manualHint": "Залогиньтесь на soundcloud.com → F12 → Storage (Firefox/Zen) или Application (Chrome) → Cookies → soundcloud.com → скопируйте значение oauth_token",
     "manualPlaceholder": "Вставьте oauth_token",
     "manualSubmit": "Войти по токену",
     "manualChecking": "Проверка токена…"

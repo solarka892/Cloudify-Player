@@ -16,7 +16,7 @@
     "loginFailed": "Sign-in failed",
     "followers": "followers",
     "manualToggle": "Sign in with a token",
-    "manualHint": "Log in on soundcloud.com in your browser → DevTools (F12) → Application → Cookies → copy the oauth_token value",
+    "manualHint": "Log in on soundcloud.com → F12 → Storage (Firefox) or Application (Chrome) → Cookies → soundcloud.com → copy the oauth_token value",
     "manualPlaceholder": "Paste oauth_token",
     "manualSubmit": "Sign in with token",
     "manualChecking": "Validating token…"
