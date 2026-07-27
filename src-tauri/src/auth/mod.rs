@@ -32,8 +32,7 @@ const POLL_INTERVAL: Duration = Duration::from_millis(800);
 /// default UA triggers SoundCloud's anti-bot verification; a real-looking UA
 /// (and NOT tampering with `navigator.*`, which anti-fraud detects) is the best
 /// shot at passing. If SC still shows a captcha, use the manual-token path.
-const BROWSER_UA: &str =
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) \
+const BROWSER_UA: &str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) \
      Chrome/131.0.0.0 Safari/537.36";
 
 #[derive(Debug, thiserror::Error)]

@@ -89,11 +89,9 @@ fn read_oauth_token(db: &Path) -> Option<String> {
     }
 
     let value = (|| {
-        let conn = rusqlite::Connection::open_with_flags(
-            &tmp,
-            rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
-        )
-        .ok()?;
+        let conn =
+            rusqlite::Connection::open_with_flags(&tmp, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
+                .ok()?;
         conn.query_row(
             "SELECT value FROM moz_cookies \
              WHERE name = 'oauth_token' AND host LIKE '%soundcloud.com' \

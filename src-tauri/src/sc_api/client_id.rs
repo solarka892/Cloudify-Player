@@ -56,9 +56,7 @@ pub async fn get(force: bool) -> Result<String, ScApiError> {
 
 /// Performs the full extraction from scratch (no caching).
 pub async fn fetch() -> Result<String, ScApiError> {
-    let client = reqwest::Client::builder()
-        .user_agent(USER_AGENT)
-        .build()?;
+    let client = reqwest::Client::builder().user_agent(USER_AGENT).build()?;
 
     let html = client.get(HOMEPAGE).send().await?.text().await?;
     let bundles = bundle_urls(&html)?;
