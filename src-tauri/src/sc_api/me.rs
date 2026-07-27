@@ -21,19 +21,31 @@ pub struct Me {
 }
 
 /// Fetch the current user with the given OAuth token.
+///
+/// A 401 here is ambiguous: either the token died or the `client_id` rotated.
+/// One forced re-extraction distinguishes them — if it still fails, the token
+/// really is dead and the caller should ask the user to sign in again.
 pub async fn get(token: &str) -> Result<Me, ScApiError> {
-    let cid = client_id::get(false).await?;
+    match fetch(token, false).await {
+        Err(ScApiError::StaleClientId) => fetch(token, true).await,
+        other => other,
+    }
+}
+
+async fn fetch(token: &str, fresh_client_id: bool) -> Result<Me, ScApiError> {
+    let cid = client_id::get(fresh_client_id).await?;
     let client = reqwest::Client::builder().user_agent(USER_AGENT).build()?;
 
-    let me = client
+    let resp = client
         .get(format!("{API_V2}/me"))
         .query(&[("client_id", cid.as_str())])
         .header("Authorization", format!("OAuth {token}"))
         .send()
-        .await?
-        .error_for_status()?
-        .json::<Me>()
         .await?;
 
-    Ok(me)
+    if let Some(reason) = super::classify(resp.status()) {
+        return Err(reason);
+    }
+
+    Ok(resp.error_for_status()?.json::<Me>().await?)
 }

@@ -30,6 +30,8 @@ import { t } from "@/i18n";
 type AuthStatus =
   | { state: "unknown" }
   | { state: "loggedOut" }
+  /** Had a session; SoundCloud rejected it. Needs a fresh sign-in. */
+  | { state: "expired" }
   | { state: "loggingIn" }
   | { state: "loggedIn"; me: Me }
   | { state: "error"; message: string };
@@ -90,6 +92,12 @@ function App() {
       }
       setAuth({ state: "loggedIn", me: await scGetMe() });
     } catch (e) {
+      // Rust clears a token SoundCloud has permanently rejected and reports
+      // this marker; that is the signed-out state, not a failure to explain.
+      if (String(e).includes("session-expired")) {
+        setAuth({ state: "expired" });
+        return;
+      }
       setAuth({ state: "error", message: String(e) });
     }
   }, []);
@@ -248,6 +256,12 @@ function LoginView({
               {busy ? t.auth.manualChecking : t.auth.manualSubmit}
             </button>
           </form>
+        )}
+
+        {status.state === "expired" && (
+          <p className="text-center text-sm text-muted-foreground">
+            {t.auth.sessionExpired}
+          </p>
         )}
 
         {status.state === "error" && (

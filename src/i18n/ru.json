@@ -22,7 +22,8 @@
     "manualHint": "Залогиньтесь на soundcloud.com → F12 → Storage (Firefox/Zen) или Application (Chrome) → Cookies → soundcloud.com → скопируйте значение oauth_token",
     "manualPlaceholder": "Вставьте oauth_token",
     "manualSubmit": "Войти по токену",
-    "manualChecking": "Проверка токена…"
+    "manualChecking": "Проверка токена…",
+    "sessionExpired": "Сессия истекла — SoundCloud больше не принимает сохранённый токен. Войдите заново."
   },
   "home": {
     "morning": "Доброе утро",

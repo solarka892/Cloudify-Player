@@ -58,10 +58,22 @@ pub fn sc_is_logged_in() -> Result<bool, auth::AuthError> {
 }
 
 /// Fetch the logged-in user (`/me`). Errors if not logged in.
+///
+/// A token SoundCloud still rejects after a `client_id` refresh is dead for
+/// good, so it is cleared rather than left to fail on every launch. The error
+/// string is a marker the frontend matches on to show the sign-in screen
+/// instead of an HTTP dump.
 #[tauri::command]
 pub async fn sc_get_me() -> Result<sc_api::me::Me, String> {
     let token = require_token()?;
-    sc_api::me::get(&token).await.map_err(|e| e.to_string())
+    match sc_api::me::get(&token).await {
+        Ok(me) => Ok(me),
+        Err(sc_api::ScApiError::StaleClientId) => {
+            let _ = auth::clear_token();
+            Err("session-expired".to_string())
+        }
+        Err(e) => Err(e.to_string()),
+    }
 }
 
 /// Browser login: open SoundCloud in the user's real browser and wait until the

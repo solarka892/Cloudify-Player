@@ -22,7 +22,8 @@
     "manualHint": "Log in on soundcloud.com → F12 → Storage (Firefox) or Application (Chrome) → Cookies → soundcloud.com → copy the oauth_token value",
     "manualPlaceholder": "Paste oauth_token",
     "manualSubmit": "Sign in with token",
-    "manualChecking": "Validating token…"
+    "manualChecking": "Validating token…",
+    "sessionExpired": "Your session expired — SoundCloud no longer accepts the stored token. Sign in again."
   },
   "home": {
     "morning": "Good morning",
