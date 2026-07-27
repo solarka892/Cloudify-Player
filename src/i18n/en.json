@@ -1,12 +1,15 @@
 {
   "app": {
-    "name": "Cloudify Player",
+    "name": "cloudify",
     "tagline": "Unofficial SoundCloud client"
   },
-  "status": {
-    "backendConnected": "Backend connected",
-    "backendChecking": "Checking backend…",
-    "backendError": "Backend unreachable"
+  "nav": {
+    "home": "Home",
+    "search": "Search",
+    "library": "Library",
+    "profile": "Profile",
+    "settings": "Settings",
+    "back": "Back"
   },
   "auth": {
     "login": "Sign in to SoundCloud",
@@ -20,6 +23,18 @@
     "manualPlaceholder": "Paste oauth_token",
     "manualSubmit": "Sign in with token",
     "manualChecking": "Validating token…"
+  },
+  "home": {
+    "morning": "Good morning",
+    "day": "Good afternoon",
+    "evening": "Good evening",
+    "night": "Good night",
+    "inLikes": "In your likes",
+    "emptyHint": "Everything you listen to will show up here",
+    "playLikes": "Play likes",
+    "shuffle": "Shuffle",
+    "fromLikes": "From your likes",
+    "seeAll": "See all"
   },
   "library": {
     "likes": "Likes",
@@ -37,36 +52,15 @@
     "error": "Failed to load library",
     "refresh": "Refresh"
   },
+  "profile": {
+    "you": "Your profile",
+    "tracks": "Tracks",
+    "noTracks": "No uploaded tracks"
+  },
   "detail": {
     "playAll": "Play",
     "empty": "Nothing here",
     "error": "Failed to load tracks"
-  },
-  "nav": {
-    "library": "Library",
-    "search": "Search",
-    "settings": "Settings",
-    "back": "Back"
-  },
-  "settings": {
-    "appearance": "Appearance",
-    "theme": "Theme",
-    "themeDark": "Dark",
-    "themeLight": "Light",
-    "themeSystem": "System",
-    "accent": "Accent colour",
-    "playback": "Playback",
-    "autoplayNext": "Autoplay next track",
-    "autoplayNextHint": "Start the next queued track when the current one ends",
-    "rememberVolume": "Remember volume",
-    "rememberVolumeHint": "Restore the last volume on start"
-  },
-  "player": {
-    "play": "Play",
-    "pause": "Pause",
-    "prev": "Previous track",
-    "next": "Next track",
-    "queue": "Queue"
   },
   "search": {
     "placeholder": "Search SoundCloud",
@@ -80,5 +74,65 @@
     "kindUsers": "People",
     "loadMore": "Load more",
     "found": "found"
+  },
+  "player": {
+    "play": "Play",
+    "pause": "Pause",
+    "prev": "Previous track",
+    "next": "Next track",
+    "queue": "Queue"
+  },
+  "settings": {
+    "layout": "Layout",
+    "layoutHint": "How navigation and content are arranged",
+    "layoutRail": "Rail",
+    "layoutTop": "Top tabs",
+    "layoutSidebar": "Sidebar",
+    "skin": "Skin",
+    "skinHint": "Form: radii, shadows, blur, typography",
+    "colour": "Colour",
+    "theme": "Theme",
+    "themeDark": "Dark",
+    "themeLight": "Light",
+    "themeSystem": "System",
+    "palette": "Palette",
+    "accent": "Accent",
+    "accentHint": "Applied on top of the palette",
+    "accentAuto": "From palette",
+    "accentArtwork": "Accent from artwork",
+    "accentArtworkHint": "Colour follows the playing track",
+    "backdrop": "Background",
+    "backdropHint": "Your own image, or the playing cover",
+    "backdropMode": "Source",
+    "backdropNone": "None",
+    "backdropArtwork": "Artwork",
+    "backdropImage": "Image",
+    "backdropFile": "Your image",
+    "choose": "Choose",
+    "remove": "Remove",
+    "blur": "Blur",
+    "dim": "Dim",
+    "saturate": "Saturation",
+    "metrics": "Sizing",
+    "density": "Density",
+    "compact": "Compact",
+    "cozy": "Cozy",
+    "spacious": "Spacious",
+    "uiScale": "UI scale",
+    "playback": "Playback",
+    "autoplayNext": "Autoplay next track",
+    "autoplayNextHint": "Start the next queued track when the current one ends",
+    "rememberVolume": "Remember volume",
+    "rememberVolumeHint": "Restore the last volume on start",
+    "presets": "My themes",
+    "presetsHint": "Save the current look, or move it to another machine",
+    "presetName": "Theme name",
+    "save": "Save",
+    "export": "Export",
+    "import": "Import",
+    "reset": "Reset appearance",
+    "imageTooLarge": "Image is over 4 MB — pick a smaller file",
+    "importFailed": "Could not read that theme file",
+    "imported": "Theme loaded"
   }
 }

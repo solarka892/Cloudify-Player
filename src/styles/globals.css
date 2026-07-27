@@ -3,34 +3,67 @@
 /* Enable class-based dark mode (the <html> element carries `.dark`). */
 @custom-variant dark (&:is(.dark *));
 
-/* Design tokens — shadcn/ui "neutral" base, oklch. Light values kept so the
-   theme can be toggled later; the app ships dark-first (see index.html). */
-:root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+/* ─────────────────────────────────────────────────────────────────────────
+   Design tokens.
 
-  /* Accent ("brand") colour — user-configurable in Settings, which overwrites
-     these two on <html> at runtime. `--brand-2` is the gradient partner.
-     Theme-independent on purpose: the accent reads the same light or dark. */
+   These are only the fallbacks used before the theme engine runs (and as a
+   safety net if it ever fails). At runtime `src/theme/apply.ts` writes the
+   real values as inline custom properties on <html>, composed from the
+   active palette + skin + user overrides — see src/theme/tokens.ts.
+
+   Components must never hardcode a colour, radius, blur or duration. If a
+   value isn't reachable through a token here, add a token.
+   ───────────────────────────────────────────────────────────────────────── */
+:root {
+  /* colour — palette layer */
+  --background: oklch(0.985 0 0);
+  --foreground: oklch(0.185 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.185 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.185 0 0);
+  --primary: oklch(0.185 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.955 0 0);
+  --secondary-foreground: oklch(0.185 0 0);
+  --muted: oklch(0.955 0 0);
+  --muted-foreground: oklch(0.505 0 0);
+  --accent: oklch(0.955 0 0);
+  --accent-foreground: oklch(0.185 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0 0 0 / 10%);
+  --input: oklch(0 0 0 / 10%);
+  --ring: oklch(0.708 0 0);
   --brand: oklch(0.75 0.17 55);
   --brand-2: oklch(0.68 0.22 12);
+
+  /* form — skin layer */
+  --radius: 1rem;
+  --radius-control: 0.625rem;
+  --radius-hero: 1.5rem;
+  --border-width: 1px;
+  --blur: 24px;
+  --surface-alpha: 55%;
+  --shadow-1: 0 1px 2px oklch(0 0 0 / 0.18), 0 8px 24px oklch(0 0 0 / 0.22);
+  --shadow-2: 0 2px 8px oklch(0 0 0 / 0.22), 0 24px 64px oklch(0 0 0 / 0.32);
+  --font-ui:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-display: var(--font-ui);
+  --label-transform: none;
+  --label-spacing: 0em;
+  --motion-fast: 180ms;
+  --motion-slow: 420ms;
+
+  /* metrics — user layer */
+  --density: 1;
+  --ui-scale: 100%;
+
+  /* backdrop layer */
+  --backdrop-image: none;
+  --backdrop-blur: 40px;
+  --backdrop-dim: 0.55;
+  --backdrop-saturate: 1.2;
 }
 
 .dark {
@@ -40,7 +73,7 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
+  --primary: oklch(0.985 0 0);
   --primary-foreground: oklch(0.205 0 0);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
@@ -54,7 +87,9 @@
   --ring: oklch(0.556 0 0);
 }
 
-/* Map tokens to Tailwind theme so utilities like `bg-background` work. */
+/* Map tokens to Tailwind so utilities like `bg-card` and `rounded-lg` follow
+   the active theme. Radius utilities intentionally collapse onto the skin's
+   three radii — that is how existing components inherit a skin for free. */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -76,15 +111,24 @@
   --color-ring: var(--ring);
   --color-brand: var(--brand);
   --color-brand-2: var(--brand-2);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+
+  --radius-sm: var(--radius-control);
+  --radius-md: var(--radius);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xl: var(--radius-hero);
+  --radius-2xl: var(--radius-hero);
+
+  --font-sans: var(--font-ui);
+  --font-display: var(--font-display);
 }
 
 @layer base {
   * {
     border-color: var(--border);
+  }
+  html {
+    /* Single knob for overall UI scale; everything else is in rem. */
+    font-size: var(--ui-scale);
   }
   html,
   body,
@@ -95,11 +139,108 @@
     margin: 0;
     background-color: var(--background);
     color: var(--foreground);
-    font-family:
-      ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-      "Helvetica Neue", Arial, sans-serif;
+    font-family: var(--font-ui);
     -webkit-font-smoothing: antialiased;
     /* No text selection / drag on chrome by default (native-app feel). */
     user-select: none;
+  }
+
+  /* Respect the OS setting: skins animate, but never against the user's wish. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--muted-foreground) 32%, transparent);
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--muted-foreground) 55%, transparent);
+    background-clip: content-box;
+  }
+}
+
+@layer components {
+  /* The wallpaper layer: user image or the playing cover, blurred behind
+     everything. Fixed and pointer-transparent so it never affects layout. */
+  .app-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image: var(--backdrop-image);
+    background-size: cover;
+    background-position: center;
+    filter: blur(var(--backdrop-blur)) saturate(var(--backdrop-saturate));
+    /* Overscan so the blur doesn't reveal the edges. */
+    transform: scale(1.12);
+    transition: background-image var(--motion-slow) ease;
+  }
+  .app-backdrop::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--background);
+    opacity: var(--backdrop-dim);
+  }
+
+  /* A surface. Translucency and blur come from the skin, so the same class is
+     frosted glass in Aurora and a flat panel in Editorial. */
+  .panel {
+    background: var(--card);
+    background: color-mix(in srgb, var(--card) var(--surface-alpha), transparent);
+    backdrop-filter: blur(var(--blur));
+    border: var(--border-width) solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-1);
+  }
+  .panel-raised {
+    box-shadow: var(--shadow-2);
+  }
+
+  /* Section headings; uppercase and tracked out in skins that ask for it. */
+  .label {
+    text-transform: var(--label-transform);
+    letter-spacing: var(--label-spacing);
+  }
+
+  /* Vertical rhythm that follows the density setting. */
+  .stack {
+    display: flex;
+    flex-direction: column;
+    gap: calc(0.75rem * var(--density));
+  }
+  .stack-lg {
+    display: flex;
+    flex-direction: column;
+    gap: calc(1.5rem * var(--density));
+  }
+
+  .brand-gradient {
+    background-image: linear-gradient(
+      135deg,
+      var(--brand),
+      var(--brand-2)
+    );
+  }
+  .brand-text {
+    background-image: linear-gradient(135deg, var(--brand), var(--brand-2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
 }

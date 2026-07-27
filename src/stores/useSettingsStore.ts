@@ -1,96 +1,346 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import {
+  applyTheme,
+  applyBackdrop,
+  resolveDark,
+  type Density,
+  type ThemeMode,
+} from "@/theme/apply";
+import { accentFromArtwork } from "@/theme/artwork";
+import type { PaletteId } from "@/theme/palettes";
+import type { SkinId } from "@/theme/skins";
+import type { ThemeVars } from "@/theme/tokens";
 
 /**
- * User settings, persisted in the webview's localStorage.
+ * Everything the user can change about the app, persisted to the webview's
+ * localStorage.
  *
- * Theme and accent are applied by writing to the document root rather than by
- * re-rendering: the tokens in `styles/globals.css` (`.dark`, `--brand`) are the
- * single source of truth for colour, so every component picks the change up.
+ * Appearance is deliberately split into three independent axes — layout
+ * (structure), skin (form) and palette (colour) — so any combination is valid
+ * and a saved preset is just a snapshot of all three plus the backdrop.
  */
 
-export type ThemeMode = "dark" | "light" | "system";
+export type LayoutId = "rail" | "top" | "sidebar";
 
-export type AccentId = "orange" | "pink" | "violet" | "blue" | "green" | "amber";
+export interface BackdropState {
+  /** `artwork` tracks the playing cover; `image` is a user file. */
+  mode: "none" | "artwork" | "image";
+  /** Data URL of the user's background image. */
+  image: string | null;
+  /** Blur radius in px. */
+  blur: number;
+  /** Darkening overlay, 0..1. */
+  dim: number;
+  /** Saturation multiplier, 0..2. */
+  saturate: number;
+}
 
-/** Accent presets. `brand2` is the second stop of the gradients. */
-export const ACCENTS: Record<AccentId, { brand: string; brand2: string }> = {
-  orange: { brand: "oklch(0.75 0.17 55)", brand2: "oklch(0.68 0.22 12)" },
-  pink: { brand: "oklch(0.72 0.22 350)", brand2: "oklch(0.66 0.24 320)" },
-  violet: { brand: "oklch(0.68 0.21 295)", brand2: "oklch(0.62 0.2 270)" },
-  blue: { brand: "oklch(0.7 0.16 245)", brand2: "oklch(0.64 0.19 275)" },
-  green: { brand: "oklch(0.74 0.17 155)", brand2: "oklch(0.72 0.15 185)" },
-  amber: { brand: "oklch(0.83 0.16 85)", brand2: "oklch(0.76 0.17 60)" },
-};
+export interface ThemeState {
+  mode: ThemeMode;
+  palette: PaletteId;
+  skin: SkinId;
+  /** Accent preset id, or `null` for the palette's own accent. */
+  accent: string | null;
+  /** Derive the accent from the playing track's cover instead. */
+  accentFromArtwork: boolean;
+  density: Density;
+  uiScale: number;
+  /** Hand-edited CSS custom properties; win over everything else. */
+  overrides: ThemeVars;
+}
 
-export const ACCENT_IDS = Object.keys(ACCENTS) as AccentId[];
+export interface Preset {
+  id: string;
+  name: string;
+  theme: ThemeState;
+  backdrop: BackdropState;
+  layout: LayoutId;
+}
 
-/** Volume used when nothing has been remembered. */
+/** Shape written to disk and produced by "export theme". */
+export interface ThemeFile {
+  cloudifyTheme: 1;
+  name: string;
+  theme: ThemeState;
+  backdrop: BackdropState;
+  layout: LayoutId;
+}
+
 export const DEFAULT_VOLUME = 0.8;
 
+/** Reject background images bigger than this — localStorage is not a filesystem. */
+const MAX_BACKGROUND_BYTES = 4_000_000;
+
+const DEFAULT_THEME: ThemeState = {
+  mode: "dark",
+  palette: "midnight",
+  skin: "aurora",
+  accent: null,
+  accentFromArtwork: false,
+  density: "cozy",
+  uiScale: 100,
+  overrides: {},
+};
+
+const DEFAULT_BACKDROP: BackdropState = {
+  mode: "none",
+  image: null,
+  blur: 40,
+  dim: 0.55,
+  saturate: 1.2,
+};
+
 interface SettingsState {
-  theme: ThemeMode;
-  accent: AccentId;
-  /** Play the next queued track when one finishes. */
+  layout: LayoutId;
+  theme: ThemeState;
+  backdrop: BackdropState;
+  presets: Preset[];
+
   autoplayNext: boolean;
-  /** Restore the last volume on start instead of resetting to the default. */
   rememberVolume: boolean;
-  /** Last volume (0..1); only meaningful while `rememberVolume` is on. */
   volume: number;
 
-  setTheme: (theme: ThemeMode) => void;
-  setAccent: (accent: AccentId) => void;
+  /** Accent sampled from the current cover. Runtime only — never persisted. */
+  artworkAccent: { brand: string; brand2: string } | null;
+  /** URL of the cover currently driving the backdrop. Runtime only. */
+  artworkUrl: string | null;
+
+  setLayout: (layout: LayoutId) => void;
+  setTheme: (patch: Partial<ThemeState>) => void;
+  setOverride: (name: string, value: string | null) => void;
+  resetTheme: () => void;
+  setBackdrop: (patch: Partial<BackdropState>) => void;
+  /** Returns an error message, or `null` on success. */
+  setBackdropImage: (dataUrl: string) => string | null;
+
+  /** Tell the theme engine which cover is playing. */
+  setArtwork: (url: string | null) => Promise<void>;
+
+  savePreset: (name: string) => void;
+  applyPreset: (id: string) => void;
+  deletePreset: (id: string) => void;
+  exportTheme: (name?: string) => string;
+  /** Returns an error message, or `null` on success. */
+  importTheme: (json: string) => string | null;
+
   setAutoplayNext: (on: boolean) => void;
   setRememberVolume: (on: boolean) => void;
   rememberCurrentVolume: (volume: number) => void;
 }
 
-const prefersDark = () =>
-  window.matchMedia("(prefers-color-scheme: dark)").matches;
-
-function applyTheme(theme: ThemeMode) {
-  const dark = theme === "dark" || (theme === "system" && prefersDark());
-  document.documentElement.classList.toggle("dark", dark);
-}
-
-function applyAccent(accent: AccentId) {
-  const { brand, brand2 } = ACCENTS[accent];
-  document.documentElement.style.setProperty("--brand", brand);
-  document.documentElement.style.setProperty("--brand-2", brand2);
-}
-
 export const useSettingsStore = create<SettingsState>()(
   persist(
-    (set) => ({
-      theme: "dark",
-      accent: "orange",
-      autoplayNext: true,
-      rememberVolume: true,
-      volume: DEFAULT_VOLUME,
+    (set, get) => {
+      /** Push the current appearance onto the document. */
+      function sync(): void {
+        const { theme, artworkAccent } = get();
+        applyTheme({
+          mode: theme.mode,
+          palette: theme.palette,
+          skin: theme.skin,
+          accent: theme.accent,
+          density: theme.density,
+          uiScale: theme.uiScale,
+          // Artwork accent sits under the user's own edits, above the palette.
+          overrides: {
+            ...(theme.accentFromArtwork && artworkAccent
+              ? { "--brand": artworkAccent.brand, "--brand-2": artworkAccent.brand2 }
+              : {}),
+            ...theme.overrides,
+          },
+        });
+        syncBackdrop();
+      }
 
-      setTheme(theme) {
-        applyTheme(theme);
-        set({ theme });
-      },
-      setAccent(accent) {
-        applyAccent(accent);
-        set({ accent });
-      },
-      setAutoplayNext: (autoplayNext) => set({ autoplayNext }),
-      setRememberVolume: (rememberVolume) => set({ rememberVolume }),
-      rememberCurrentVolume: (volume) => set({ volume }),
-    }),
-    { name: "cloudify.settings" },
+      function syncBackdrop(): void {
+        const { backdrop, artworkUrl } = get();
+        const source =
+          backdrop.mode === "image"
+            ? backdrop.image
+            : backdrop.mode === "artwork"
+              ? artworkUrl
+              : null;
+        applyBackdrop({
+          "--backdrop-image": source ? `url("${source}")` : "none",
+          "--backdrop-blur": `${backdrop.blur}px`,
+          "--backdrop-dim": String(backdrop.dim),
+          "--backdrop-saturate": String(backdrop.saturate),
+        });
+      }
+
+      return {
+        layout: "rail",
+        theme: DEFAULT_THEME,
+        backdrop: DEFAULT_BACKDROP,
+        presets: [],
+
+        autoplayNext: true,
+        rememberVolume: true,
+        volume: DEFAULT_VOLUME,
+
+        artworkAccent: null,
+        artworkUrl: null,
+
+        setLayout: (layout) => set({ layout }),
+
+        setTheme(patch) {
+          set({ theme: { ...get().theme, ...patch } });
+          sync();
+        },
+
+        setOverride(name, value) {
+          const overrides = { ...get().theme.overrides };
+          if (value === null) delete overrides[name];
+          else overrides[name] = value;
+          set({ theme: { ...get().theme, overrides } });
+          sync();
+        },
+
+        resetTheme() {
+          set({ theme: { ...DEFAULT_THEME }, backdrop: { ...DEFAULT_BACKDROP } });
+          sync();
+        },
+
+        setBackdrop(patch) {
+          set({ backdrop: { ...get().backdrop, ...patch } });
+          syncBackdrop();
+        },
+
+        setBackdropImage(dataUrl) {
+          if (dataUrl.length > MAX_BACKGROUND_BYTES) {
+            return "too-large";
+          }
+          set({
+            backdrop: { ...get().backdrop, image: dataUrl, mode: "image" },
+          });
+          syncBackdrop();
+          return null;
+        },
+
+        async setArtwork(url) {
+          set({ artworkUrl: url });
+          syncBackdrop();
+
+          if (!get().theme.accentFromArtwork) return;
+          if (!url) {
+            set({ artworkAccent: null });
+            sync();
+            return;
+          }
+          const accent = await accentFromArtwork(url);
+          // A greyscale or unreadable cover leaves the previous accent alone.
+          if (!accent) return;
+          if (get().artworkUrl !== url) return; // superseded while sampling
+          set({ artworkAccent: accent });
+          sync();
+        },
+
+        savePreset(name) {
+          const { theme, backdrop, layout, presets } = get();
+          const preset: Preset = {
+            id: `${Date.now().toString(36)}`,
+            name,
+            theme: { ...theme },
+            backdrop: { ...backdrop },
+            layout,
+          };
+          set({ presets: [...presets, preset] });
+        },
+
+        applyPreset(id) {
+          const preset = get().presets.find((p) => p.id === id);
+          if (!preset) return;
+          set({
+            theme: { ...preset.theme },
+            backdrop: { ...preset.backdrop },
+            layout: preset.layout,
+          });
+          sync();
+        },
+
+        deletePreset(id) {
+          set({ presets: get().presets.filter((p) => p.id !== id) });
+        },
+
+        exportTheme(name = "My theme") {
+          const { theme, backdrop, layout } = get();
+          const file: ThemeFile = { cloudifyTheme: 1, name, theme, backdrop, layout };
+          return JSON.stringify(file, null, 2);
+        },
+
+        importTheme(json) {
+          let parsed: unknown;
+          try {
+            parsed = JSON.parse(json);
+          } catch {
+            return "invalid-json";
+          }
+          const file = parsed as Partial<ThemeFile>;
+          if (file?.cloudifyTheme !== 1 || !file.theme) return "not-a-theme";
+
+          set({
+            // Merge onto the defaults so a theme written by an older version
+            // (missing fields added since) still loads.
+            theme: { ...DEFAULT_THEME, ...file.theme },
+            backdrop: { ...DEFAULT_BACKDROP, ...(file.backdrop ?? {}) },
+            layout: file.layout ?? get().layout,
+          });
+          sync();
+          return null;
+        },
+
+        setAutoplayNext: (autoplayNext) => set({ autoplayNext }),
+        setRememberVolume: (rememberVolume) => set({ rememberVolume }),
+        rememberCurrentVolume: (volume) => set({ volume }),
+      };
+    },
+    {
+      name: "cloudify.settings",
+      version: 2,
+      // Runtime-only artwork state must not be written to disk.
+      partialize: (s) => ({
+        layout: s.layout,
+        theme: s.theme,
+        backdrop: s.backdrop,
+        presets: s.presets,
+        autoplayNext: s.autoplayNext,
+        rememberVolume: s.rememberVolume,
+        volume: s.volume,
+      }),
+      // v1 stored a flat {theme, accent, ...}; start those users clean rather
+      // than half-migrating into the three-axis model.
+      migrate: () => ({}) as never,
+    },
   ),
 );
 
-// Reflect the (possibly rehydrated) settings onto the document once at startup.
-applyTheme(useSettingsStore.getState().theme);
-applyAccent(useSettingsStore.getState().accent);
+// Reflect the rehydrated settings onto the document once at startup.
+{
+  const s = useSettingsStore.getState();
+  applyTheme({
+    mode: s.theme.mode,
+    palette: s.theme.palette,
+    skin: s.theme.skin,
+    accent: s.theme.accent,
+    density: s.theme.density,
+    uiScale: s.theme.uiScale,
+    overrides: s.theme.overrides,
+  });
+  applyBackdrop({
+    "--backdrop-image": s.backdrop.image && s.backdrop.mode === "image"
+      ? `url("${s.backdrop.image}")`
+      : "none",
+    "--backdrop-blur": `${s.backdrop.blur}px`,
+    "--backdrop-dim": String(s.backdrop.dim),
+    "--backdrop-saturate": String(s.backdrop.saturate),
+  });
+}
 
 // Follow the OS only while the user asked us to.
-window
-  .matchMedia("(prefers-color-scheme: dark)")
-  .addEventListener("change", () => {
-    if (useSettingsStore.getState().theme === "system") applyTheme("system");
-  });
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+  const s = useSettingsStore.getState();
+  if (s.theme.mode !== "system") return;
+  document.documentElement.classList.toggle("dark", resolveDark("system"));
+  s.setTheme({}); // recompose with the new resolved mode
+});

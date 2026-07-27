@@ -1,0 +1,54 @@
+import { useSettingsStore } from "@/stores/useSettingsStore";
+import { NavRail, NavSidebar, NavTop, type ViewId } from "./nav";
+
+/**
+ * The application frame.
+ *
+ * Owns the backdrop layer, the navigation and the player slot, and arranges
+ * them per the `layout` setting. Views render into `children` and must not
+ * assume a width — the same view is shown beside a 56px rail and a 240px
+ * sidebar.
+ */
+export function AppShell({
+  view,
+  onNavigate,
+  children,
+  player,
+}: {
+  view: ViewId;
+  onNavigate: (view: ViewId) => void;
+  children: React.ReactNode;
+  player?: React.ReactNode;
+}) {
+  const layout = useSettingsStore((s) => s.layout);
+
+  const main = (
+    <main className="relative z-10 min-h-0 flex-1 overflow-y-auto">
+      <div className="mx-auto w-full max-w-6xl px-6 py-6">{children}</div>
+    </main>
+  );
+
+  return (
+    <div className="relative flex h-full w-full flex-col overflow-hidden bg-background text-foreground">
+      <div className="app-backdrop" aria-hidden />
+
+      {layout === "top" ? (
+        <div className="relative z-10 flex min-h-0 flex-1 flex-col">
+          <NavTop view={view} onNavigate={onNavigate} />
+          {main}
+        </div>
+      ) : (
+        <div className="relative z-10 flex min-h-0 flex-1">
+          {layout === "sidebar" ? (
+            <NavSidebar view={view} onNavigate={onNavigate} />
+          ) : (
+            <NavRail view={view} onNavigate={onNavigate} />
+          )}
+          {main}
+        </div>
+      )}
+
+      {player && <div className="relative z-20 shrink-0">{player}</div>}
+    </div>
+  );
+}

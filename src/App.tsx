@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  getAppVersion,
-  getClientId,
   scGetMe,
   scIsLoggedIn,
   scLoginBrowser,
@@ -9,28 +7,20 @@ import {
   scSetToken,
   type Me,
 } from "@/lib/tauri";
-import { t } from "@/i18n";
-import { cn } from "@/lib/utils";
+import { AppShell } from "@/components/shell/AppShell";
+import type { ViewId } from "@/components/shell/nav";
+import { HomeView } from "@/features/home/HomeView";
 import { LibraryView } from "@/features/library/LibraryView";
 import { SearchView } from "@/features/search/SearchView";
+import { ProfileView } from "@/features/profile/ProfileView";
 import { SettingsView } from "@/features/settings/SettingsView";
 import { DetailView } from "@/features/detail/DetailView";
 import { PlayerBar } from "@/features/player/PlayerBar";
 import { useNavStore } from "@/stores/useNavStore";
-
-/** Which section of the app is on screen (only meaningful once logged in). */
-type View = "library" | "search" | "settings";
-
-type BackendStatus =
-  | { state: "checking" }
-  | { state: "ok"; version: string }
-  | { state: "error"; message: string };
-
-type ClientIdStatus =
-  | { state: "idle" }
-  | { state: "loading" }
-  | { state: "ok"; masked: string; length: number }
-  | { state: "error"; message: string };
+import { usePlayerStore } from "@/stores/usePlayerStore";
+import { useSettingsStore } from "@/stores/useSettingsStore";
+import { artwork } from "@/lib/utils";
+import { t } from "@/i18n";
 
 type AuthStatus =
   | { state: "unknown" }
@@ -39,19 +29,19 @@ type AuthStatus =
   | { state: "loggedIn"; me: Me }
   | { state: "error"; message: string };
 
-/** Mask a secret-ish value: keep first 4 + last 3 chars. */
-function mask(value: string): string {
-  if (value.length <= 8) return "•".repeat(value.length);
-  return `${value.slice(0, 4)}…${value.slice(-3)}`;
-}
-
 function App() {
-  const [backend, setBackend] = useState<BackendStatus>({ state: "checking" });
-  const [clientId, setClientId] = useState<ClientIdStatus>({ state: "idle" });
   const [auth, setAuth] = useState<AuthStatus>({ state: "unknown" });
-  const [view, setView] = useState<View>("library");
+  const [view, setView] = useState<ViewId>("home");
   const detail = useNavStore((s) => s.detail);
   const closeDetail = useNavStore((s) => s.back);
+
+  // Feed the playing cover to the theme engine: it drives the artwork
+  // backdrop and, when enabled, the accent colour.
+  const currentArt = usePlayerStore((s) => s.current?.artwork_url ?? null);
+  const setArtwork = useSettingsStore((s) => s.setArtwork);
+  useEffect(() => {
+    void setArtwork(artwork(currentArt, "t500x500"));
+  }, [currentArt, setArtwork]);
 
   const refreshMe = useCallback(async () => {
     try {
@@ -59,295 +49,169 @@ function App() {
         setAuth({ state: "loggedOut" });
         return;
       }
-      const me = await scGetMe();
-      setAuth({ state: "loggedIn", me });
+      setAuth({ state: "loggedIn", me: await scGetMe() });
     } catch (e) {
       setAuth({ state: "error", message: String(e) });
     }
   }, []);
 
   useEffect(() => {
-    getAppVersion()
-      .then((version) => setBackend({ state: "ok", version }))
-      .catch((e) => setBackend({ state: "error", message: String(e) }));
     void refreshMe();
   }, [refreshMe]);
 
-  async function checkClientId() {
-    setClientId({ state: "loading" });
-    try {
-      const id = await getClientId();
-      setClientId({ state: "ok", masked: mask(id), length: id.length });
-    } catch (e) {
-      setClientId({ state: "error", message: String(e) });
-    }
+  if (auth.state === "unknown") {
+    return <div className="h-full w-full bg-background" />;
   }
 
-  async function login() {
-    setAuth({ state: "loggingIn" });
-    try {
-      const me = await scLoginBrowser();
-      setAuth({ state: "loggedIn", me });
-    } catch (e) {
-      setAuth({ state: "error", message: String(e) });
-    }
+  if (auth.state !== "loggedIn") {
+    return (
+      <LoginView
+        status={auth}
+        onBrowserLogin={async () => {
+          setAuth({ state: "loggingIn" });
+          try {
+            setAuth({ state: "loggedIn", me: await scLoginBrowser() });
+          } catch (e) {
+            setAuth({ state: "error", message: String(e) });
+          }
+        }}
+        onTokenLogin={async (token) => {
+          setAuth({ state: "loggingIn" });
+          try {
+            setAuth({ state: "loggedIn", me: await scSetToken(token) });
+          } catch (e) {
+            setAuth({ state: "error", message: String(e) });
+          }
+        }}
+      />
+    );
   }
 
-  async function manualLogin(token: string) {
-    setAuth({ state: "loggingIn" });
-    try {
-      const me = await scSetToken(token);
-      setAuth({ state: "loggedIn", me });
-    } catch (e) {
-      setAuth({ state: "error", message: String(e) });
-    }
-  }
-
-  async function logout() {
-    await scLogout();
-    setAuth({ state: "loggedOut" });
-  }
-
-  const loggedIn = auth.state === "loggedIn";
+  const { me } = auth;
 
   return (
-    <div className="flex h-full w-full flex-col bg-background text-foreground">
-      <main
-        className={cn(
-          "flex w-full flex-1 flex-col items-center gap-6 overflow-y-auto p-8",
-          loggedIn ? "justify-start" : "justify-center",
-        )}
-      >
-        <div className="flex flex-col items-center gap-2">
-        <h1 className="bg-gradient-to-r from-brand to-brand-2 bg-clip-text text-5xl font-bold tracking-tight text-transparent">
-          {t.app.name}
-        </h1>
-        <p className="text-sm text-muted-foreground">{t.app.tagline}</p>
-      </div>
-
-      <StatusPill status={backend} />
-
-      <AuthSection
-        status={auth}
-        onLogin={login}
-        onManualLogin={manualLogin}
-        onLogout={logout}
-      />
-
-      {auth.state === "loggedIn" ? (
+    <AppShell
+      view={view}
+      onNavigate={(next) => {
+        closeDetail(); // leaving a tab abandons whatever was drilled into
+        setView(next);
+      }}
+      player={<PlayerBar />}
+    >
+      {detail ? (
+        <DetailView detail={detail} />
+      ) : (
         <>
-          <NavTabs
-            view={view}
-            onChange={(next) => {
-              // Leaving a tab abandons whatever was drilled into.
-              closeDetail();
-              setView(next);
-            }}
-          />
-          {detail ? (
-            <DetailView detail={detail} />
-          ) : (
+          {view === "home" && (
+            <HomeView userId={me.id} onNavigate={(next) => setView(next)} />
+          )}
+          {view === "search" && <SearchView />}
+          {view === "library" && <LibraryView userId={me.id} />}
+          {view === "profile" && <ProfileView me={me} />}
+          {view === "settings" && (
             <>
-              {view === "library" && <LibraryView userId={auth.me.id} />}
-              {view === "search" && <SearchView />}
-              {view === "settings" && <SettingsView />}
+              <SettingsView />
+              <div className="mt-8 border-t border-border pt-6">
+                <button
+                  onClick={async () => {
+                    await scLogout();
+                    setAuth({ state: "loggedOut" });
+                  }}
+                  className="text-sm text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:text-destructive"
+                >
+                  {t.auth.logout} · {me.username}
+                </button>
+              </div>
             </>
           )}
         </>
-      ) : (
-        <div className="flex flex-col items-center gap-3">
-          <button
-            onClick={checkClientId}
-            disabled={clientId.state === "loading"}
-            className="rounded-md border border-border bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-accent disabled:opacity-50"
-          >
-            {clientId.state === "loading" ? "Извлечение…" : "Извлечь client_id"}
-          </button>
-          <ClientIdResult status={clientId} />
-        </div>
       )}
-      </main>
-
-      {loggedIn && <PlayerBar />}
-    </div>
+    </AppShell>
   );
 }
 
-function NavTabs({
-  view,
-  onChange,
-}: {
-  view: View;
-  onChange: (view: View) => void;
-}) {
-  const tabs: { id: View; label: string }[] = [
-    { id: "library", label: t.nav.library },
-    { id: "search", label: t.nav.search },
-    { id: "settings", label: t.nav.settings },
-  ];
-
-  return (
-    <nav className="flex gap-1 rounded-lg border border-border bg-card p-1">
-      {tabs.map((tab) => (
-        <button
-          key={tab.id}
-          onClick={() => onChange(tab.id)}
-          className={cn(
-            "rounded-md px-4 py-1.5 text-sm font-medium transition-colors",
-            view === tab.id
-              ? "bg-secondary text-secondary-foreground"
-              : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          {tab.label}
-        </button>
-      ))}
-    </nav>
-  );
-}
-
-function StatusPill({ status }: { status: BackendStatus }) {
-  const label =
-    status.state === "ok"
-      ? `${t.status.backendConnected} · v${status.version}`
-      : status.state === "error"
-        ? t.status.backendError
-        : t.status.backendChecking;
-
-  const dot =
-    status.state === "ok"
-      ? "bg-green-500"
-      : status.state === "error"
-        ? "bg-red-500"
-        : "bg-yellow-500 animate-pulse";
-
-  return (
-    <div className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm text-card-foreground">
-      <span className={cn("h-2 w-2 rounded-full", dot)} />
-      {label}
-    </div>
-  );
-}
-
-function AuthSection({
+/** Pre-auth screen. Deliberately quiet: one primary path, one fallback. */
+function LoginView({
   status,
-  onLogin,
-  onManualLogin,
-  onLogout,
+  onBrowserLogin,
+  onTokenLogin,
 }: {
   status: AuthStatus;
-  onLogin: () => void;
-  onManualLogin: (token: string) => void;
-  onLogout: () => void;
+  onBrowserLogin: () => void;
+  onTokenLogin: (token: string) => void;
 }) {
   const [showManual, setShowManual] = useState(false);
   const [token, setToken] = useState("");
+  const busy = status.state === "loggingIn";
 
-  if (status.state === "unknown") return null;
-
-  if (status.state === "loggedIn") {
-    const { me } = status;
-    return (
-      <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
-        {me.avatar_url && (
-          <img
-            src={me.avatar_url}
-            alt=""
-            className="h-10 w-10 rounded-full object-cover"
-          />
-        )}
-        <div className="flex flex-col">
-          <span className="text-xs text-muted-foreground">
-            {t.auth.loggedInAs}
+  return (
+    <div className="relative flex h-full w-full items-center justify-center bg-background p-8 text-foreground">
+      <div className="app-backdrop" aria-hidden />
+      <div className="panel panel-raised relative z-10 flex w-full max-w-md flex-col items-center gap-5 rounded-[var(--radius-hero)] p-8">
+        <div className="flex flex-col items-center gap-2">
+          <span className="brand-gradient flex h-14 w-14 items-center justify-center rounded-[var(--radius)] text-3xl font-black text-white">
+            c
           </span>
-          <span className="font-medium">{me.username}</span>
-          {me.followers_count != null && (
-            <span className="text-xs text-muted-foreground">
-              {me.followers_count} {t.auth.followers}
-            </span>
-          )}
-        </div>
-        <button
-          onClick={onLogout}
-          className="ml-4 rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent"
-        >
-          {t.auth.logout}
-        </button>
-      </div>
-    );
-  }
-
-  const loggingIn = status.state === "loggingIn";
-  return (
-    <div className="flex w-full max-w-md flex-col items-center gap-3">
-      <button
-        onClick={onLogin}
-        disabled={loggingIn}
-        className="rounded-md bg-gradient-to-r from-brand to-brand-2 px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-      >
-        {loggingIn ? t.auth.loggingIn : t.auth.login}
-      </button>
-
-      <button
-        onClick={() => setShowManual((v) => !v)}
-        className="text-xs text-muted-foreground underline-offset-4 hover:underline"
-      >
-        {t.auth.manualToggle}
-      </button>
-
-      {showManual && (
-        <form
-          className="flex w-full flex-col gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (token.trim()) onManualLogin(token.trim());
-          }}
-        >
-          <p className="text-center text-xs text-muted-foreground">
-            {t.auth.manualHint}
-          </p>
-          <input
-            value={token}
-            onChange={(e) => setToken(e.currentTarget.value)}
-            placeholder={t.auth.manualPlaceholder}
-            spellCheck={false}
-            autoComplete="off"
-            className="w-full rounded-md border border-border bg-card px-3 py-2 font-mono text-xs text-card-foreground outline-none focus:ring-1 focus:ring-ring"
-          />
-          <button
-            type="submit"
-            disabled={loggingIn || !token.trim()}
-            className="rounded-md border border-border bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-accent disabled:opacity-50"
+          <h1
+            className="brand-text text-4xl font-bold tracking-tight"
+            style={{ fontFamily: "var(--font-display)" }}
           >
-            {loggingIn ? t.auth.manualChecking : t.auth.manualSubmit}
-          </button>
-        </form>
-      )}
+            cloudify
+          </h1>
+          <p className="text-sm text-muted-foreground">{t.app.tagline}</p>
+        </div>
 
-      {status.state === "error" && (
-        <p className="max-w-md text-center text-sm text-red-400">
-          {t.auth.loginFailed}: {status.message}
-        </p>
-      )}
+        <button
+          onClick={onBrowserLogin}
+          disabled={busy}
+          className="brand-gradient w-full rounded-[var(--radius-control)] px-5 py-2.5 text-sm font-semibold text-white transition-opacity duration-[var(--motion-fast)] hover:opacity-90 disabled:opacity-50"
+        >
+          {busy ? t.auth.loggingIn : t.auth.login}
+        </button>
+
+        <button
+          onClick={() => setShowManual((v) => !v)}
+          className="text-xs text-muted-foreground underline-offset-4 hover:underline"
+        >
+          {t.auth.manualToggle}
+        </button>
+
+        {showManual && (
+          <form
+            className="flex w-full flex-col gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (token.trim()) onTokenLogin(token.trim());
+            }}
+          >
+            <p className="text-center text-xs text-muted-foreground">
+              {t.auth.manualHint}
+            </p>
+            <input
+              value={token}
+              onChange={(e) => setToken(e.currentTarget.value)}
+              placeholder={t.auth.manualPlaceholder}
+              spellCheck={false}
+              autoComplete="off"
+              className="w-full rounded-[var(--radius-control)] border border-border bg-card px-3 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-ring"
+            />
+            <button
+              type="submit"
+              disabled={busy || !token.trim()}
+              className="rounded-[var(--radius-control)] border border-border bg-secondary px-4 py-2 text-sm font-medium transition-colors duration-[var(--motion-fast)] hover:bg-accent disabled:opacity-50"
+            >
+              {busy ? t.auth.manualChecking : t.auth.manualSubmit}
+            </button>
+          </form>
+        )}
+
+        {status.state === "error" && (
+          <p className="text-center text-sm text-destructive">
+            {t.auth.loginFailed}: {status.message}
+          </p>
+        )}
+      </div>
     </div>
-  );
-}
-
-function ClientIdResult({ status }: { status: ClientIdStatus }) {
-  if (status.state === "idle") return null;
-  if (status.state === "loading")
-    return <p className="text-sm text-muted-foreground">SoundCloud…</p>;
-  if (status.state === "error")
-    return (
-      <p className="max-w-md text-center text-sm text-red-400">
-        {status.message}
-      </p>
-    );
-  return (
-    <p className="font-mono text-sm text-muted-foreground">
-      client_id: <span className="text-foreground">{status.masked}</span>{" "}
-      <span className="text-xs">({status.length} симв.)</span>
-    </p>
   );
 }
 

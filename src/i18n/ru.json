@@ -1,12 +1,15 @@
 {
   "app": {
-    "name": "Cloudify Player",
+    "name": "cloudify",
     "tagline": "Неофициальный клиент SoundCloud"
   },
-  "status": {
-    "backendConnected": "Бэкенд подключён",
-    "backendChecking": "Проверка бэкенда…",
-    "backendError": "Нет связи с бэкендом"
+  "nav": {
+    "home": "Главная",
+    "search": "Поиск",
+    "library": "Библиотека",
+    "profile": "Профиль",
+    "settings": "Настройки",
+    "back": "Назад"
   },
   "auth": {
     "login": "Войти в SoundCloud",
@@ -20,6 +23,18 @@
     "manualPlaceholder": "Вставьте oauth_token",
     "manualSubmit": "Войти по токену",
     "manualChecking": "Проверка токена…"
+  },
+  "home": {
+    "morning": "Доброе утро",
+    "day": "Добрый день",
+    "evening": "Добрый вечер",
+    "night": "Доброй ночи",
+    "inLikes": "В лайках",
+    "emptyHint": "Здесь появится всё, что вы слушаете",
+    "playLikes": "Слушать лайки",
+    "shuffle": "Перемешать",
+    "fromLikes": "Из ваших лайков",
+    "seeAll": "Смотреть всё"
   },
   "library": {
     "likes": "Лайки",
@@ -37,36 +52,15 @@
     "error": "Не удалось загрузить библиотеку",
     "refresh": "Обновить"
   },
+  "profile": {
+    "you": "Ваш профиль",
+    "tracks": "Треки",
+    "noTracks": "Загруженных треков нет"
+  },
   "detail": {
     "playAll": "Слушать",
     "empty": "Здесь пусто",
     "error": "Не удалось загрузить треки"
-  },
-  "nav": {
-    "library": "Библиотека",
-    "search": "Поиск",
-    "settings": "Настройки",
-    "back": "Назад"
-  },
-  "settings": {
-    "appearance": "Внешний вид",
-    "theme": "Тема",
-    "themeDark": "Тёмная",
-    "themeLight": "Светлая",
-    "themeSystem": "Как в системе",
-    "accent": "Акцентный цвет",
-    "playback": "Воспроизведение",
-    "autoplayNext": "Автопереход к следующему",
-    "autoplayNextHint": "Включать следующий трек очереди, когда текущий закончился",
-    "rememberVolume": "Запоминать громкость",
-    "rememberVolumeHint": "Восстанавливать последнюю громкость при запуске"
-  },
-  "player": {
-    "play": "Играть",
-    "pause": "Пауза",
-    "prev": "Предыдущий трек",
-    "next": "Следующий трек",
-    "queue": "Очередь"
   },
   "search": {
     "placeholder": "Поиск на SoundCloud",
@@ -80,5 +74,65 @@
     "kindUsers": "Люди",
     "loadMore": "Показать ещё",
     "found": "найдено"
+  },
+  "player": {
+    "play": "Играть",
+    "pause": "Пауза",
+    "prev": "Предыдущий трек",
+    "next": "Следующий трек",
+    "queue": "Очередь"
+  },
+  "settings": {
+    "layout": "Раскладка",
+    "layoutHint": "Как расположены навигация и контент",
+    "layoutRail": "Рельс",
+    "layoutTop": "Сверху",
+    "layoutSidebar": "Сайдбар",
+    "skin": "Скин",
+    "skinHint": "Форма: скругления, тени, размытие, типографика",
+    "colour": "Цвет",
+    "theme": "Тема",
+    "themeDark": "Тёмная",
+    "themeLight": "Светлая",
+    "themeSystem": "Системная",
+    "palette": "Палитра",
+    "accent": "Акцент",
+    "accentHint": "Поверх палитры",
+    "accentAuto": "Из палитры",
+    "accentArtwork": "Акцент из обложки",
+    "accentArtworkHint": "Цвет подстраивается под играющий трек",
+    "backdrop": "Фон",
+    "backdropHint": "Своя картинка или обложка играющего трека",
+    "backdropMode": "Источник",
+    "backdropNone": "Нет",
+    "backdropArtwork": "Обложка",
+    "backdropImage": "Картинка",
+    "backdropFile": "Своя картинка",
+    "choose": "Выбрать",
+    "remove": "Удалить",
+    "blur": "Размытие",
+    "dim": "Затемнение",
+    "saturate": "Насыщенность",
+    "metrics": "Размеры",
+    "density": "Плотность",
+    "compact": "Плотно",
+    "cozy": "Обычно",
+    "spacious": "Просторно",
+    "uiScale": "Масштаб интерфейса",
+    "playback": "Воспроизведение",
+    "autoplayNext": "Автопереход к следующему",
+    "autoplayNextHint": "Включать следующий трек очереди, когда текущий закончился",
+    "rememberVolume": "Запоминать громкость",
+    "rememberVolumeHint": "Восстанавливать последнюю громкость при запуске",
+    "presets": "Мои темы",
+    "presetsHint": "Сохраните текущий вид или перенесите его на другую машину",
+    "presetName": "Название темы",
+    "save": "Сохранить",
+    "export": "Экспорт",
+    "import": "Импорт",
+    "reset": "Сбросить оформление",
+    "imageTooLarge": "Картинка больше 4 МБ — возьмите файл поменьше",
+    "importFailed": "Не удалось прочитать файл темы",
+    "imported": "Тема загружена"
   }
 }
