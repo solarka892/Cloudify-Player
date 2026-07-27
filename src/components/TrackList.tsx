@@ -1,8 +1,9 @@
 import { memo, useState } from "react";
-import { Download, Music, Pause, Play } from "lucide-react";
+import { Download, ListPlus, Music, Pause, Play } from "lucide-react";
 import type { Track } from "@/lib/tauri";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
+import { toast } from "@/stores/useToastStore";
 import { useLibraryStore } from "@/stores/useLibraryStore";
 import { TrackContextMenu, type MenuTarget } from "./TrackContextMenu";
 import { AddToPlaylistDialog } from "./AddToPlaylistDialog";
@@ -91,6 +92,7 @@ const TrackRow = memo(function TrackRow({
 }) {
   const art = artwork(track.artwork_url);
   const playTrack = usePlayerStore((s) => s.playTrack);
+  const addNext = usePlayerStore((s) => s.addNext);
   const isCurrent = usePlayerStore((s) => s.current?.id === track.id);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const isDownloaded = useDownloadsStore((s) => s.ids.has(track.id));
@@ -157,6 +159,21 @@ const TrackRow = memo(function TrackRow({
               aria-label={t.player.downloaded}
             />
           )}
+          {/* Queue this track right after the current one. Hidden until hover
+              for the same reason the heart is: a long list stays calm. */}
+          <button
+            onClick={(e) => {
+              // The whole row is a play button; this must not trigger it.
+              e.stopPropagation();
+              addNext(track);
+              toast(t.track.queuedNext, "info");
+            }}
+            title={t.track.playNext}
+            aria-label={t.track.playNext}
+            className="rounded-[var(--radius-control)] p-1 text-muted-foreground opacity-0 transition-[opacity,color] duration-[var(--motion-fast)] hover:text-foreground group-hover:opacity-100"
+          >
+            <ListPlus className="h-4 w-4" />
+          </button>
           {/* Dimmed until hover so a long list stays calm; a liked track keeps
               its heart at full strength. */}
           <LikeButton

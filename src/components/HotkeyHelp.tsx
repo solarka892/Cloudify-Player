@@ -1,20 +1,27 @@
 import { X } from "lucide-react";
 import { t } from "@/i18n";
 
-/** Shortcut cheat sheet, opened with `?`. */
-const KEYS: [string, string][] = [
-  ["Space", t.keys.playPause],
-  ["← / →", t.keys.seek],
-  ["Shift + ← / →", t.keys.prevNext],
-  ["↑ / ↓", t.keys.volume],
-  ["M", t.keys.mute],
-  ["S", t.keys.shuffle],
-  ["R", t.keys.repeat],
-  ["F", t.keys.fullscreen],
-  ["/", t.keys.search],
-  ["Esc", t.keys.close],
-  ["?", t.keys.help],
-];
+/**
+ * Shortcut cheat sheet, opened with `?`.
+ *
+ * Built per render, not at import time, so the labels follow the active
+ * language (see the note on the live `t` binding in `@/i18n`).
+ */
+function keyRows(): [string, string][] {
+  return [
+    ["Space", t.keys.playPause],
+    ["← / →", t.keys.seek],
+    ["Shift + ← / →", t.keys.prevNext],
+    ["↑ / ↓", t.keys.volume],
+    ["M", t.keys.mute],
+    ["S", t.keys.shuffle],
+    ["R", t.keys.repeat],
+    ["F", t.keys.fullscreen],
+    ["/", t.keys.search],
+    ["Esc", t.keys.close],
+    ["?", t.keys.help],
+  ];
+}
 
 export function HotkeyHelp({ onClose }: { onClose: () => void }) {
   return (
@@ -37,7 +44,7 @@ export function HotkeyHelp({ onClose }: { onClose: () => void }) {
           </button>
         </div>
         <dl className="flex flex-col gap-1.5">
-          {KEYS.map(([key, label]) => (
+          {keyRows().map(([key, label]) => (
             <div key={key} className="flex items-center gap-3">
               <dt className="w-32 shrink-0">
                 <kbd className="rounded-[var(--radius-control)] border border-border bg-secondary px-2 py-0.5 font-mono text-xs">

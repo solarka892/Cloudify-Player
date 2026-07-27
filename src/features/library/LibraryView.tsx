@@ -28,12 +28,24 @@ type SectionId =
   | "downloads";
 
 const SECTIONS: { id: SectionId; label: string }[] = [
-  { id: "likes", label: t.library.likes },
-  { id: "playlists", label: t.library.playlists },
-  { id: "albums", label: t.library.albums },
-  { id: "stations", label: t.library.stations },
-  { id: "history", label: t.library.history },
-  { id: "downloads", label: t.library.downloads },
+  { id: "likes", get label() {
+    return t.library.likes;
+  } },
+  { id: "playlists", get label() {
+    return t.library.playlists;
+  } },
+  { id: "albums", get label() {
+    return t.library.albums;
+  } },
+  { id: "stations", get label() {
+    return t.library.stations;
+  } },
+  { id: "history", get label() {
+    return t.library.history;
+  } },
+  { id: "downloads", get label() {
+    return t.library.downloads;
+  } },
 ];
 
 /** Case-insensitive substring match over a title-ish field. */

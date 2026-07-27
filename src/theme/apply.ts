@@ -29,8 +29,6 @@ export interface ThemeInput {
    * software-composited desktop.
    */
   glass: boolean;
-  /** Apple mode — drives shape and easing rules CSS applies on its own. */
-  apple: boolean;
   /** Per-property overrides authored by the user; applied last. */
   overrides: ThemeVars;
 }
@@ -92,8 +90,6 @@ export function applyTheme(input: ThemeInput): void {
   root.classList.toggle("dark", resolveDark(input.mode));
   // CSS gates every `backdrop-filter` on this attribute.
   root.dataset.glass = input.glass ? "1" : "0";
-  // Apple mode restyles shapes and easing beyond what tokens can express.
-  root.dataset.apple = input.apple ? "1" : "0";
 }
 
 /** Write the backdrop layer (user image / artwork / gradient). */

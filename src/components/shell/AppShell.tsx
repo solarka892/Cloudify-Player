@@ -1,4 +1,6 @@
+import { useRef } from "react";
 import { useSettingsStore } from "@/stores/useSettingsStore";
+import { useGlideScroll } from "@/hooks/useGlideScroll";
 import { NavRail, NavSidebar, NavTop, type ViewId } from "./nav";
 
 /**
@@ -24,9 +26,11 @@ export function AppShell({
   // A full-screen 40px blur costs the same whether or not it has an image
   // behind it, so the element simply isn't mounted when it has nothing to do.
   const showBackdrop = useSettingsStore((s) => s.backdrop.mode !== "none");
+  const scroller = useRef<HTMLElement | null>(null);
+  useGlideScroll(scroller, useSettingsStore((s) => s.glideScroll));
 
   const main = (
-    <main className="relative z-10 min-h-0 flex-1 overflow-y-auto">
+    <main ref={scroller} className="relative z-10 min-h-0 flex-1 overflow-y-auto">
       <div className="mx-auto w-full max-w-6xl px-6 py-6">{children}</div>
     </main>
   );

@@ -133,7 +133,9 @@
     "sleep": "Sleep timer",
     "sleepCancel": "Cancel timer",
     "minutes": "min",
-    "enableVisualizer": "Enable visualiser"
+    "enableVisualizer": "Enable visualiser",
+    "playbackFailed": "Could not play that",
+    "localFileBroken": "The downloaded file won't decode — streaming instead"
   },
   "settings": {
     "layout": "Layout",
@@ -192,15 +194,6 @@
     "glassHint": "Translucent, blurred surfaces",
     "glassOn": "Enable glass",
     "glassPerf": "Costly to render — turn it off if the UI feels sluggish",
-    "apple": "Apple mode",
-    "appleHint": "macOS-flavoured: vibrancy, large corners, very little decoration",
-    "appleOn": "Enable Apple mode",
-    "appleOnHint": "Switches to the Apple skin and turns glass on",
-    "vibrancy": "Vibrancy",
-    "vibrancyHint": "How see-through surfaces are",
-    "roundness": "Corner roundness",
-    "reduceTransparency": "Reduce transparency",
-    "reduceTransparencyHint": "Like the Apple accessibility setting: keeps the shape, drops the glass",
     "resetSection": "Reset",
     "custom": "Custom colours",
     "customHint": "Override the palette; clear them next to it",
@@ -211,7 +204,11 @@
     "slotMuted": "Dim text",
     "slotBorder": "Borders",
     "slotBrand": "Accent",
-    "slotBrand2": "Accent 2"
+    "slotBrand2": "Accent 2",
+    "language": "Language",
+    "languageHint": "Interface language",
+    "glide": "Gliding scroll",
+    "glideHint": "Inertia for the mouse wheel; touchpads keep their own"
   },
   "lyrics": {
     "loading": "Looking for lyrics…",
@@ -292,6 +289,7 @@
     "findPlaylist": "Find a playlist",
     "newPlaylist": "New playlist",
     "create": "Create",
-    "addToPlaylist": "Add to playlist"
+    "addToPlaylist": "Add to playlist",
+    "queuedNext": "Playing next"
   }
 }

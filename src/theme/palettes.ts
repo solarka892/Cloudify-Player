@@ -11,7 +11,6 @@ import type { Shade } from "./tokens";
 
 export type PaletteId =
   | "vapor"
-  | "apple"
   | "midnight"
   | "paper"
   | "graphite"
@@ -216,36 +215,6 @@ export const PALETTES: Record<PaletteId, Palette> = {
       line: "oklch(0 0 0 / 15%)",
       brand: "oklch(0.24 0.01 60)",
       brand2: "oklch(0.45 0.02 50)",
-    },
-  },
-
-  /**
-   * Apple's system palette: iOS system background and label colours, with the
-   * system blue as the accent. Light-first — Apple mode selects it and starts
-   * on light, and the mode switch still works from there.
-   */
-  apple: {
-    id: "apple",
-    name: "Apple",
-    dark: {
-      bg: "rgb(0 0 0)",
-      surface: "rgb(28 28 30)",
-      surface2: "rgb(44 44 46)",
-      text: "rgb(255 255 255)",
-      muted: "rgba(235 235 245 / 0.6)",
-      line: "rgba(84 84 88 / 0.65)",
-      brand: "rgb(10 132 255)",
-      brand2: "rgb(94 92 230)",
-    },
-    light: {
-      bg: "rgb(242 242 247)",
-      surface: "rgb(255 255 255)",
-      surface2: "rgb(229 229 234)",
-      text: "rgb(0 0 0)",
-      muted: "rgba(60 60 67 / 0.6)",
-      line: "rgba(60 60 67 / 0.29)",
-      brand: "rgb(0 122 255)",
-      brand2: "rgb(88 86 214)",
     },
   },
 

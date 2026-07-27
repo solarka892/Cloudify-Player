@@ -40,9 +40,15 @@ const DEBOUNCE_MS = 350;
 const PAGE_SIZE = 50;
 
 const KINDS: { id: Kind; label: string }[] = [
-  { id: "tracks", label: t.search.kindTracks },
-  { id: "playlists", label: t.search.kindPlaylists },
-  { id: "users", label: t.search.kindUsers },
+  { id: "tracks", get label() {
+    return t.search.kindTracks;
+  } },
+  { id: "playlists", get label() {
+    return t.search.kindPlaylists;
+  } },
+  { id: "users", get label() {
+    return t.search.kindUsers;
+  } },
 ];
 
 /** One search request, typed by kind. */

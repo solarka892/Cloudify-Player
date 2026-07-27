@@ -133,7 +133,9 @@
     "sleep": "Таймер сна",
     "sleepCancel": "Отменить таймер",
     "minutes": "мин",
-    "enableVisualizer": "Включить визуализатор"
+    "enableVisualizer": "Включить визуализатор",
+    "playbackFailed": "Не удалось воспроизвести",
+    "localFileBroken": "Скачанный файл не читается — играю из сети"
   },
   "settings": {
     "layout": "Раскладка",
@@ -192,15 +194,6 @@
     "glassHint": "Полупрозрачные поверхности с размытием",
     "glassOn": "Включить стекло",
     "glassPerf": "Заметно грузит отрисовку — выключите, если интерфейс подтормаживает",
-    "apple": "Apple mode",
-    "appleHint": "Оформление в духе macOS: стекло, крупные скругления, минимум декора",
-    "appleOn": "Включить Apple mode",
-    "appleOnHint": "Ставит скин Apple и включает стекло",
-    "vibrancy": "Vibrancy",
-    "vibrancyHint": "Насколько поверхности прозрачные",
-    "roundness": "Скругления",
-    "reduceTransparency": "Меньше прозрачности",
-    "reduceTransparencyHint": "Как в системных настройках Apple: форма остаётся, стекло уходит",
     "resetSection": "Сбросить",
     "custom": "Свои цвета",
     "customHint": "Перебивают палитру; можно сбросить рядом",
@@ -211,7 +204,11 @@
     "slotMuted": "Тусклый текст",
     "slotBorder": "Границы",
     "slotBrand": "Акцент",
-    "slotBrand2": "Акцент 2"
+    "slotBrand2": "Акцент 2",
+    "language": "Язык",
+    "languageHint": "Язык интерфейса",
+    "glide": "Скользящий скролл",
+    "glideHint": "Инерция колеса мыши; тачпад со своей инерцией не трогаем"
   },
   "lyrics": {
     "loading": "Ищем текст…",
@@ -292,6 +289,7 @@
     "findPlaylist": "Найти плейлист",
     "newPlaylist": "Новый плейлист",
     "create": "Создать",
-    "addToPlaylist": "Добавить в плейлист"
+    "addToPlaylist": "Добавить в плейлист",
+    "queuedNext": "Играет следующим"
   }
 }

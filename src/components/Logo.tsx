@@ -8,7 +8,10 @@
 export function LogoMark({ className }: { className?: string }) {
   return (
     <svg
-      viewBox="0 0 48 32"
+      /* Cropped to the artwork's real bounds — a viewBox with slack around the
+         path pads the glyph invisibly and makes it look badly aligned next to
+         icons that have none. */
+      viewBox="5.5 7.5 35.5 20"
       className={className}
       role="img"
       aria-label="cloudify"
@@ -46,7 +49,7 @@ export function LogoMark({ className }: { className?: string }) {
 export function Logo({ compact = false }: { compact?: boolean }) {
   return (
     <span className="flex items-center gap-2">
-      <LogoMark className="h-6 w-9 shrink-0" />
+      <LogoMark className="h-5 w-9 shrink-0" />
       {!compact && (
         <span
           className="brand-text text-lg font-bold tracking-tight"

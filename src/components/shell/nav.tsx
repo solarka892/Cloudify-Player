@@ -23,7 +23,7 @@ interface NavProps {
 /** Icon-only column. Widens to show labels on hover. */
 export function NavRail({ view, onNavigate }: NavProps) {
   return (
-    <div className="relative h-full w-14 shrink-0">
+    <div className="nav-in-x relative h-full w-14 shrink-0">
       <nav className="group/rail panel absolute inset-y-0 left-0 z-20 flex w-14 flex-col gap-1 overflow-hidden rounded-none border-y-0 border-l-0 p-2 transition-[width] duration-[var(--motion-slow)] hover:w-48">
         <BrandMark compact />
         {NAV_ITEMS.map(({ id, label, Icon }) => (
@@ -54,7 +54,7 @@ export function NavRail({ view, onNavigate }: NavProps) {
 /** Horizontal tabs across the top, closest to soundcloud.com. */
 export function NavTop({ view, onNavigate }: NavProps) {
   return (
-    <header className="flex h-14 shrink-0 items-center gap-1 border-b border-border px-4">
+    <header className="nav-in-y flex h-14 shrink-0 items-center gap-1 border-b border-border px-4">
       <BrandMark />
       <div className="ml-4 flex items-center gap-1">
         {NAV_ITEMS.filter((i) => i.id !== "settings").map(
@@ -99,7 +99,7 @@ export function NavSidebar({ view, onNavigate }: NavProps) {
   const all = [...playlists.items, ...liked.items];
 
   return (
-    <nav className="flex h-full w-60 shrink-0 flex-col gap-1 border-r border-border p-3">
+    <nav className="nav-in-x flex h-full w-60 shrink-0 flex-col gap-1 border-r border-border p-3">
       <BrandMark />
       <div className="mt-2 flex flex-col gap-0.5">
         {NAV_ITEMS.map(({ id, label, Icon }) => (
@@ -148,7 +148,7 @@ function BrandMark({ compact = false }: { compact?: boolean }) {
   return (
     <button
       onClick={bump}
-      className="flex h-10 shrink-0 items-center gap-2 px-1.5 text-left"
+      className="flex h-10 shrink-0 items-center gap-2 pr-1.5 text-left"
       aria-label="cloudify"
     >
       <Logo compact={compact} />

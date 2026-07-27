@@ -7,6 +7,8 @@ import {
   useSettingsStore,
 } from "@/stores/useSettingsStore";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
+import { toast } from "@/stores/useToastStore";
+import { t } from "@/i18n";
 
 /**
  * Playback: what's queued, in what order, and what the element is doing.
@@ -157,9 +159,23 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
       }
       if (useSettingsStore.getState().autoplayNext) get().next();
     });
-    a.addEventListener("error", () =>
-      set({ error: "playback error", isPlaying: false, isLoading: false }),
-    );
+    a.addEventListener("error", () => {
+      const track = get().current;
+      const local = track
+        ? useDownloadsStore.getState().localUrl(track.id)
+        : null;
+
+      // A downloaded file that won't decode (truncated download, asset
+      // protocol refusing the path) shouldn't strand the track — retry it
+      // from SoundCloud once before giving up.
+      if (track && local && a.src === local) {
+        void playFromNetwork(track);
+        return;
+      }
+
+      set({ error: "playback error", isPlaying: false, isLoading: false });
+      toast(t.player.playbackFailed, "error");
+    });
     return a;
   }
 
@@ -188,9 +204,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
   }
 
   /** Prefer the downloaded file, then a warm URL, then resolve a fresh one. */
-  async function resolveSource(track: Track): Promise<string> {
-    const local = useDownloadsStore.getState().localUrl(track.id);
-    if (local) return local;
+  async function resolveSource(track: Track, skipLocal = false): Promise<string> {
+    if (!skipLocal) {
+      const local = useDownloadsStore.getState().localUrl(track.id);
+      if (local) return local;
+    }
 
     const warm = cachedUrl(track.id);
     if (warm) return warm;
@@ -229,7 +247,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
     const track = queue[queueIndex];
     if (!track) return;
 
-    const a = bindElement();
+    let a = bindElement();
     bindMediaSession();
     const token = ++playToken;
     const { fadeMs } = useSettingsStore.getState();
@@ -258,8 +276,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
       const src = await resolveSource(track);
       if (token !== playToken) return; // superseded while resolving
 
-      // Must precede `src`: the CORS mode is read at load time.
-      prepareForSource(useSettingsStore.getState().audio);
+      // Must precede `src`: the CORS mode is read at load time. This can hand
+      // back a different element, so rebind before touching it.
+      prepareForSource(useSettingsStore.getState().audio, src);
+      a = bindElement();
       a.src = src;
       a.playbackRate = get().rate;
       a.volume = fadeMs > 0 ? 0 : effectiveVolume();
@@ -286,7 +306,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
     const track = get().current;
     if (!track) return;
 
-    const a = bindElement();
+    let a = bindElement();
     const at = a.currentTime;
     const wasPlaying = !a.paused;
     const token = ++playToken;
@@ -295,7 +315,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
       const src = await resolveSource(track);
       if (token !== playToken) return;
 
-      prepareForSource(useSettingsStore.getState().audio);
+      prepareForSource(useSettingsStore.getState().audio, src);
+      a = bindElement();
       a.src = src;
       a.currentTime = at;
       a.volume = effectiveVolume();
@@ -304,6 +325,28 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
       applyAudio(useSettingsStore.getState().audio);
     } catch {
       // Leave the element as it was; the user can hit play again.
+    }
+  }
+
+  /** Re-attempt the current track over the network, ignoring the local copy. */
+  async function playFromNetwork(track: Track): Promise<void> {
+    let a = bindElement();
+    const token = ++playToken;
+    try {
+      const src = await resolveSource(track, true);
+      if (token !== playToken) return;
+      prepareForSource(useSettingsStore.getState().audio, src);
+      a = bindElement();
+      a.src = src;
+      a.volume = effectiveVolume();
+      await a.play();
+      resume();
+      set({ isLoading: false, error: null });
+      toast(t.player.localFileBroken, "info");
+    } catch (e) {
+      if (token !== playToken) return;
+      set({ isLoading: false, error: String(e), isPlaying: false });
+      toast(`${t.player.playbackFailed}: ${e}`, "error");
     }
   }
 

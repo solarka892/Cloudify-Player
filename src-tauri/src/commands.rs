@@ -76,6 +76,13 @@ pub async fn sc_get_me() -> Result<sc_api::me::Me, String> {
     }
 }
 
+/// Browsers whose cookie store this build can read. Chromium-family browsers
+/// encrypt cookie values with a key held in the OS keychain, so they are out.
+#[cfg(target_os = "macos")]
+const SUPPORTED_BROWSERS: &str = "Safari (needs Full Disk Access for cloudify), Firefox, Zen, LibreWolf and Waterfox";
+#[cfg(not(target_os = "macos"))]
+const SUPPORTED_BROWSERS: &str = "Firefox, Zen and LibreWolf";
+
 /// Browser login: open SoundCloud in the user's real browser and wait until the
 /// `oauth_token` cookie appears in the browser's cookie store, then validate and
 /// store it. Reliable because the anti-bot captcha passes in a real browser.
@@ -93,7 +100,12 @@ pub async fn sc_login_browser() -> Result<sc_api::me::Me, String> {
             }
         }
         if Instant::now() >= deadline {
-            return Err("timed out waiting for SoundCloud login in the browser".to_string());
+            // Name the supported browsers: a timeout here usually means the user
+            // signed in somewhere we cannot read, not that they were too slow.
+            return Err(format!(
+                "timed out waiting for the login cookie. Cookies can be read from \
+                 {SUPPORTED_BROWSERS}. If you use a different browser, sign in with a token instead."
+            ));
         }
         tokio::time::sleep(BROWSER_POLL_INTERVAL).await;
     }

@@ -1,4 +1,9 @@
 import { create } from "zustand";
+import {
+  detectLocale,
+  setLocale as applyLocale,
+  type Locale,
+} from "@/i18n";
 import { persist } from "zustand/middleware";
 import {
   applyTheme,
@@ -54,14 +59,6 @@ export interface ThemeState {
   uiScale: number;
   /** Liquid-glass surfaces. Costly to render; the toggle is the perf escape. */
   glass: boolean;
-  /** Apple mode: the apple skin plus its own vibrancy/roundness knobs. */
-  apple: boolean;
-  /** Vibrancy as a percentage of opacity, 30–100. Lower is more see-through. */
-  appleVibrancy: number;
-  /** Corner roundness in px, 6–26. */
-  appleRoundness: number;
-  /** Accessibility-style escape hatch: drop transparency, keep the shape. */
-  appleReduceTransparency: boolean;
   /** Hand-edited CSS custom properties; win over everything else. */
   overrides: ThemeVars;
 }
@@ -99,31 +96,8 @@ const DEFAULT_THEME: ThemeState = {
   // Off by default: `backdrop-filter` on every surface is the biggest
   // rendering cost on a software-composited desktop. Opt in, don't opt out.
   glass: false,
-  apple: false,
-  appleVibrancy: 62,
-  appleRoundness: 18,
-  appleReduceTransparency: false,
   overrides: {},
 };
-
-/** Fold the Apple knobs into plain token overrides. */
-function appleOverrides(theme: ThemeState): ThemeState {
-  const overrides = { ...theme.overrides };
-  if (theme.apple) {
-    overrides["--surface-alpha"] = theme.appleReduceTransparency
-      ? "100%"
-      : `${theme.appleVibrancy}%`;
-    overrides["--radius"] = `${theme.appleRoundness}px`;
-    overrides["--radius-control"] = `${Math.round(theme.appleRoundness * 0.62)}px`;
-    overrides["--radius-hero"] = `${Math.round(theme.appleRoundness * 1.4)}px`;
-  } else {
-    delete overrides["--surface-alpha"];
-    delete overrides["--radius"];
-    delete overrides["--radius-control"];
-    delete overrides["--radius-hero"];
-  }
-  return { ...theme, overrides };
-}
 
 const DEFAULT_BACKDROP: BackdropState = {
   // The playing cover, blurred, is the app's default wallpaper — leaving this
@@ -143,6 +117,10 @@ interface SettingsState {
   /** Ids of easter-egg extras the user has found. */
   unlocked: string[];
 
+  /** Inertial wheel scrolling. Off leaves the platform's own behaviour. */
+  glideScroll: boolean;
+  /** UI language. Applied to the live `t` dictionary, not just stored. */
+  locale: Locale;
   autoplayNext: boolean;
   rememberVolume: boolean;
   volume: number;
@@ -178,6 +156,8 @@ interface SettingsState {
   /** Returns an error message, or `null` on success. */
   importTheme: (json: string) => string | null;
 
+  setGlideScroll: (on: boolean) => void;
+  setLocale: (locale: Locale) => void;
   setAutoplayNext: (on: boolean) => void;
   setRememberVolume: (on: boolean) => void;
   rememberCurrentVolume: (volume: number) => void;
@@ -212,7 +192,6 @@ export const useSettingsStore = create<SettingsState>()(
           density: theme.density,
           uiScale: theme.uiScale,
           glass: theme.glass,
-          apple: theme.apple,
           // Artwork accent sits under the user's own edits, above the palette.
           overrides: {
             ...(theme.accentFromArtwork && artworkAccent
@@ -247,6 +226,8 @@ export const useSettingsStore = create<SettingsState>()(
         presets: [],
         unlocked: [],
 
+        glideScroll: true,
+        locale: detectLocale(),
         autoplayNext: true,
         rememberVolume: true,
         volume: DEFAULT_VOLUME,
@@ -266,23 +247,7 @@ export const useSettingsStore = create<SettingsState>()(
         },
 
         setTheme(patch) {
-          const next = { ...get().theme, ...patch };
-
-          // Entering Apple mode carries its own defaults; leaving it restores
-          // the previous skin rather than stranding the user on `apple`.
-          if (patch.apple === true) {
-            next.skin = "apple";
-            next.glass = !next.appleReduceTransparency;
-            // Apple's own apps are light by default; the mode switch still
-            // works afterwards, so this is a starting point, not a lock.
-            next.palette = "apple";
-            next.mode = "light";
-          } else if (patch.apple === false && next.skin === "apple") {
-            next.skin = "aurora";
-            if (next.palette === "apple") next.palette = "midnight";
-          }
-
-          set({ theme: appleOverrides(next) });
+          set({ theme: { ...get().theme, ...patch } });
           sync();
         },
 
@@ -387,6 +352,11 @@ export const useSettingsStore = create<SettingsState>()(
           return null;
         },
 
+        setGlideScroll: (glideScroll) => set({ glideScroll }),
+        setLocale: (locale) => {
+          applyLocale(locale);
+          set({ locale });
+        },
         setAutoplayNext: (autoplayNext) => set({ autoplayNext }),
         setRememberVolume: (rememberVolume) => set({ rememberVolume }),
         rememberCurrentVolume: (volume) => set({ volume }),
@@ -415,7 +385,7 @@ export const useSettingsStore = create<SettingsState>()(
     },
     {
       name: "cloudify.settings",
-      version: 2,
+      version: 3,
       // Runtime-only artwork state must not be written to disk.
       partialize: (s) => ({
         layout: s.layout,
@@ -423,6 +393,8 @@ export const useSettingsStore = create<SettingsState>()(
         backdrop: s.backdrop,
         presets: s.presets,
         unlocked: s.unlocked,
+        glideScroll: s.glideScroll,
+        locale: s.locale,
         autoplayNext: s.autoplayNext,
         rememberVolume: s.rememberVolume,
         volume: s.volume,
@@ -430,9 +402,32 @@ export const useSettingsStore = create<SettingsState>()(
         radio: s.radio,
         audio: s.audio,
       }),
-      // v1 stored a flat {theme, accent, ...}; start those users clean rather
-      // than half-migrating into the three-axis model.
-      migrate: () => ({}) as never,
+      migrate: (persisted, from) => {
+        // v1 stored a flat {theme, accent, ...}; too far from the three-axis
+        // model to salvage, so those users start clean.
+        if (from < 2) return {} as never;
+
+        // v3 removed Apple mode. Anyone left on its skin or palette would be
+        // holding an id that no longer resolves, so move them to the defaults
+        // and drop the settings that went with it.
+        const state = persisted as {
+          theme?: Record<string, unknown>;
+        } | null;
+        const theme = state?.theme;
+        if (theme) {
+          if (theme.skin === "apple") theme.skin = "aurora";
+          if (theme.palette === "apple") theme.palette = "midnight";
+          for (const dead of [
+            "apple",
+            "appleVibrancy",
+            "appleRoundness",
+            "appleReduceTransparency",
+          ]) {
+            delete theme[dead];
+          }
+        }
+        return state as never;
+      },
     },
   ),
 );
@@ -448,7 +443,6 @@ export const useSettingsStore = create<SettingsState>()(
     density: s.theme.density,
     uiScale: s.theme.uiScale,
     glass: s.theme.glass,
-    apple: s.theme.apple,
     overrides: s.theme.overrides,
   });
   applyBackdrop({

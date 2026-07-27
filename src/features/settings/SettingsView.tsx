@@ -28,7 +28,12 @@ import {
 } from "@/theme/palettes";
 import { SKINS, SKIN_IDS } from "@/theme/skins";
 import type { Density, ThemeMode } from "@/theme/apply";
-import { t } from "@/i18n";
+import {
+  LOCALES,
+  LOCALE_NAMES,
+  t,
+  type Locale,
+} from "@/i18n";
 import { cn } from "@/lib/utils";
 
 /**
@@ -59,6 +64,10 @@ export function SettingsView() {
   const exportTheme = useSettingsStore((s) => s.exportTheme);
   const importTheme = useSettingsStore((s) => s.importTheme);
   const setAutoplayNext = useSettingsStore((s) => s.setAutoplayNext);
+  const glideScroll = useSettingsStore((s) => s.glideScroll);
+  const setGlideScroll = useSettingsStore((s) => s.setGlideScroll);
+  const locale = useSettingsStore((s) => s.locale);
+  const setLocale = useSettingsStore((s) => s.setLocale);
   const setRememberVolume = useSettingsStore((s) => s.setRememberVolume);
 
   const [section, setSection] = useState<SectionId>("appearance");
@@ -147,7 +156,25 @@ export function SettingsView() {
         <p className="panel px-4 py-2 text-sm text-muted-foreground">{notice}</p>
       )}
 
+      <div key={section} className="stack-lg view-enter">
       {section === "appearance" && (<>
+      {/* ── Language ───────────────────────────────────────────────────── */}
+      <Group title={t.settings.language} hint={t.settings.languageHint}>
+        <Row label={t.settings.language}>
+          <select
+            value={locale}
+            onChange={(e) => setLocale(e.currentTarget.value as Locale)}
+            className="rounded-[var(--radius-control)] border border-border bg-card px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring"
+          >
+            {LOCALES.map((id) => (
+              <option key={id} value={id}>
+                {LOCALE_NAMES[id]}
+              </option>
+            ))}
+          </select>
+        </Row>
+      </Group>
+
       {/* ── Layout ─────────────────────────────────────────────────────── */}
       <Group
         title={t.settings.layout}
@@ -157,9 +184,15 @@ export function SettingsView() {
         <div className="grid grid-cols-3 gap-2 p-3">
           {(
             [
-              { id: "rail", label: t.settings.layoutRail, art: RAIL_ART },
-              { id: "top", label: t.settings.layoutTop, art: TOP_ART },
-              { id: "sidebar", label: t.settings.layoutSidebar, art: SIDEBAR_ART },
+              { id: "rail", get label() {
+    return t.settings.layoutRail;
+  }, art: RAIL_ART },
+              { id: "top", get label() {
+    return t.settings.layoutTop;
+  }, art: TOP_ART },
+              { id: "sidebar", get label() {
+    return t.settings.layoutSidebar;
+  }, art: SIDEBAR_ART },
             ] as { id: LayoutId; label: string; art: string }[]
           ).map((option) => (
             <button
@@ -232,9 +265,15 @@ export function SettingsView() {
             value={theme.mode}
             onChange={(mode) => setTheme({ mode: mode as ThemeMode })}
             options={[
-              { id: "dark", label: t.settings.themeDark, Icon: Moon },
-              { id: "light", label: t.settings.themeLight, Icon: Sun },
-              { id: "system", label: t.settings.themeSystem, Icon: Monitor },
+              { id: "dark", get label() {
+    return t.settings.themeDark;
+  }, Icon: Moon },
+              { id: "light", get label() {
+    return t.settings.themeLight;
+  }, Icon: Sun },
+              { id: "system", get label() {
+    return t.settings.themeSystem;
+  }, Icon: Monitor },
             ]}
           />
         </Row>
@@ -345,52 +384,6 @@ export function SettingsView() {
         </Row>
       </Group>
 
-      {/* ── Apple mode ─────────────────────────────────────────────────── */}
-      <Group title={t.settings.apple} hint={t.settings.appleHint}>
-        <Row label={t.settings.appleOn} hint={t.settings.appleOnHint}>
-          <Switch
-            checked={theme.apple}
-            onCheckedChange={(apple) => setTheme({ apple })}
-          />
-        </Row>
-
-        {theme.apple && (
-          <>
-            <Row label={t.settings.vibrancy} hint={t.settings.vibrancyHint}>
-              <Slider
-                value={theme.appleVibrancy}
-                min={30}
-                max={100}
-                step={2}
-                suffix="%"
-                onChange={(appleVibrancy) => setTheme({ appleVibrancy })}
-              />
-            </Row>
-            <Row label={t.settings.roundness}>
-              <Slider
-                value={theme.appleRoundness}
-                min={6}
-                max={26}
-                step={1}
-                suffix="px"
-                onChange={(appleRoundness) => setTheme({ appleRoundness })}
-              />
-            </Row>
-            <Row
-              label={t.settings.reduceTransparency}
-              hint={t.settings.reduceTransparencyHint}
-            >
-              <Switch
-                checked={theme.appleReduceTransparency}
-                onCheckedChange={(appleReduceTransparency) =>
-                  setTheme({ appleReduceTransparency })
-                }
-              />
-            </Row>
-          </>
-        )}
-      </Group>
-
       <Group title={t.settings.glass} hint={t.settings.glassHint}>
         <Row label={t.settings.glassOn} hint={t.settings.glassPerf}>
           <Switch
@@ -417,9 +410,15 @@ export function SettingsView() {
               setBackdrop({ mode: mode as typeof backdrop.mode })
             }
             options={[
-              { id: "none", label: t.settings.backdropNone },
-              { id: "artwork", label: t.settings.backdropArtwork },
-              { id: "image", label: t.settings.backdropImage },
+              { id: "none", get label() {
+    return t.settings.backdropNone;
+  } },
+              { id: "artwork", get label() {
+    return t.settings.backdropArtwork;
+  } },
+              { id: "image", get label() {
+    return t.settings.backdropImage;
+  } },
             ]}
           />
         </Row>
@@ -501,9 +500,15 @@ export function SettingsView() {
             value={theme.density}
             onChange={(density) => setTheme({ density: density as Density })}
             options={[
-              { id: "compact", label: t.settings.compact },
-              { id: "cozy", label: t.settings.cozy },
-              { id: "spacious", label: t.settings.spacious },
+              { id: "compact", get label() {
+    return t.settings.compact;
+  } },
+              { id: "cozy", get label() {
+    return t.settings.cozy;
+  } },
+              { id: "spacious", get label() {
+    return t.settings.spacious;
+  } },
             ]}
           />
         </Row>
@@ -530,6 +535,9 @@ export function SettingsView() {
           setRememberVolume(true);
         }}
       >
+        <Row label={t.settings.glide} hint={t.settings.glideHint}>
+          <Switch checked={glideScroll} onCheckedChange={setGlideScroll} />
+        </Row>
         <Row label={t.settings.autoplayNext} hint={t.settings.autoplayNextHint}>
           <Switch checked={autoplayNext} onCheckedChange={setAutoplayNext} />
         </Row>
@@ -629,19 +637,34 @@ export function SettingsView() {
       </Group>
       </>)}
       </div>
+      </div>
     </div>
   );
 }
 
 /** The colour tokens worth exposing by hand; the rest derive from these. */
 const COLOUR_SLOTS: { token: string; label: string }[] = [
-  { token: "--background", label: t.settings.slotBackground },
-  { token: "--card", label: t.settings.slotSurface },
-  { token: "--foreground", label: t.settings.slotText },
-  { token: "--muted-foreground", label: t.settings.slotMuted },
-  { token: "--border", label: t.settings.slotBorder },
-  { token: "--brand", label: t.settings.slotBrand },
-  { token: "--brand-2", label: t.settings.slotBrand2 },
+  { token: "--background", get label() {
+    return t.settings.slotBackground;
+  } },
+  { token: "--card", get label() {
+    return t.settings.slotSurface;
+  } },
+  { token: "--foreground", get label() {
+    return t.settings.slotText;
+  } },
+  { token: "--muted-foreground", get label() {
+    return t.settings.slotMuted;
+  } },
+  { token: "--border", get label() {
+    return t.settings.slotBorder;
+  } },
+  { token: "--brand", get label() {
+    return t.settings.slotBrand;
+  } },
+  { token: "--brand-2", get label() {
+    return t.settings.slotBrand2;
+  } },
 ];
 
 type SectionId =
@@ -653,12 +676,24 @@ type SectionId =
   | "themes";
 
 const SECTIONS: { id: SectionId; label: string; Icon: typeof Sun }[] = [
-  { id: "appearance", label: t.settings.secAppearance, Icon: PaletteIcon },
-  { id: "backdrop", label: t.settings.backdrop, Icon: Wallpaper },
-  { id: "metrics", label: t.settings.metrics, Icon: Ruler },
-  { id: "audio", label: t.audio.title, Icon: Volume2 },
-  { id: "playback", label: t.settings.playback, Icon: SlidersHorizontal },
-  { id: "themes", label: t.settings.presets, Icon: Save },
+  { id: "appearance", get label() {
+    return t.settings.secAppearance;
+  }, Icon: PaletteIcon },
+  { id: "backdrop", get label() {
+    return t.settings.backdrop;
+  }, Icon: Wallpaper },
+  { id: "metrics", get label() {
+    return t.settings.metrics;
+  }, Icon: Ruler },
+  { id: "audio", get label() {
+    return t.audio.title;
+  }, Icon: Volume2 },
+  { id: "playback", get label() {
+    return t.settings.playback;
+  }, Icon: SlidersHorizontal },
+  { id: "themes", get label() {
+    return t.settings.presets;
+  }, Icon: Save },
 ];
 
 /* ── building blocks ──────────────────────────────────────────────────── */

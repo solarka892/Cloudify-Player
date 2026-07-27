@@ -17,9 +17,19 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { id: "home", label: t.nav.home, Icon: Home },
-  { id: "search", label: t.nav.search, Icon: Search },
-  { id: "library", label: t.nav.library, Icon: Library },
-  { id: "profile", label: t.nav.profile, Icon: User },
-  { id: "settings", label: t.nav.settings, Icon: Settings },
+  { id: "home", get label() {
+    return t.nav.home;
+  }, Icon: Home },
+  { id: "search", get label() {
+    return t.nav.search;
+  }, Icon: Search },
+  { id: "library", get label() {
+    return t.nav.library;
+  }, Icon: Library },
+  { id: "profile", get label() {
+    return t.nav.profile;
+  }, Icon: User },
+  { id: "settings", get label() {
+    return t.nav.settings;
+  }, Icon: Settings },
 ];

@@ -1,16 +1,27 @@
 /**
- * The audio engine: one `<audio>` element, optionally routed through a Web
- * Audio graph for the equaliser, balance, compression and the visualiser.
- *
- * The graph is built lazily and defensively. Playing a bare element is the
- * proven path; the moment anything in the Web Audio chain fails to construct
- * we fall back to it rather than leaving the user with silence.
- *
- * Cross-origin: SoundCloud's CDN answers with `access-control-allow-origin: *`
- * (verified), so `crossOrigin = "anonymous"` is safe and is what lets
- * `createMediaElementSource` produce sound instead of silence.
+ * The audio engine: an `<audio>` element, optionally routed through a Web Audio
+ * graph for the equaliser, balance, compression and the visualiser.
  *
  *   element ─▶ preamp ─▶ [10 biquads] ─▶ compressor ─▶ panner ─▶ analyser ─▶ out
+ *
+ * ## Why the element is disposable
+ *
+ * `createMediaElementSource(a)` routes `a` through the graph *permanently* —
+ * there is no way to detach it. That makes a single long-lived element a trap,
+ * because a routed element only produces sound when Web Audio is allowed to
+ * read its samples:
+ *
+ *   - cross-origin source without CORS approval → the node emits silence, and
+ *     the track appears to play with no audio at all;
+ *   - `crossOrigin="anonymous"` against a host that answers no CORS headers →
+ *     the media load itself aborts and the track never starts.
+ *
+ * So a graph built once for the visualiser would silence every later track from
+ * a host that does not do CORS — including every downloaded file, which the
+ * asset protocol serves from another origin. Instead the element is treated as
+ * disposable: each load picks the routing mode it needs, and switching from
+ * routed back to plain tears the graph down and starts from a fresh element.
+ * Sound always wins over effects.
  */
 
 /** ISO centre frequencies, low to high. */
@@ -57,18 +68,56 @@ interface Graph {
   analyser: AnalyserNode;
 }
 
+/** How the current element is wired. */
+type Routing = "plain" | "graph";
+
 let element: HTMLAudioElement | null = null;
+let routing: Routing = "plain";
 let graph: Graph | null = null;
 /** Set once a graph attempt has failed, so we stop retrying every track. */
 let graphUnavailable = false;
 
-/** The single audio element. Created on first use. */
+/** The current audio element. Created on first use. */
 export function el(): HTMLAudioElement {
-  if (element) return element;
+  if (!element) element = create();
+  return element;
+}
+
+function create(from?: HTMLAudioElement | null): HTMLAudioElement {
   const a = new Audio();
   a.preload = "auto";
-  element = a;
+  if (from) {
+    // Carry the user's settings across a swap; only the wiring changes.
+    a.volume = from.volume;
+    a.muted = from.muted;
+    a.playbackRate = from.playbackRate;
+  }
   return a;
+}
+
+/**
+ * Whether Web Audio may read this source.
+ *
+ * Only `http(s)` hosts can opt in via CORS. Tauri's asset protocol serves
+ * downloaded files from another origin with no such headers, so routing one
+ * through the graph would silence it — those play on a plain element.
+ */
+function routable(src: string): boolean {
+  return /^https?:/i.test(src);
+}
+
+/** Discard the graph so a plain element can be used again. */
+function teardown(): void {
+  if (!graph) return;
+  try {
+    graph.analyser.disconnect();
+    void graph.ctx.close();
+  } catch {
+    // A context that refuses to close is still dead to us.
+  }
+  graph = null;
+  // A fresh element deserves a fresh attempt at building a graph.
+  graphUnavailable = false;
 }
 
 /** Everything that requires routing audio through the graph. */
@@ -83,18 +132,43 @@ export function needsGraph(config: AudioConfig): boolean {
 }
 
 /**
- * Whether the next load needs CORS.
+ * Wire up for the source about to be loaded, and hand back the element to
+ * assign it to.
  *
- * `crossOrigin="anonymous"` is required for Web Audio to read the samples, but
- * it also makes the *media load itself* fail on any host that doesn't answer
- * with CORS headers. Requesting it unconditionally cost us playback on some
- * tracks, so it is only set when an effect actually needs the graph — and it
- * must be set before `src`, because it is only read at load time.
+ * Must be called before `src`: the CORS mode is only read at load time. The
+ * returned element may be a brand new one, so callers must not hold on to an
+ * element across this call.
  */
-export function prepareForSource(config: AudioConfig): void {
+export function prepareForSource(
+  config: AudioConfig,
+  src: string,
+): HTMLAudioElement {
+  const want: Routing =
+    needsGraph(config) && routable(src) ? "graph" : "plain";
+
+  // Going back to plain means abandoning a permanently-routed element. The
+  // outgoing one has to be silenced explicitly — dropping the reference does
+  // not stop audio that is already playing through it.
+  if (want === "plain" && (graph || routing === "graph")) {
+    const outgoing = element;
+    element = create(outgoing);
+    outgoing?.pause();
+    if (outgoing) outgoing.src = "";
+    teardown();
+  }
+  routing = want;
+
   const a = el();
-  if (needsGraph(config)) a.crossOrigin = "anonymous";
+  if (want === "graph") a.crossOrigin = "anonymous";
   else a.removeAttribute("crossorigin");
+  return a;
+}
+
+/** Whether the graph can be applied to whatever is loaded right now. */
+function graphAllowedNow(): boolean {
+  const src = element?.currentSrc || element?.src;
+  // Nothing loaded yet: the next load decides, and it will re-apply.
+  return !src || routable(src);
 }
 
 /**
@@ -108,6 +182,7 @@ function ensureGraph(): Graph | null {
   try {
     const ctx = new AudioContext();
     const source = ctx.createMediaElementSource(el());
+    routing = "graph";
 
     const preamp = ctx.createGain();
 
@@ -182,6 +257,10 @@ function ensureGraph(): Graph | null {
 /** Push a config onto the graph, building it if the user turned effects on. */
 export function applyAudio(config: AudioConfig): void {
   if (!needsGraph(config) && !graph) return; // nothing on — stay on the simple path
+
+  // Building a graph around a source Web Audio can't read would silence it.
+  // The effects then take hold on the next load, which picks its own routing.
+  if (!graph && !graphAllowedNow()) return;
 
   const g = ensureGraph();
   if (!g) return;

@@ -133,11 +133,11 @@
   html {
     /* Single knob for overall UI scale; everything else is in rem. */
     font-size: var(--ui-scale);
-    scroll-behavior: smooth;
   }
-  /* Scrollable regions glide too, and stop pulling the window with them. */
+  /* No `scroll-behavior: smooth` here on purpose: WebKit applies it to wheel
+     input on a curve that starts slow and then lurches, and it fights the
+     inertia in `useGlideScroll`, which owns the feel instead. */
   [class*="overflow-y-auto"] {
-    scroll-behavior: smooth;
     overscroll-behavior: contain;
   }
   html,
@@ -349,6 +349,35 @@
   animation: view-enter var(--motion-slow) cubic-bezier(0.22, 0.8, 0.3, 1);
 }
 
+/* Navigation arriving in a new position: it slides in from the edge it now
+   lives on, so changing the layout setting reads as a move, not a jump. */
+@keyframes nav-in-x {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes nav-in-y {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.nav-in-x {
+  animation: nav-in-x var(--motion-slow) cubic-bezier(0.22, 0.8, 0.3, 1);
+}
+.nav-in-y {
+  animation: nav-in-y var(--motion-slow) cubic-bezier(0.22, 0.8, 0.3, 1);
+}
+
 /* Rows and tiles stagger in behind the view. */
 @keyframes rise-in {
   from {
@@ -442,77 +471,4 @@
 }
 .heart-pop {
   animation: heart-pop var(--motion-slow) cubic-bezier(0.22, 0.8, 0.3, 1);
-}
-
-/* ─────────────────────────────────────────────────────────────────────────
-   Apple mode.
-
-   Tokens carry colour, radius and blur; these rules carry the things tokens
-   can't express — pill fields, hairline separators, the tighter display type
-   and iOS's easing curve, which is what actually makes motion read as Apple.
-   ───────────────────────────────────────────────────────────────────────── */
-:root[data-apple="1"] {
-  /* The curve UIKit uses for sheets and transitions. */
-  --ease-apple: cubic-bezier(0.32, 0.72, 0, 1);
-}
-
-:root[data-apple="1"] .view-enter {
-  animation: apple-enter var(--motion-slow) var(--ease-apple);
-}
-@keyframes apple-enter {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.995);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-:root[data-apple="1"] .pop-in {
-  animation: apple-pop var(--motion-slow) var(--ease-apple);
-}
-@keyframes apple-pop {
-  from {
-    opacity: 0;
-    transform: scale(0.94);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-:root[data-apple="1"] button:not(:disabled):active {
-  transform: scale(0.94);
-}
-
-/* Text fields become capsules, as in Music and Settings. */
-:root[data-apple="1"] input[type="text"],
-:root[data-apple="1"] input[type="search"],
-:root[data-apple="1"] input:not([type]) {
-  border-radius: 999px;
-  border-color: transparent;
-  background: var(--secondary);
-}
-
-/* Hairline separators instead of full-weight borders. */
-:root[data-apple="1"] .divide-border > :not([hidden]) ~ :not([hidden]) {
-  border-color: color-mix(in srgb, var(--border) 70%, transparent);
-}
-
-/* Display type: heavier and optically tighter, the way SF is set. */
-:root[data-apple="1"] h1 {
-  letter-spacing: -0.024em;
-  font-weight: 700;
-}
-:root[data-apple="1"] h2 {
-  letter-spacing: -0.019em;
-  font-weight: 650;
-}
-
-/* Rows sit a little more solid so the vibrancy behind them still reads. */
-:root[data-apple="1"] {
-  --row-alpha: 78%;
 }

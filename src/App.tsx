@@ -80,6 +80,7 @@ function App() {
   // backdrop and, when enabled, the accent colour.
   const currentArt = usePlayerStore((s) => s.current?.artwork_url ?? null);
   const setArtwork = useSettingsStore((s) => s.setArtwork);
+  const locale = useSettingsStore((s) => s.locale);
   useEffect(() => {
     void setArtwork(artwork(currentArt, "t120x120"));
   }, [currentArt, setArtwork]);
@@ -137,7 +138,11 @@ function App() {
   const { me } = auth;
 
   return (
+    // Keyed on the language: `t` is a live binding, but memoised subtrees would
+    // otherwise keep strings they rendered before the switch. Keying here and
+    // not higher up means the session survives a language change.
     <AppShell
+      key={locale}
       view={view}
       onNavigate={(next) => {
         closeDetail(); // leaving a tab abandons whatever was drilled into
