@@ -55,6 +55,16 @@ mod error {
 
         #[error("no playable stream for this track")]
         NoStream,
+
+        /// SoundCloud rejected the request outright. Almost always a rotated
+        /// `client_id`; callers retry once with a freshly extracted one.
+        #[error("soundcloud rejected the request (client_id likely stale)")]
+        StaleClientId,
+
+        /// Too many requests. Distinct from a stale key because retrying
+        /// immediately makes it worse — the caller has to back off.
+        #[error("soundcloud is rate-limiting us — wait a minute and retry")]
+        RateLimited,
     }
 
     impl Serialize for ScApiError {
@@ -72,6 +82,18 @@ mod error {
 pub(crate) const USER_AGENT: &str =
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) \
      Chrome/126.0.0.0 Safari/537.36";
+
+/// Classify a failed response so callers know whether a retry can help.
+///
+/// A rotated `client_id` and a rate limit look similar from the outside but
+/// need opposite responses: re-extract immediately versus stop hammering.
+pub(crate) fn classify(status: reqwest::StatusCode) -> Option<ScApiError> {
+    match status.as_u16() {
+        401 | 403 => Some(ScApiError::StaleClientId),
+        429 => Some(ScApiError::RateLimited),
+        _ => None,
+    }
+}
 
 /// A reqwest client carrying the browser User-Agent every SC request needs.
 pub(crate) fn http_client() -> Result<reqwest::Client, ScApiError> {

@@ -5,6 +5,7 @@ import {
   Image as ImageIcon,
   Monitor,
   Moon,
+  RotateCcw,
   Palette as PaletteIcon,
   Ruler,
   Save,
@@ -50,6 +51,7 @@ export function SettingsView() {
   const setTheme = useSettingsStore((s) => s.setTheme);
   const setBackdrop = useSettingsStore((s) => s.setBackdrop);
   const setBackdropImage = useSettingsStore((s) => s.setBackdropImage);
+  const setOverride = useSettingsStore((s) => s.setOverride);
   const resetTheme = useSettingsStore((s) => s.resetTheme);
   const savePreset = useSettingsStore((s) => s.savePreset);
   const applyPreset = useSettingsStore((s) => s.applyPreset);
@@ -147,7 +149,11 @@ export function SettingsView() {
 
       {section === "appearance" && (<>
       {/* ── Layout ─────────────────────────────────────────────────────── */}
-      <Group title={t.settings.layout} hint={t.settings.layoutHint}>
+      <Group
+        title={t.settings.layout}
+        hint={t.settings.layoutHint}
+        onReset={() => setLayout("rail")}
+      >
         <div className="grid grid-cols-3 gap-2 p-3">
           {(
             [
@@ -209,7 +215,18 @@ export function SettingsView() {
       </Group>
 
       {/* ── Colour ─────────────────────────────────────────────────────── */}
-      <Group title={t.settings.colour}>
+      <Group
+        title={t.settings.colour}
+        onReset={() =>
+          setTheme({
+            mode: "dark",
+            palette: "midnight",
+            accent: null,
+            accentFromArtwork: false,
+            overrides: {},
+          })
+        }
+      >
         <Row label={t.settings.theme}>
           <Segmented
             value={theme.mode}
@@ -283,6 +300,40 @@ export function SettingsView() {
           </div>
         </Row>
 
+        <Row label={t.settings.custom} hint={t.settings.customHint}>
+          <div className="flex flex-wrap items-center gap-2">
+            {COLOUR_SLOTS.map(({ token, label }) => (
+              <label
+                key={token}
+                title={label}
+                className="flex cursor-pointer items-center gap-1.5 rounded-[var(--radius-control)] border border-border px-1.5 py-1 text-[11px] text-muted-foreground hover:text-foreground"
+              >
+                <input
+                  type="color"
+                  // Colour inputs need a hex value; the token may hold oklch,
+                  // so the swatch starts neutral until the user picks.
+                  value={
+                    /^#/.test(theme.overrides[token] ?? "")
+                      ? (theme.overrides[token] as string)
+                      : "#808080"
+                  }
+                  onChange={(e) => setOverride(token, e.currentTarget.value)}
+                  className="h-4 w-4 cursor-pointer border-0 bg-transparent p-0"
+                />
+                {label}
+              </label>
+            ))}
+            {Object.keys(theme.overrides).length > 0 && (
+              <button
+                onClick={() => setTheme({ overrides: {} })}
+                className="rounded-[var(--radius-control)] border border-border px-2 py-1 text-[11px] text-muted-foreground hover:border-destructive hover:text-destructive"
+              >
+                {t.settings.customClear}
+              </button>
+            )}
+          </div>
+        </Row>
+
         <Row
           label={t.settings.accentArtwork}
           hint={t.settings.accentArtworkHint}
@@ -352,7 +403,13 @@ export function SettingsView() {
 
       {section === "backdrop" && (<>
       {/* ── Backdrop ───────────────────────────────────────────────────── */}
-      <Group title={t.settings.backdrop} hint={t.settings.backdropHint}>
+      <Group
+        title={t.settings.backdrop}
+        hint={t.settings.backdropHint}
+        onReset={() =>
+          setBackdrop({ mode: "artwork", blur: 40, dim: 0.55, saturate: 1.2 })
+        }
+      >
         <Row label={t.settings.backdropMode}>
           <Segmented
             value={backdrop.mode}
@@ -435,7 +492,10 @@ export function SettingsView() {
 
       {section === "metrics" && (<>
       {/* ── Metrics ────────────────────────────────────────────────────── */}
-      <Group title={t.settings.metrics}>
+      <Group
+        title={t.settings.metrics}
+        onReset={() => setTheme({ density: "cozy", uiScale: 100 })}
+      >
         <Row label={t.settings.density}>
           <Segmented
             value={theme.density}
@@ -463,7 +523,13 @@ export function SettingsView() {
 
       {section === "playback" && (<>
       {/* ── Playback ───────────────────────────────────────────────────── */}
-      <Group title={t.settings.playback}>
+      <Group
+        title={t.settings.playback}
+        onReset={() => {
+          setAutoplayNext(true);
+          setRememberVolume(true);
+        }}
+      >
         <Row label={t.settings.autoplayNext} hint={t.settings.autoplayNextHint}>
           <Switch checked={autoplayNext} onCheckedChange={setAutoplayNext} />
         </Row>
@@ -567,6 +633,17 @@ export function SettingsView() {
   );
 }
 
+/** The colour tokens worth exposing by hand; the rest derive from these. */
+const COLOUR_SLOTS: { token: string; label: string }[] = [
+  { token: "--background", label: t.settings.slotBackground },
+  { token: "--card", label: t.settings.slotSurface },
+  { token: "--foreground", label: t.settings.slotText },
+  { token: "--muted-foreground", label: t.settings.slotMuted },
+  { token: "--border", label: t.settings.slotBorder },
+  { token: "--brand", label: t.settings.slotBrand },
+  { token: "--brand-2", label: t.settings.slotBrand2 },
+];
+
 type SectionId =
   | "appearance"
   | "backdrop"
@@ -589,17 +666,33 @@ const SECTIONS: { id: SectionId; label: string; Icon: typeof Sun }[] = [
 function Group({
   title,
   hint,
+  onReset,
   children,
 }: {
   title: string;
   hint?: string;
+  /** Shows a reset control in the heading when provided. */
+  onReset?: () => void;
   children: React.ReactNode;
 }) {
   return (
     <section className="flex flex-col gap-2">
-      <div>
-        <h2 className="label text-lg font-semibold">{title}</h2>
-        {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1">
+          <h2 className="label text-lg font-semibold">{title}</h2>
+          {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+        </div>
+        {onReset && (
+          <button
+            onClick={onReset}
+            title={t.settings.resetSection}
+            aria-label={t.settings.resetSection}
+            className="mt-1 flex shrink-0 items-center gap-1.5 rounded-[var(--radius-control)] border border-border px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <RotateCcw className="h-3 w-3" />
+            {t.settings.resetSection}
+          </button>
+        )}
       </div>
       <div className="panel flex flex-col divide-y divide-border overflow-hidden">
         {children}

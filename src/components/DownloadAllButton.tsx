@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { DownloadCloud } from "lucide-react";
+import { DownloadCloud, Square } from "lucide-react";
 import type { Track } from "@/lib/tauri";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
 import { toast } from "@/stores/useToastStore";
@@ -9,10 +8,12 @@ import { cn } from "@/lib/utils";
 /**
  * Download every track in a list.
  *
- * Sequential on purpose: SoundCloud signs one stream URL per request and
- * parallel downloads of a whole likes list is the fastest way to get
- * rate-limited. Already-downloaded tracks are skipped, so re-running it after
- * a failure resumes rather than starting over.
+ * Sequential and paced on purpose: SoundCloud signs one stream URL per request,
+ * and firing hundreds back to back gets the `client_id` throttled — which also
+ * kills playback, not just the downloads. The store spaces them out, backs off
+ * when failures stack up, and gives up after five refusals in a row.
+ *
+ * Already-downloaded tracks are skipped, so re-running after a failure resumes.
  */
 export function DownloadAllButton({
   tracks,
@@ -22,52 +23,60 @@ export function DownloadAllButton({
   label?: string;
 }) {
   const ids = useDownloadsStore((s) => s.ids);
-  const start = useDownloadsStore((s) => s.start);
-  const [progress, setProgress] = useState<{ done: number; total: number } | null>(
-    null,
-  );
+  const active = useDownloadsStore((s) => s.active);
+  const running = useDownloadsStore((s) => s.bulkRunning);
+  const startBulk = useDownloadsStore((s) => s.startBulk);
+  const stopBulk = useDownloadsStore((s) => s.stopBulk);
 
   const pending = tracks.filter((track) => !ids.has(track.id));
+  const inFlight = Object.keys(active).length;
 
   async function run() {
     if (pending.length === 0) return;
-    setProgress({ done: 0, total: pending.length });
-    let failed = 0;
+    const total = pending.length;
+    const { done, failed } = await startBulk(pending);
 
-    for (const [index, track] of pending.entries()) {
-      try {
-        await start(track);
-      } catch {
-        failed += 1; // one bad track must not abort the batch
-      }
-      setProgress({ done: index + 1, total: pending.length });
+    if (failed === 0) {
+      toast(`${t.downloads.allDone}: ${done}`, "success");
+    } else if (done + failed < total) {
+      // Stopped early — either by the user or by the backoff giving up.
+      toast(
+        `${t.downloads.stopped}: ${done}, ${t.downloads.failedCount}: ${failed}`,
+        "error",
+      );
+    } else {
+      toast(
+        `${t.downloads.allDone}: ${done}, ${t.downloads.failedCount}: ${failed}`,
+        "error",
+      );
     }
-
-    setProgress(null);
-    toast(
-      failed === 0
-        ? `${t.downloads.allDone}: ${pending.length}`
-        : `${t.downloads.allDone}: ${pending.length - failed}, ${t.downloads.failedCount}: ${failed}`,
-      failed === 0 ? "success" : "error",
-    );
   }
 
-  const running = progress !== null;
+  if (running) {
+    return (
+      <button
+        onClick={stopBulk}
+        title={t.downloads.stop}
+        className="flex shrink-0 items-center gap-1.5 rounded-[var(--radius-control)] border border-destructive px-2.5 py-1.5 text-xs text-destructive"
+      >
+        <Square className="h-3.5 w-3.5 fill-current" />
+        {t.downloads.stop}
+        {inFlight > 0 && <span className="tabular-nums opacity-70">·</span>}
+      </button>
+    );
+  }
 
   return (
     <button
       onClick={() => void run()}
-      disabled={running || pending.length === 0}
+      disabled={pending.length === 0}
       title={t.downloads.all}
       className={cn(
-        "flex shrink-0 items-center gap-1.5 rounded-[var(--radius-control)] border border-border px-2.5 py-1.5 text-xs transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground disabled:opacity-40",
-        running ? "text-brand" : "text-muted-foreground",
+        "flex shrink-0 items-center gap-1.5 rounded-[var(--radius-control)] border border-border px-2.5 py-1.5 text-xs text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground disabled:opacity-40",
       )}
     >
-      <DownloadCloud className={cn("h-4 w-4", running && "animate-pulse")} />
-      {running
-        ? `${progress.done}/${progress.total}`
-        : (label ?? `${t.downloads.all}${pending.length > 0 ? ` (${pending.length})` : ""}`)}
+      <DownloadCloud className="h-4 w-4" />
+      {label ?? `${t.downloads.all}${pending.length > 0 ? ` (${pending.length})` : ""}`}
     </button>
   );
 }

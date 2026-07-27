@@ -45,18 +45,31 @@ struct ResolvedUrl {
 }
 
 /// Resolve `track_id` to a signed, directly-playable progressive mp3 URL.
+///
+/// SoundCloud rotates `client_id` without warning, and a rotated key fails
+/// every request until it is re-extracted — which used to look like "tracks
+/// just stopped playing". One forced retry covers it; a rate limit is passed
+/// through instead, because retrying that only deepens the hole.
 pub async fn get_stream_url(track_id: u64) -> Result<String, ScApiError> {
-    let cid = client_id::get(false).await?;
+    match resolve(track_id, false).await {
+        Err(ScApiError::StaleClientId) => resolve(track_id, true).await,
+        other => other,
+    }
+}
+
+async fn resolve(track_id: u64, fresh_client_id: bool) -> Result<String, ScApiError> {
+    let cid = client_id::get(fresh_client_id).await?;
     let client = reqwest::Client::builder().user_agent(USER_AGENT).build()?;
 
-    let track: RawTrack = client
+    let resp = client
         .get(format!("{API_V2}/tracks/{track_id}"))
         .query(&[("client_id", cid.as_str())])
         .send()
-        .await?
-        .error_for_status()?
-        .json()
         .await?;
+    if let Some(reason) = super::classify(resp.status()) {
+        return Err(reason);
+    }
+    let track: RawTrack = resp.error_for_status()?.json().await?;
 
     let transcoding = track
         .media
@@ -65,17 +78,18 @@ pub async fn get_stream_url(track_id: u64) -> Result<String, ScApiError> {
         .find(|t| t.format.protocol == "progressive")
         .ok_or(ScApiError::NoStream)?;
 
-    let resolved: ResolvedUrl = client
+    let resp = client
         .get(&transcoding.url)
         .query(&[
             ("client_id", cid.as_str()),
             ("track_authorization", track.track_authorization.as_str()),
         ])
         .send()
-        .await?
-        .error_for_status()?
-        .json()
         .await?;
+    if let Some(reason) = super::classify(resp.status()) {
+        return Err(reason);
+    }
+    let resolved: ResolvedUrl = resp.error_for_status()?.json().await?;
 
     Ok(resolved.url)
 }

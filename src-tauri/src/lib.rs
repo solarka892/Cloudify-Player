@@ -7,16 +7,21 @@
 //!   - `downloads` — offline library: files on disk + SQLite index.
 //!   - `lyrics`    — LRCLIB (the only non-SoundCloud service we talk to).
 //!   - `commands`  — Tauri commands, the Rust↔JS bridge.
+//!   - `platform`  — startup workarounds that must precede GTK init.
 
 mod auth;
 mod cache;
 mod commands;
 mod downloads;
 mod lyrics;
+mod platform;
 mod sc_api;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Must precede GTK initialisation: GDK reads its backend once, at startup.
+    platform::prepare();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
@@ -54,7 +59,8 @@ pub fn run() {
             commands::sc_create_playlist,
             commands::sc_add_to_playlist,
             commands::sc_remove_from_playlist,
-            commands::sc_get_followers
+            commands::sc_get_followers,
+            commands::clear_downloads
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

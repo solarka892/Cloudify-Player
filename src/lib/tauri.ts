@@ -385,3 +385,8 @@ export function scGetFollowers(
 ): Promise<User[]> {
   return invoke<User[]>("sc_get_followers", { userId, limit });
 }
+
+/** Delete every downloaded track. Resolves with how many were removed. */
+export function clearDownloads(): Promise<number> {
+  return invoke<number>("clear_downloads");
+}

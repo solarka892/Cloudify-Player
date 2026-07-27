@@ -199,7 +199,18 @@
     "vibrancyHint": "Насколько поверхности прозрачные",
     "roundness": "Скругления",
     "reduceTransparency": "Меньше прозрачности",
-    "reduceTransparencyHint": "Как в системных настройках Apple: форма остаётся, стекло уходит"
+    "reduceTransparencyHint": "Как в системных настройках Apple: форма остаётся, стекло уходит",
+    "resetSection": "Сбросить",
+    "custom": "Свои цвета",
+    "customHint": "Перебивают палитру; можно сбросить рядом",
+    "customClear": "Убрать свои цвета",
+    "slotBackground": "Фон",
+    "slotSurface": "Панели",
+    "slotText": "Текст",
+    "slotMuted": "Тусклый текст",
+    "slotBorder": "Границы",
+    "slotBrand": "Акцент",
+    "slotBrand2": "Акцент 2"
   },
   "lyrics": {
     "loading": "Ищем текст…",
@@ -215,7 +226,12 @@
     "failed": "Не удалось скачать",
     "all": "Скачать всё",
     "allDone": "Скачано",
-    "failedCount": "с ошибкой"
+    "failedCount": "с ошибкой",
+    "stop": "Остановить",
+    "stopped": "Остановлено, скачано",
+    "clearAll": "Очистить память",
+    "cleared": "Удалено треков",
+    "dismiss": "Убрать из списка"
   },
   "audio": {
     "title": "Звук",

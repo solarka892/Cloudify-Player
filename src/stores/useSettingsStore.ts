@@ -126,7 +126,9 @@ function appleOverrides(theme: ThemeState): ThemeState {
 }
 
 const DEFAULT_BACKDROP: BackdropState = {
-  mode: "none",
+  // The playing cover, blurred, is the app's default wallpaper — leaving this
+  // at "none" meant the feature existed but nobody ever saw it.
+  mode: "artwork",
   image: null,
   blur: 40,
   dim: 0.55,

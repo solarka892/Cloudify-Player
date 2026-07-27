@@ -133,6 +133,12 @@
   html {
     /* Single knob for overall UI scale; everything else is in rem. */
     font-size: var(--ui-scale);
+    scroll-behavior: smooth;
+  }
+  /* Scrollable regions glide too, and stop pulling the window with them. */
+  [class*="overflow-y-auto"] {
+    scroll-behavior: smooth;
+    overscroll-behavior: contain;
   }
   html,
   body,
@@ -332,9 +338,11 @@
 @keyframes view-enter {
   from {
     opacity: 0;
+    transform: translateY(10px) scale(0.995);
   }
   to {
     opacity: 1;
+    transform: none;
   }
 }
 .view-enter {

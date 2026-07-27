@@ -6,6 +6,7 @@ import {
   Search,
   Shuffle,
   Trash2,
+  X,
 } from "lucide-react";
 import { scStationTracks, type Track } from "@/lib/tauri";
 import { TrackList } from "@/components/TrackList";
@@ -14,6 +15,7 @@ import { DownloadAllButton } from "@/components/DownloadAllButton";
 import { useLibraryStore, type Section } from "@/stores/useLibraryStore";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
 import { usePlayerStore } from "@/stores/usePlayerStore";
+import { toast } from "@/stores/useToastStore";
 import { t } from "@/i18n";
 import { artwork, cn } from "@/lib/utils";
 
@@ -409,6 +411,8 @@ function DownloadsSection() {
     void load();
   }, [load]);
 
+  const clearAll = useDownloadsStore((s) => s.clearAll);
+  const dismiss = useDownloadsStore((s) => s.dismiss);
   const [query, setQuery] = useState("");
   const needle = query.trim().toLowerCase();
   const pending = Object.values(active);
@@ -433,11 +437,24 @@ function DownloadsSection() {
           onChange={setQuery}
           placeholder={t.library.searchTracks}
         />
+        {items.length > 0 && (
+          <button
+            onClick={() => {
+              void clearAll().then((n) =>
+                toast(`${t.downloads.cleared}: ${n}`, "success"),
+              );
+            }}
+            className="flex shrink-0 items-center gap-1.5 rounded-[var(--radius-control)] border border-border px-2.5 py-1.5 text-xs text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:border-destructive hover:text-destructive"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            {t.downloads.clearAll}
+          </button>
+        )}
         <button
           onClick={() => void load()}
           disabled={status === "loading"}
           aria-label={t.library.refresh}
-          className="ml-auto rounded-[var(--radius-control)] p-1.5 text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground disabled:opacity-50"
+          className="rounded-[var(--radius-control)] p-1.5 text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground disabled:opacity-50"
         >
           <RefreshCw
             className={cn("h-4 w-4", status === "loading" && "animate-spin")}
@@ -460,7 +477,23 @@ function DownloadsSection() {
                   <span className="shrink-0 font-mono text-xs text-muted-foreground">
                     {job.error ? t.downloads.failed : `${percent ?? 0}%`}
                   </span>
+                  {job.error && (
+                    <button
+                      onClick={() => dismiss(job.trackId)}
+                      aria-label={t.downloads.dismiss}
+                      className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </div>
+                {/* The real reason, not just "failed" — a throttled client_id
+                    and a dead track need different responses. */}
+                {job.error && (
+                  <p className="mt-1 truncate text-[11px] text-destructive">
+                    {job.error}
+                  </p>
+                )}
                 <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-secondary">
                   <div
                     className={cn(

@@ -199,7 +199,18 @@
     "vibrancyHint": "How see-through surfaces are",
     "roundness": "Corner roundness",
     "reduceTransparency": "Reduce transparency",
-    "reduceTransparencyHint": "Like the Apple accessibility setting: keeps the shape, drops the glass"
+    "reduceTransparencyHint": "Like the Apple accessibility setting: keeps the shape, drops the glass",
+    "resetSection": "Reset",
+    "custom": "Custom colours",
+    "customHint": "Override the palette; clear them next to it",
+    "customClear": "Clear custom colours",
+    "slotBackground": "Background",
+    "slotSurface": "Panels",
+    "slotText": "Text",
+    "slotMuted": "Dim text",
+    "slotBorder": "Borders",
+    "slotBrand": "Accent",
+    "slotBrand2": "Accent 2"
   },
   "lyrics": {
     "loading": "Looking for lyrics…",
@@ -215,7 +226,12 @@
     "failed": "Download failed",
     "all": "Download all",
     "allDone": "Downloaded",
-    "failedCount": "failed"
+    "failedCount": "failed",
+    "stop": "Stop",
+    "stopped": "Stopped after",
+    "clearAll": "Clear storage",
+    "cleared": "Tracks removed",
+    "dismiss": "Dismiss"
   },
   "audio": {
     "title": "Sound",

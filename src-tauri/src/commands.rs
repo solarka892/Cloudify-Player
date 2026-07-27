@@ -418,3 +418,9 @@ pub async fn sc_get_followers(
         .await
         .map_err(|e| e.to_string())
 }
+
+/// Delete every downloaded track. Returns how many were removed.
+#[tauri::command]
+pub fn clear_downloads(app: tauri::AppHandle) -> Result<usize, String> {
+    crate::downloads::clear(&app).map_err(|e| e.to_string())
+}

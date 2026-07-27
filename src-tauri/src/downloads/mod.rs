@@ -255,6 +255,18 @@ pub fn list(app: &AppHandle) -> Result<Vec<DownloadedTrack>, DownloadError> {
     Ok(present)
 }
 
+/// Delete the whole offline library. Returns how many tracks were removed.
+pub fn clear(app: &AppHandle) -> Result<usize, DownloadError> {
+    let tracks = list(app)?;
+    let count = tracks.len();
+    for track in tracks {
+        // Keep going on a stubborn file; the index row still goes.
+        let _ = std::fs::remove_file(&track.path);
+    }
+    open_db(app)?.execute("DELETE FROM downloads", [])?;
+    Ok(count)
+}
+
 /// Remove a track from the local library, file and all.
 pub fn remove(app: &AppHandle, track_id: u64) -> Result<(), DownloadError> {
     let conn = open_db(app)?;
