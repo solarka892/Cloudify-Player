@@ -1,0 +1,72 @@
+name: Release
+
+# Tag a release to build installers:  git tag v0.1.0 && git push origin v0.1.0
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build ${{ matrix.label }}
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Ubuntu 22.04 (not latest) on purpose: glibc there is old enough for
+          # the artifacts to run on older distros too.
+          - platform: ubuntu-22.04
+            label: Linux (.AppImage, .deb, .rpm)
+          - platform: windows-latest
+            label: Windows (.exe, .msi)
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libdbus-1-dev \
+            libssl-dev \
+            libxdo-dev \
+            patchelf
+
+      - run: pnpm install --frozen-lockfile
+
+      # Runs `pnpm build` (tauri.conf.json beforeBuildCommand) + `tauri build`,
+      # then uploads every bundle to a draft GitHub release for the tag.
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: Cloudify Player ${{ github.ref_name }}
+          releaseBody: |
+            Unofficial SoundCloud client. Not affiliated with SoundCloud. Use at your own risk.
+
+            Linux: `.AppImage` (portable), `.deb`, `.rpm`.
+            Windows: `.exe` (NSIS installer) or `.msi`.
+          releaseDraft: true
+          prerelease: false
