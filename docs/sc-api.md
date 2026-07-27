@@ -145,6 +145,16 @@ No usable public OAuth app exists for us, so we reuse the web app's session:
 Implemented in `src-tauri/src/auth/`. Commands: `sc_login`, `sc_logout`,
 `sc_is_logged_in`, `sc_get_me`.
 
+> The login window injects a script that stubs out `navigator.mediaDevices`
+> (getUserMedia/etc). SC probes media devices for its captcha/anti-fraud, which
+> WebKitGTK otherwise surfaces as a system camera/mic permission prompt. We
+> never use media, so the prompt is suppressed while the page keeps working.
+>
+> A true external-browser OAuth flow is **not possible**: it needs a registered
+> `redirect_uri`, and SoundCloud's app registration has been closed since 2015.
+> The token can only be captured from a webview we control — hence the in-app
+> login window.
+
 ### `GET /me` — the logged-in user ✅ implemented (needs live login to verify)
 
 ```

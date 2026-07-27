@@ -26,6 +26,27 @@ const TOKEN_COOKIE: &str = "oauth_token";
 const LOGIN_TIMEOUT: Duration = Duration::from_secs(300);
 const POLL_INTERVAL: Duration = Duration::from_millis(800);
 
+/// Injected into the login window before SoundCloud's own scripts run. SC probes
+/// media devices (captcha/anti-fraud), which WebKitGTK surfaces as a system
+/// camera/mic permission prompt. We never use media, so stub the APIs out — the
+/// page still works, the prompt never appears.
+const DENY_MEDIA_JS: &str = r#"
+(() => {
+  const deny = () => Promise.reject(
+    new DOMException('Media access disabled by Cloudify Player', 'NotAllowedError')
+  );
+  try {
+    if (navigator.mediaDevices) {
+      navigator.mediaDevices.getUserMedia = deny;
+      navigator.mediaDevices.getDisplayMedia = deny;
+      navigator.mediaDevices.enumerateDevices = () => Promise.resolve([]);
+    }
+    navigator.getUserMedia = navigator.webkitGetUserMedia =
+      navigator.mozGetUserMedia = (_c, _ok, err) => { if (err) err(new Error('denied')); };
+  } catch (_) {}
+})();
+"#;
+
 #[derive(Debug, thiserror::Error)]
 pub enum AuthError {
     #[error("keyring error: {0}")]
@@ -91,6 +112,7 @@ pub async fn login(app: AppHandle) -> Result<(), AuthError> {
         )
         .title("SoundCloud — вход")
         .inner_size(480.0, 720.0)
+        .initialization_script(DENY_MEDIA_JS)
         .build()?;
     }
 
