@@ -84,3 +84,11 @@ export interface Track {
 export function scGetLikes(userId: number, limit?: number): Promise<Track[]> {
   return invoke<Track[]>("sc_get_likes", { userId, limit });
 }
+
+/**
+ * Resolve a track to a directly-playable (progressive mp3) URL. The URL is
+ * short-lived — resolve right before playback, don't cache.
+ */
+export function scGetStreamUrl(trackId: number): Promise<string> {
+  return invoke<string>("sc_get_stream_url", { trackId });
+}

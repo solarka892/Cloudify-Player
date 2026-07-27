@@ -12,6 +12,7 @@ import {
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { LibraryView } from "@/features/library/LibraryView";
+import { PlayerBar } from "@/features/player/PlayerBar";
 
 type BackendStatus =
   | { state: "checking" }
@@ -100,13 +101,14 @@ function App() {
   const loggedIn = auth.state === "loggedIn";
 
   return (
-    <main
-      className={cn(
-        "flex h-full w-full flex-col items-center gap-6 overflow-y-auto bg-background p-8 text-foreground",
-        loggedIn ? "justify-start" : "justify-center",
-      )}
-    >
-      <div className="flex flex-col items-center gap-2">
+    <div className="flex h-full w-full flex-col bg-background text-foreground">
+      <main
+        className={cn(
+          "flex w-full flex-1 flex-col items-center gap-6 overflow-y-auto p-8",
+          loggedIn ? "justify-start" : "justify-center",
+        )}
+      >
+        <div className="flex flex-col items-center gap-2">
         <h1 className="bg-gradient-to-r from-orange-400 to-pink-500 bg-clip-text text-5xl font-bold tracking-tight text-transparent">
           {t.app.name}
         </h1>
@@ -136,7 +138,10 @@ function App() {
           <ClientIdResult status={clientId} />
         </div>
       )}
-    </main>
+      </main>
+
+      {loggedIn && <PlayerBar />}
+    </div>
   );
 }
 

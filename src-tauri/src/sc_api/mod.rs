@@ -15,6 +15,7 @@
 pub mod client_id;
 pub mod likes;
 pub mod me;
+pub mod stream;
 
 pub use error::ScApiError;
 
@@ -39,6 +40,9 @@ mod error {
 
         #[error("client_id not found in any JS bundle")]
         ClientIdNotFound,
+
+        #[error("no playable stream for this track")]
+        NoStream,
     }
 
     impl Serialize for ScApiError {

@@ -53,6 +53,15 @@ cross-platform entry point.
 First `tauri dev` compiles the whole Rust/Tauri tree (~1 min). Subsequent runs
 are incremental (seconds).
 
+### Audio playback (GStreamer)
+
+WebKitGTK plays HTML5 audio through GStreamer. If tracks are silent / fail to
+play, install the codec plugins (mp3 lives in the good/ugly/libav sets):
+
+```fish
+sudo pacman -S --needed gst-plugins-base gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav
+```
+
 ### Login / keyring requirement
 
 OAuth tokens are stored via the `keyring` crate → on Linux this uses the

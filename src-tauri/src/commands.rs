@@ -76,6 +76,15 @@ pub async fn sc_login_browser() -> Result<sc_api::me::Me, String> {
     }
 }
 
+/// Resolve a track to a directly-playable (progressive mp3) stream URL. Public;
+/// no login required. The URL is short-lived — call this right before playback.
+#[tauri::command]
+pub async fn sc_get_stream_url(track_id: u64) -> Result<String, String> {
+    sc_api::stream::get_stream_url(track_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
 /// Fetch the logged-in user's liked tracks (first page). Requires login.
 #[tauri::command]
 pub async fn sc_get_likes(
