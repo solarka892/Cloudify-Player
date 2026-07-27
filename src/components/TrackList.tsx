@@ -5,11 +5,18 @@ import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
 import { useLibraryStore } from "@/stores/useLibraryStore";
 import { TrackContextMenu, type MenuTarget } from "./TrackContextMenu";
-import { LikeButton } from "./LikeButton";
 import { AddToPlaylistDialog } from "./AddToPlaylistDialog";
-import { useIncremental } from "@/hooks/useIncremental";
+import { LikeButton } from "./LikeButton";
+import { useVirtual } from "@/hooks/useVirtual";
 import { artwork, cn } from "@/lib/utils";
 import { t } from "@/i18n";
+
+/**
+ * Row height in px. Fixed on purpose: it is what lets the list be windowed,
+ * and it must match the row's actual rendered height exactly or the scrollbar
+ * drifts. Changing the row's padding means changing this.
+ */
+const ROW_HEIGHT = 56;
 
 /** Format milliseconds as m:ss. */
 function formatDuration(ms: number): string {
@@ -23,31 +30,38 @@ function formatDuration(ms: number): string {
  * Clickable list of tracks; a click plays the track (or toggles it). The whole
  * list becomes the player queue, so next/prev and autoplay walk it.
  *
- * Right-clicking a row opens the same actions the player bar offers.
+ * Only the visible slice is in the DOM — a likes list of several thousand
+ * costs the same as one of thirty. Right-clicking a row opens the same actions
+ * the player bar offers.
  */
 export function TrackList({ tracks }: { tracks: Track[] }) {
   const [menu, setMenu] = useState<MenuTarget | null>(null);
   const [addTo, setAddTo] = useState<Track | null>(null);
-  const { visible, sentinel, hasMore } = useIncremental(tracks);
+  const { ref, start, end } = useVirtual(tracks.length, ROW_HEIGHT);
+
+  const visible = tracks.slice(start, end);
 
   return (
     <>
-      <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-[var(--radius)] border border-border">
-        {visible.map((track) => (
+      <div
+        ref={ref}
+        className="relative overflow-hidden rounded-[var(--radius)] border border-border"
+        // The full height is reserved up front so the scrollbar is honest.
+        style={{ height: tracks.length * ROW_HEIGHT }}
+      >
+        {visible.map((track, index) => (
           <TrackRow
             key={track.id}
             track={track}
             queue={tracks}
+            top={(start + index) * ROW_HEIGHT}
             onContextMenu={(e) => {
               e.preventDefault();
               setMenu({ track, x: e.clientX, y: e.clientY });
             }}
           />
         ))}
-      </ul>
-
-      {/* Grows the rendered window as it scrolls into view. */}
-      {hasMore && <div ref={sentinel} className="h-8" aria-hidden />}
+      </div>
 
       {menu && (
         <TrackContextMenu
@@ -67,10 +81,12 @@ export function TrackList({ tracks }: { tracks: Track[] }) {
 const TrackRow = memo(function TrackRow({
   track,
   queue,
+  top,
   onContextMenu,
 }: {
   track: Track;
   queue: Track[];
+  top: number;
   onContextMenu: (e: React.MouseEvent) => void;
 }) {
   const art = artwork(track.artwork_url);
@@ -81,11 +97,15 @@ const TrackRow = memo(function TrackRow({
   const liked = useLibraryStore((s) => s.likedIds.has(track.id));
 
   return (
-    <li onContextMenu={onContextMenu}>
+    <div
+      onContextMenu={onContextMenu}
+      style={{ top, height: ROW_HEIGHT }}
+      className="absolute inset-x-0"
+    >
       <button
         onClick={() => void playTrack(track, queue)}
         className={cn(
-          "group flex w-full items-center gap-3 px-3 py-2 text-left transition-[background-color] duration-[var(--motion-fast)] hover:bg-accent",
+          "group flex h-full w-full items-center gap-3 border-b border-border px-3 text-left transition-[background-color] duration-[var(--motion-fast)] hover:bg-accent",
           isCurrent ? "bg-accent" : "bg-row",
         )}
       >
@@ -137,8 +157,8 @@ const TrackRow = memo(function TrackRow({
               aria-label={t.player.downloaded}
             />
           )}
-          {/* Dimmed until hover so a long list stays calm; a liked track
-              keeps its heart at full strength. */}
+          {/* Dimmed until hover so a long list stays calm; a liked track keeps
+              its heart at full strength. */}
           <LikeButton
             track={track}
             className={cn(
@@ -151,6 +171,6 @@ const TrackRow = memo(function TrackRow({
           </span>
         </div>
       </button>
-    </li>
+    </div>
   );
 });

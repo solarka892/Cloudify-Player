@@ -32,6 +32,39 @@ let mediaSessionBound = false;
 /** Pressing "previous" past this many seconds restarts the track instead. */
 const RESTART_THRESHOLD_S = 3;
 
+/**
+ * Resolved stream URLs, keyed by track id.
+ *
+ * Resolving one costs two sequential requests to SoundCloud (the track object,
+ * then signing the transcoding), which is the pause you hear when switching
+ * tracks. The signed URLs are short-lived, so this is deliberately a short
+ * cache — long enough to make next/prev instant, short enough that a cached
+ * URL is still valid when used.
+ */
+const urlCache = new Map<number, { url: string; at: number }>();
+const URL_TTL_MS = 4 * 60_000;
+/** Bound the map; a long listening session would otherwise grow it forever. */
+const URL_CACHE_MAX = 200;
+
+function cacheUrl(trackId: number, url: string): void {
+  if (urlCache.size >= URL_CACHE_MAX) {
+    // Insertion-ordered: the oldest entry is the first key.
+    const oldest = urlCache.keys().next().value;
+    if (oldest !== undefined) urlCache.delete(oldest);
+  }
+  urlCache.set(trackId, { url, at: Date.now() });
+}
+
+function cachedUrl(trackId: number): string | null {
+  const hit = urlCache.get(trackId);
+  if (!hit) return null;
+  if (Date.now() - hit.at >= URL_TTL_MS) {
+    urlCache.delete(trackId);
+    return null;
+  }
+  return hit.url;
+}
+
 function initialVolume(): number {
   const { rememberVolume, volume } = useSettingsStore.getState();
   return rememberVolume ? volume : DEFAULT_VOLUME;
@@ -154,11 +187,38 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
     });
   }
 
-  /** Prefer the downloaded file; fall back to a fresh signed stream URL. */
+  /** Prefer the downloaded file, then a warm URL, then resolve a fresh one. */
   async function resolveSource(track: Track): Promise<string> {
     const local = useDownloadsStore.getState().localUrl(track.id);
     if (local) return local;
-    return scGetStreamUrl(track.id);
+
+    const warm = cachedUrl(track.id);
+    if (warm) return warm;
+
+    const url = await scGetStreamUrl(track.id);
+    cacheUrl(track.id, url);
+    return url;
+  }
+
+  /**
+   * Resolve the *next* track's URL while the current one plays, so pressing
+   * next — or autoplay reaching the end — starts without a round trip.
+   */
+  function warmNext(): void {
+    const { queue, order, pos } = get();
+    const nextIndex = order[pos + 1];
+    if (nextIndex == null) return;
+
+    const next = queue[nextIndex];
+    if (!next) return;
+    // Downloaded tracks and already-warm URLs need nothing.
+    if (useDownloadsStore.getState().ids.has(next.id)) return;
+    if (cachedUrl(next.id)) return;
+
+    void scGetStreamUrl(next.id)
+      .then((url) => cacheUrl(next.id, url))
+      // A failed warm-up is invisible: the real play will resolve it again.
+      .catch(() => undefined);
   }
 
   /** Load and play `order[orderPos]`. */
@@ -208,6 +268,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
       applyAudio(useSettingsStore.getState().audio);
       if (fadeMs > 0) void fadeTo(effectiveVolume(), fadeMs);
       set({ isLoading: false });
+      warmNext();
     } catch (e) {
       if (token !== playToken) return;
       set({ isLoading: false, error: String(e), isPlaying: false });
