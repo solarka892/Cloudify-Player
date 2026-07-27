@@ -30,7 +30,21 @@
   },
   "nav": {
     "library": "Библиотека",
-    "search": "Поиск"
+    "search": "Поиск",
+    "settings": "Настройки"
+  },
+  "settings": {
+    "appearance": "Внешний вид",
+    "theme": "Тема",
+    "themeDark": "Тёмная",
+    "themeLight": "Светлая",
+    "themeSystem": "Как в системе",
+    "accent": "Акцентный цвет",
+    "playback": "Воспроизведение",
+    "autoplayNext": "Автопереход к следующему",
+    "autoplayNextHint": "Включать следующий трек очереди, когда текущий закончился",
+    "rememberVolume": "Запоминать громкость",
+    "rememberVolumeHint": "Восстанавливать последнюю громкость при запуске"
   },
   "player": {
     "play": "Играть",

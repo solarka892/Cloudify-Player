@@ -65,7 +65,7 @@ function TrackRow({ track, queue }: { track: Track; queue: Track[] }) {
           <span
             className={cn(
               "truncate text-sm font-medium",
-              isCurrent && "text-orange-400",
+              isCurrent && "text-brand",
             )}
           >
             {track.title}

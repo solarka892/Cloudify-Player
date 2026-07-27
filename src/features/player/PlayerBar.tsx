@@ -119,7 +119,7 @@ export function PlayerBar() {
             step={1}
             value={Math.min(position, total || 0)}
             onChange={(e) => seek(Number(e.currentTarget.value))}
-            className="h-1 flex-1 cursor-pointer accent-orange-500"
+            className="h-1 flex-1 cursor-pointer accent-brand"
           />
           <span className="w-10 font-mono text-xs text-muted-foreground">
             {formatTime(total)}
@@ -132,7 +132,7 @@ export function PlayerBar() {
           aria-label={t.player.queue}
           className={cn(
             "relative flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-accent",
-            showQueue ? "text-orange-400" : "text-muted-foreground",
+            showQueue ? "text-brand" : "text-muted-foreground",
           )}
         >
           <ListMusic className="h-4 w-4" />
@@ -148,7 +148,7 @@ export function PlayerBar() {
             step={0.01}
             value={volume}
             onChange={(e) => setVolume(Number(e.currentTarget.value))}
-            className="h-1 flex-1 cursor-pointer accent-orange-500"
+            className="h-1 flex-1 cursor-pointer accent-brand"
           />
         </div>
       </footer>
@@ -192,7 +192,7 @@ function QueuePanel({ onClose }: { onClose: () => void }) {
                 <span
                   className={cn(
                     "truncate text-xs font-medium",
-                    i === index && "text-orange-400",
+                    i === index && "text-brand",
                   )}
                 >
                   {track.title}

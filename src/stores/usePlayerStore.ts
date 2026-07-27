@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { scGetStreamUrl, type Track } from "@/lib/tauri";
+import { DEFAULT_VOLUME, useSettingsStore } from "@/stores/useSettingsStore";
 
 // The <audio> element lives outside React state (it's imperative, not data).
 let audio: HTMLAudioElement | null = null;
@@ -12,6 +13,12 @@ let playToken = 0;
 
 /** Pressing "previous" past this many seconds restarts the track instead. */
 const RESTART_THRESHOLD_S = 3;
+
+/** Start from the remembered volume only if the user opted into that. */
+function initialVolume(): number {
+  const { rememberVolume, volume } = useSettingsStore.getState();
+  return rememberVolume ? volume : DEFAULT_VOLUME;
+}
 
 interface PlayerState {
   current: Track | null;
@@ -58,7 +65,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
     a.addEventListener("ended", () => {
       set({ isPlaying: false, position: 0 });
       // Autoplay: falls through to a stop at the end of the queue.
-      get().next();
+      if (useSettingsStore.getState().autoplayNext) get().next();
     });
     a.addEventListener("error", () =>
       set({ error: "playback error", isPlaying: false, isLoading: false }),
@@ -106,7 +113,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
     isLoading: false,
     position: 0,
     duration: 0,
-    volume: 0.8,
+    volume: initialVolume(),
     error: null,
 
     async playTrack(track, queue) {
@@ -159,6 +166,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
     setVolume(volume) {
       ensureAudio().volume = volume;
       set({ volume });
+      useSettingsStore.getState().rememberCurrentVolume(volume);
     },
   };
 });

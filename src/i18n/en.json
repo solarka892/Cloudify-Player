@@ -30,7 +30,21 @@
   },
   "nav": {
     "library": "Library",
-    "search": "Search"
+    "search": "Search",
+    "settings": "Settings"
+  },
+  "settings": {
+    "appearance": "Appearance",
+    "theme": "Theme",
+    "themeDark": "Dark",
+    "themeLight": "Light",
+    "themeSystem": "System",
+    "accent": "Accent colour",
+    "playback": "Playback",
+    "autoplayNext": "Autoplay next track",
+    "autoplayNextHint": "Start the next queued track when the current one ends",
+    "rememberVolume": "Remember volume",
+    "rememberVolumeHint": "Restore the last volume on start"
   },
   "player": {
     "play": "Play",

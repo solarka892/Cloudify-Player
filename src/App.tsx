@@ -13,10 +13,11 @@ import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { LibraryView } from "@/features/library/LibraryView";
 import { SearchView } from "@/features/search/SearchView";
+import { SettingsView } from "@/features/settings/SettingsView";
 import { PlayerBar } from "@/features/player/PlayerBar";
 
 /** Which section of the app is on screen (only meaningful once logged in). */
-type View = "library" | "search";
+type View = "library" | "search" | "settings";
 
 type BackendStatus =
   | { state: "checking" }
@@ -114,7 +115,7 @@ function App() {
         )}
       >
         <div className="flex flex-col items-center gap-2">
-        <h1 className="bg-gradient-to-r from-orange-400 to-pink-500 bg-clip-text text-5xl font-bold tracking-tight text-transparent">
+        <h1 className="bg-gradient-to-r from-brand to-brand-2 bg-clip-text text-5xl font-bold tracking-tight text-transparent">
           {t.app.name}
         </h1>
         <p className="text-sm text-muted-foreground">{t.app.tagline}</p>
@@ -132,11 +133,9 @@ function App() {
       {auth.state === "loggedIn" ? (
         <>
           <NavTabs view={view} onChange={setView} />
-          {view === "library" ? (
-            <LibraryView userId={auth.me.id} />
-          ) : (
-            <SearchView />
-          )}
+          {view === "library" && <LibraryView userId={auth.me.id} />}
+          {view === "search" && <SearchView />}
+          {view === "settings" && <SettingsView />}
         </>
       ) : (
         <div className="flex flex-col items-center gap-3">
@@ -167,6 +166,7 @@ function NavTabs({
   const tabs: { id: View; label: string }[] = [
     { id: "library", label: t.nav.library },
     { id: "search", label: t.nav.search },
+    { id: "settings", label: t.nav.settings },
   ];
 
   return (
@@ -266,7 +266,7 @@ function AuthSection({
       <button
         onClick={onLogin}
         disabled={loggingIn}
-        className="rounded-md bg-gradient-to-r from-orange-500 to-pink-500 px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+        className="rounded-md bg-gradient-to-r from-brand to-brand-2 px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
       >
         {loggingIn ? t.auth.loggingIn : t.auth.login}
       </button>
