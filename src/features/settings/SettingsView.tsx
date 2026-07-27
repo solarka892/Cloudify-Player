@@ -5,9 +5,15 @@ import {
   Image as ImageIcon,
   Monitor,
   Moon,
+  Palette as PaletteIcon,
+  Ruler,
+  Save,
+  SlidersHorizontal,
   Sun,
   Trash2,
   Upload,
+  Volume2,
+  Wallpaper,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { AudioSettings } from "./AudioSettings";
@@ -53,6 +59,7 @@ export function SettingsView() {
   const setAutoplayNext = useSettingsStore((s) => s.setAutoplayNext);
   const setRememberVolume = useSettingsStore((s) => s.setRememberVolume);
 
+  const [section, setSection] = useState<SectionId>("appearance");
   const [presetName, setPresetName] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const imageInput = useRef<HTMLInputElement>(null);
@@ -89,18 +96,56 @@ export function SettingsView() {
   }
 
   return (
-    <div className="stack-lg max-w-3xl">
-      <h1
-        className="text-3xl font-bold tracking-tight"
-        style={{ fontFamily: "var(--font-display)" }}
-      >
-        {t.nav.settings}
-      </h1>
+    <div className="flex w-full gap-6">
+      {/* Section list — settings are browsed, not scrolled through. */}
+      <nav className="sticky top-0 hidden w-48 shrink-0 flex-col gap-0.5 self-start md:flex">
+        <h1
+          className="mb-2 px-2 text-2xl font-bold tracking-tight"
+          style={{ fontFamily: "var(--font-display)" }}
+        >
+          {t.nav.settings}
+        </h1>
+        {SECTIONS.map(({ id, label, Icon }) => (
+          <button
+            key={id}
+            onClick={() => setSection(id)}
+            className={cn(
+              "flex items-center gap-2.5 rounded-[var(--radius-control)] px-2.5 py-2 text-left text-sm transition-colors duration-[var(--motion-fast)]",
+              section === id
+                ? "bg-accent text-foreground"
+                : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+            )}
+          >
+            <Icon className="h-4 w-4 shrink-0" />
+            <span className="label">{label}</span>
+          </button>
+        ))}
+      </nav>
+
+      <div className="stack-lg min-w-0 max-w-2xl flex-1">
+        {/* Narrow windows get the same list as a scroller. */}
+        <nav className="flex gap-1 overflow-x-auto md:hidden">
+          {SECTIONS.map(({ id, label }) => (
+            <button
+              key={id}
+              onClick={() => setSection(id)}
+              className={cn(
+                "shrink-0 rounded-[var(--radius-control)] px-3 py-1.5 text-sm transition-colors duration-[var(--motion-fast)]",
+                section === id
+                  ? "bg-accent text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <span className="label">{label}</span>
+            </button>
+          ))}
+        </nav>
 
       {notice && (
         <p className="panel px-4 py-2 text-sm text-muted-foreground">{notice}</p>
       )}
 
+      {section === "appearance" && (<>
       {/* ── Layout ─────────────────────────────────────────────────────── */}
       <Group title={t.settings.layout} hint={t.settings.layoutHint}>
         <div className="grid grid-cols-3 gap-2 p-3">
@@ -249,6 +294,17 @@ export function SettingsView() {
         </Row>
       </Group>
 
+      <Group title={t.settings.glass} hint={t.settings.glassHint}>
+        <Row label={t.settings.glassOn} hint={t.settings.glassPerf}>
+          <Switch
+            checked={theme.glass}
+            onCheckedChange={(glass) => setTheme({ glass })}
+          />
+        </Row>
+      </Group>
+      </>)}
+
+      {section === "backdrop" && (<>
       {/* ── Backdrop ───────────────────────────────────────────────────── */}
       <Group title={t.settings.backdrop} hint={t.settings.backdropHint}>
         <Row label={t.settings.backdropMode}>
@@ -329,6 +385,9 @@ export function SettingsView() {
         </Row>
       </Group>
 
+      </>)}
+
+      {section === "metrics" && (<>
       {/* ── Metrics ────────────────────────────────────────────────────── */}
       <Group title={t.settings.metrics}>
         <Row label={t.settings.density}>
@@ -354,6 +413,9 @@ export function SettingsView() {
         </Row>
       </Group>
 
+      </>)}
+
+      {section === "playback" && (<>
       {/* ── Playback ───────────────────────────────────────────────────── */}
       <Group title={t.settings.playback}>
         <Row label={t.settings.autoplayNext} hint={t.settings.autoplayNextHint}>
@@ -367,8 +429,11 @@ export function SettingsView() {
         </Row>
       </Group>
 
-      <AudioSettings />
+      </>)}
 
+      {section === "audio" && <AudioSettings />}
+
+      {section === "themes" && (<>
       {/* ── Presets ────────────────────────────────────────────────────── */}
       <Group title={t.settings.presets} hint={t.settings.presetsHint}>
         <div className="flex flex-wrap items-center gap-2 px-4 py-3">
@@ -450,9 +515,28 @@ export function SettingsView() {
           </button>
         </div>
       </Group>
+      </>)}
+      </div>
     </div>
   );
 }
+
+type SectionId =
+  | "appearance"
+  | "backdrop"
+  | "metrics"
+  | "audio"
+  | "playback"
+  | "themes";
+
+const SECTIONS: { id: SectionId; label: string; Icon: typeof Sun }[] = [
+  { id: "appearance", label: t.settings.secAppearance, Icon: PaletteIcon },
+  { id: "backdrop", label: t.settings.backdrop, Icon: Wallpaper },
+  { id: "metrics", label: t.settings.metrics, Icon: Ruler },
+  { id: "audio", label: t.audio.title, Icon: Volume2 },
+  { id: "playback", label: t.settings.playback, Icon: SlidersHorizontal },
+  { id: "themes", label: t.settings.presets, Icon: Save },
+];
 
 /* ── building blocks ──────────────────────────────────────────────────── */
 

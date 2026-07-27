@@ -23,6 +23,12 @@ export interface ThemeInput {
   density: Density;
   /** UI scale as a percentage, 80–140. */
   uiScale: number;
+  /**
+   * Frosted translucency. Off makes panels opaque and drops every
+   * `backdrop-filter`, which is the single biggest rendering cost on a
+   * software-composited desktop.
+   */
+  glass: boolean;
   /** Per-property overrides authored by the user; applied last. */
   overrides: ThemeVars;
 }
@@ -54,6 +60,11 @@ export function buildVars(input: ThemeInput): ThemeVars {
     "--ui-scale": `${input.uiScale}%`,
   };
 
+  if (!input.glass) {
+    vars["--blur"] = "0px";
+    vars["--surface-alpha"] = "100%";
+  }
+
   // An accent preset overrides only the two brand colours, so it composes with
   // any palette instead of replacing it.
   const accent = input.accent ? ACCENTS[input.accent] : undefined;
@@ -77,6 +88,8 @@ export function applyTheme(input: ThemeInput): void {
 
   // Tailwind's `dark:` variant and any `.dark`-scoped CSS still key off this.
   root.classList.toggle("dark", resolveDark(input.mode));
+  // CSS gates every `backdrop-filter` on this attribute.
+  root.dataset.glass = input.glass ? "1" : "0";
 }
 
 /** Write the backdrop layer (user image / artwork / gradient). */

@@ -15,9 +15,10 @@ import { Visualizer } from "./Visualizer";
 import {
   PlayPauseButton,
   RepeatButton,
+  NextButton,
+  PrevButton,
   SeekBar,
   ShuffleButton,
-  SkipButtons,
   VolumeControl,
 } from "./controls";
 import { t } from "@/i18n";
@@ -133,8 +134,9 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
 
           <div className="flex items-center gap-2">
             <ShuffleButton />
-            <SkipButtons size="lg" />
+            <PrevButton size="lg" />
             <PlayPauseButton size="lg" />
+            <NextButton size="lg" />
             <RepeatButton />
           </div>
 

@@ -258,7 +258,7 @@ function StationCard({
       onClick={onStart}
       disabled={busy}
       title={t.library.startStation}
-      className="panel flex items-center gap-3 p-2 text-left transition-transform duration-[var(--motion-fast)] hover:-translate-y-0.5 disabled:opacity-60"
+      className="flex items-center gap-3 rounded-[var(--radius)] border border-border bg-card p-2 text-left transition-transform duration-[var(--motion-fast)] hover:-translate-y-0.5 disabled:opacity-60"
     >
       {art ? (
         <img

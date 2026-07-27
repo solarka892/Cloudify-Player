@@ -187,7 +187,9 @@ function LoginView({
 
   return (
     <div className="relative flex h-full w-full items-center justify-center bg-background p-8 text-foreground">
-      <div className="app-backdrop" aria-hidden />
+      {useSettingsStore.getState().backdrop.mode !== "none" && (
+        <div className="app-backdrop" aria-hidden />
+      )}
       <div className="panel panel-raised relative z-10 flex w-full max-w-md flex-col items-center gap-5 rounded-[var(--radius-hero)] p-8">
         <div className="flex flex-col items-center gap-2">
           <span className="brand-gradient flex h-14 w-14 items-center justify-center rounded-[var(--radius)] text-3xl font-black text-white">

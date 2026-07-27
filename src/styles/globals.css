@@ -179,6 +179,8 @@
      everything. Fixed and pointer-transparent so it never affects layout. */
   .app-backdrop {
     position: fixed;
+    /* Promote to its own layer so the blur is computed once, not per frame. */
+    will-change: transform;
     inset: 0;
     z-index: 0;
     pointer-events: none;
@@ -199,17 +201,54 @@
   }
 
   /* A surface. Translucency and blur come from the skin, so the same class is
-     frosted glass in Aurora and a flat panel in Editorial. */
+     frosted glass in Aurora and a flat panel in Editorial.
+
+     `backdrop-filter` is applied only when the glass setting is on: with it
+     off `--blur` is 0px and `--surface-alpha` is 100%, and the rule below
+     short-circuits to an ordinary opaque panel. That distinction is worth
+     real frames — each blurred surface is a separate backdrop snapshot. */
   .panel {
     background: var(--card);
     background: color-mix(in srgb, var(--card) var(--surface-alpha), transparent);
-    backdrop-filter: blur(var(--blur));
     border: var(--border-width) solid var(--border);
     border-radius: var(--radius);
     box-shadow: var(--shadow-1);
   }
+  :root[data-glass="1"] .panel {
+    backdrop-filter: blur(var(--blur));
+  }
+
+  /* Liquid glass: a specular edge and a slow sheen across the surface. Only
+     ever on when the user asked for it. */
+  :root[data-glass="1"] .panel-liquid {
+    position: relative;
+    overflow: hidden;
+  }
+  :root[data-glass="1"] .panel-liquid::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    background:
+      linear-gradient(
+        130deg,
+        color-mix(in srgb, white 22%, transparent) 0%,
+        transparent 38%,
+        transparent 62%,
+        color-mix(in srgb, white 9%, transparent) 100%
+      );
+    mix-blend-mode: overlay;
+  }
   .panel-raised {
     box-shadow: var(--shadow-2);
+  }
+
+  /* Rows far outside the viewport skip layout and paint entirely. The size
+     hint keeps the scrollbar honest while they're skipped. */
+  .row-cv {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 56px;
   }
 
   /* Section headings; uppercase and tracked out in skins that ask for it. */

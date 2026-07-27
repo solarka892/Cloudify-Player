@@ -46,9 +46,24 @@ export function PlayPauseButton({ size = "md" }: { size?: "md" | "lg" }) {
   );
 }
 
-export function SkipButtons({ size = "md" }: { size?: "md" | "lg" }) {
-  const next = usePlayerStore((s) => s.next);
+export function PrevButton({ size = "md" }: { size?: "md" | "lg" }) {
   const prev = usePlayerStore((s) => s.prev);
+  return (
+    <button
+      onClick={prev}
+      aria-label={t.player.prev}
+      className={cn(
+        "flex shrink-0 items-center justify-center rounded-full text-muted-foreground transition-[color,background-color,transform] duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground active:scale-90",
+        size === "lg" ? "h-10 w-10" : "h-8 w-8",
+      )}
+    >
+      <SkipBack className={size === "lg" ? "h-5 w-5" : "h-4 w-4"} />
+    </button>
+  );
+}
+
+export function NextButton({ size = "md" }: { size?: "md" | "lg" }) {
+  const next = usePlayerStore((s) => s.next);
   const pos = usePlayerStore((s) => s.pos);
   const total = usePlayerStore((s) => s.order.length);
   const repeat = usePlayerStore((s) => s.repeat);
@@ -56,33 +71,19 @@ export function SkipButtons({ size = "md" }: { size?: "md" | "lg" }) {
 
   // "Next" stays live when the queue loops or radio can extend it.
   const hasNext = pos >= 0 && (pos + 1 < total || repeat === "all" || radio);
-  const icon = size === "lg" ? "h-5 w-5" : "h-4 w-4";
-  const box = size === "lg" ? "h-10 w-10" : "h-8 w-8";
 
   return (
-    <>
-      <button
-        onClick={prev}
-        aria-label={t.player.prev}
-        className={cn(
-          "flex shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground",
-          box,
-        )}
-      >
-        <SkipBack className={icon} />
-      </button>
-      <button
-        onClick={next}
-        disabled={!hasNext}
-        aria-label={t.player.next}
-        className={cn(
-          "flex shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent",
-          box,
-        )}
-      >
-        <SkipForward className={icon} />
-      </button>
-    </>
+    <button
+      onClick={next}
+      disabled={!hasNext}
+      aria-label={t.player.next}
+      className={cn(
+        "flex shrink-0 items-center justify-center rounded-full text-muted-foreground transition-[color,background-color,transform] duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground active:scale-90 disabled:opacity-30 disabled:hover:bg-transparent",
+        size === "lg" ? "h-10 w-10" : "h-8 w-8",
+      )}
+    >
+      <SkipForward className={size === "lg" ? "h-5 w-5" : "h-4 w-4"} />
+    </button>
   );
 }
 

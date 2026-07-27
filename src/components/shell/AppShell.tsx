@@ -21,6 +21,9 @@ export function AppShell({
   player?: React.ReactNode;
 }) {
   const layout = useSettingsStore((s) => s.layout);
+  // A full-screen 40px blur costs the same whether or not it has an image
+  // behind it, so the element simply isn't mounted when it has nothing to do.
+  const showBackdrop = useSettingsStore((s) => s.backdrop.mode !== "none");
 
   const main = (
     <main className="relative z-10 min-h-0 flex-1 overflow-y-auto">
@@ -30,7 +33,7 @@ export function AppShell({
 
   return (
     <div className="relative flex h-full w-full flex-col overflow-hidden bg-background text-foreground">
-      <div className="app-backdrop" aria-hidden />
+      {showBackdrop && <div className="app-backdrop" aria-hidden />}
 
       {layout === "top" ? (
         <div className="relative z-10 flex min-h-0 flex-1 flex-col">

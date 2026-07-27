@@ -98,7 +98,12 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
     if (a.dataset.bound === "1") return a;
     a.dataset.bound = "1";
 
-    a.addEventListener("timeupdate", () => set({ position: a.currentTime }));
+    a.addEventListener("timeupdate", () => {
+      // Coalesce: `timeupdate` fires ~4x/s and every listener re-renders.
+      const next = a.currentTime;
+      if (Math.abs(next - get().position) < 0.25) return;
+      set({ position: next });
+    });
     a.addEventListener("durationchange", () =>
       set({ duration: Number.isFinite(a.duration) ? a.duration : 0 }),
     );
@@ -163,9 +168,18 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
     const token = ++playToken;
     const { fadeMs } = useSettingsStore.getState();
 
+    // Stop the outgoing track *before* anything async. Resolving a stream URL
+    // is a network round trip that can be slow or fail, and leaving the old
+    // audio running behind the new title/cover is the worst possible state.
+    if (fadeMs > 0 && !a.paused) await fadeTo(0, fadeMs);
+    a.pause();
+    a.removeAttribute("src");
+    a.load();
+
     set({
       pos: orderPos,
       current: track,
+      isPlaying: false,
       isLoading: true,
       error: null,
       position: 0,
@@ -174,7 +188,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
     publishMetadata(track);
 
     try {
-      if (fadeMs > 0 && !a.paused) await fadeTo(0, fadeMs);
       const src = await resolveSource(track);
       if (token !== playToken) return; // superseded while resolving
 

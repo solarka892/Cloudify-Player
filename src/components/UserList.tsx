@@ -1,6 +1,7 @@
 import { User as UserIcon } from "lucide-react";
 import type { User } from "@/lib/tauri";
 import { useNavStore } from "@/stores/useNavStore";
+import { useIncremental } from "@/hooks/useIncremental";
 import { t } from "@/i18n";
 import { artwork } from "@/lib/utils";
 
@@ -14,13 +15,14 @@ function formatCount(n: number): string {
 /** Users; a click drills into that user's uploads. */
 export function UserList({ users }: { users: User[] }) {
   const openUser = useNavStore((s) => s.openUser);
+  const { visible, sentinel, hasMore } = useIncremental(users, 40);
 
   return (
-    <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
-      {users.map((user) => {
+    <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-[var(--radius)] border border-border">
+      {visible.map((user) => {
         const avatar = artwork(user.avatar_url);
         return (
-          <li key={user.id}>
+          <li className="row-cv" key={user.id}>
             <button
               onClick={() => openUser(user)}
               className="flex w-full items-center gap-3 bg-card px-3 py-2 text-left transition-colors hover:bg-accent"
@@ -55,6 +57,7 @@ export function UserList({ users }: { users: User[] }) {
           </li>
         );
       })}
+      {hasMore && <div ref={sentinel} className="h-8" aria-hidden />}
     </ul>
   );
 }

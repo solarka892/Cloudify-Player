@@ -9,9 +9,10 @@ import { LyricsPanel } from "./Lyrics";
 import {
   PlayPauseButton,
   RepeatButton,
+  NextButton,
+  PrevButton,
   SeekBar,
   ShuffleButton,
-  SkipButtons,
   VolumeControl,
 } from "./controls";
 import { t } from "@/i18n";
@@ -56,7 +57,7 @@ export function PlayerBar() {
           </div>
         )}
 
-        <footer className="panel flex h-20 w-full items-center gap-4 rounded-none border-x-0 border-b-0 px-4">
+        <footer className="panel panel-liquid flex h-20 w-full items-center gap-4 rounded-none border-x-0 border-b-0 px-4">
           {/* Track */}
           <div className="flex w-64 min-w-0 items-center gap-3">
             <button
@@ -120,8 +121,9 @@ export function PlayerBar() {
           {/* Transport */}
           <div className="flex shrink-0 items-center gap-1">
             <ShuffleButton />
-            <SkipButtons />
+            <PrevButton />
             <PlayPauseButton />
+            <NextButton />
             <RepeatButton />
           </div>
 

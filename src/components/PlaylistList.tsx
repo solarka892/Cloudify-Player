@@ -1,19 +1,21 @@
 import { ListMusic } from "lucide-react";
 import type { Playlist } from "@/lib/tauri";
 import { useNavStore } from "@/stores/useNavStore";
+import { useIncremental } from "@/hooks/useIncremental";
 import { t } from "@/i18n";
 import { artwork } from "@/lib/utils";
 
 /** Playlists and albums; a click drills into the playlist's tracks. */
 export function PlaylistList({ playlists }: { playlists: Playlist[] }) {
   const openPlaylist = useNavStore((s) => s.openPlaylist);
+  const { visible, sentinel, hasMore } = useIncremental(playlists, 40);
 
   return (
-    <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
-      {playlists.map((playlist) => {
+    <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-[var(--radius)] border border-border">
+      {visible.map((playlist) => {
         const art = artwork(playlist.artwork_url);
         return (
-          <li key={playlist.id}>
+          <li className="row-cv" key={playlist.id}>
             <button
               onClick={() => openPlaylist(playlist)}
               className="flex w-full items-center gap-3 bg-card px-3 py-2 text-left transition-colors hover:bg-accent"
@@ -45,6 +47,7 @@ export function PlaylistList({ playlists }: { playlists: Playlist[] }) {
           </li>
         );
       })}
+      {hasMore && <div ref={sentinel} className="h-8" aria-hidden />}
     </ul>
   );
 }

@@ -41,8 +41,8 @@ export const SKINS: Record<SkinId, Skin> = {
       "--font-display": SANS,
       "--label-transform": "none",
       "--label-spacing": "0em",
-      "--motion-fast": "180ms",
-      "--motion-slow": "420ms",
+      "--motion-fast": "130ms",
+      "--motion-slow": "280ms",
     },
   },
 
@@ -64,8 +64,8 @@ export const SKINS: Record<SkinId, Skin> = {
       "--font-display": SERIF,
       "--label-transform": "uppercase",
       "--label-spacing": "0.09em",
-      "--motion-fast": "110ms",
-      "--motion-slow": "200ms",
+      "--motion-fast": "80ms",
+      "--motion-slow": "150ms",
     },
   },
 
@@ -89,8 +89,8 @@ export const SKINS: Record<SkinId, Skin> = {
       "--font-display": SANS,
       "--label-transform": "none",
       "--label-spacing": "0.01em",
-      "--motion-fast": "150ms",
-      "--motion-slow": "320ms",
+      "--motion-fast": "110ms",
+      "--motion-slow": "220ms",
     },
   },
 };

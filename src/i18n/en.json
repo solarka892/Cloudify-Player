@@ -172,7 +172,12 @@
     "reset": "Reset appearance",
     "imageTooLarge": "Image is over 4 MB — pick a smaller file",
     "importFailed": "Could not read that theme file",
-    "imported": "Theme loaded"
+    "imported": "Theme loaded",
+    "secAppearance": "Appearance",
+    "glass": "Liquid glass",
+    "glassHint": "Translucent, blurred surfaces",
+    "glassOn": "Enable glass",
+    "glassPerf": "Costly to render — turn it off if the UI feels sluggish"
   },
   "lyrics": {
     "loading": "Looking for lyrics…",

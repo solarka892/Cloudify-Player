@@ -12,6 +12,12 @@ import type { Shade } from "./tokens";
 export type PaletteId =
   | "vapor"
   | "midnight"
+  | "paper"
+  | "graphite"
+  | "ink"
+  | "slate"
+  | "porcelain"
+  | "carbon"
   | "noir"
   | "ocean"
   | "plum"
@@ -52,6 +58,163 @@ export const PALETTES: Record<PaletteId, Palette> = {
       line: "oklch(0.5 0.1 320 / 20%)",
       brand: "oklch(0.62 0.2 340)",
       brand2: "oklch(0.66 0.14 205)",
+    },
+  },
+
+
+  /** Pure white paper, near-black text. The brightest option. */
+  paper: {
+    id: "paper",
+    name: "Paper",
+    dark: {
+      bg: "oklch(0.21 0 0)",
+      surface: "oklch(0.27 0 0)",
+      surface2: "oklch(0.34 0 0)",
+      text: "oklch(0.98 0 0)",
+      muted: "oklch(0.72 0 0)",
+      line: "oklch(1 0 0 / 12%)",
+      brand: "oklch(0.72 0 0)",
+      brand2: "oklch(0.86 0 0)",
+    },
+    light: {
+      bg: "oklch(1 0 0)",
+      surface: "oklch(1 0 0)",
+      surface2: "oklch(0.96 0 0)",
+      text: "oklch(0.16 0 0)",
+      muted: "oklch(0.48 0 0)",
+      line: "oklch(0 0 0 / 12%)",
+      brand: "oklch(0.32 0 0)",
+      brand2: "oklch(0.5 0 0)",
+    },
+  },
+
+  /** Mid grey throughout — no pure black, no pure white. */
+  graphite: {
+    id: "graphite",
+    name: "Graphite",
+    dark: {
+      bg: "oklch(0.26 0 0)",
+      surface: "oklch(0.32 0 0)",
+      surface2: "oklch(0.39 0 0)",
+      text: "oklch(0.95 0 0)",
+      muted: "oklch(0.72 0 0)",
+      line: "oklch(1 0 0 / 13%)",
+      brand: "oklch(0.82 0 0)",
+      brand2: "oklch(0.66 0 0)",
+    },
+    light: {
+      bg: "oklch(0.9 0 0)",
+      surface: "oklch(0.95 0 0)",
+      surface2: "oklch(0.86 0 0)",
+      text: "oklch(0.2 0 0)",
+      muted: "oklch(0.45 0 0)",
+      line: "oklch(0 0 0 / 14%)",
+      brand: "oklch(0.36 0 0)",
+      brand2: "oklch(0.55 0 0)",
+    },
+  },
+
+  /** Maximum contrast, no colour anywhere. */
+  ink: {
+    id: "ink",
+    name: "Ink",
+    dark: {
+      bg: "oklch(0 0 0)",
+      surface: "oklch(0.11 0 0)",
+      surface2: "oklch(0.19 0 0)",
+      text: "oklch(1 0 0)",
+      muted: "oklch(0.68 0 0)",
+      line: "oklch(1 0 0 / 18%)",
+      brand: "oklch(1 0 0)",
+      brand2: "oklch(0.78 0 0)",
+    },
+    light: {
+      bg: "oklch(1 0 0)",
+      surface: "oklch(1 0 0)",
+      surface2: "oklch(0.93 0 0)",
+      text: "oklch(0 0 0)",
+      muted: "oklch(0.42 0 0)",
+      line: "oklch(0 0 0 / 20%)",
+      brand: "oklch(0 0 0)",
+      brand2: "oklch(0.3 0 0)",
+    },
+  },
+
+  /** Cool grey with a blue cast. */
+  slate: {
+    id: "slate",
+    name: "Slate",
+    dark: {
+      bg: "oklch(0.2 0.012 250)",
+      surface: "oklch(0.26 0.014 250)",
+      surface2: "oklch(0.33 0.016 250)",
+      text: "oklch(0.96 0.004 250)",
+      muted: "oklch(0.71 0.012 250)",
+      line: "oklch(0.8 0.03 250 / 14%)",
+      brand: "oklch(0.82 0.03 250)",
+      brand2: "oklch(0.68 0.05 250)",
+    },
+    light: {
+      bg: "oklch(0.955 0.005 250)",
+      surface: "oklch(0.99 0.002 250)",
+      surface2: "oklch(0.91 0.008 250)",
+      text: "oklch(0.19 0.015 250)",
+      muted: "oklch(0.47 0.015 250)",
+      line: "oklch(0.3 0.03 250 / 14%)",
+      brand: "oklch(0.38 0.03 250)",
+      brand2: "oklch(0.52 0.05 250)",
+    },
+  },
+
+  /** Warm off-white, very soft edges. */
+  porcelain: {
+    id: "porcelain",
+    name: "Porcelain",
+    dark: {
+      bg: "oklch(0.23 0.006 60)",
+      surface: "oklch(0.29 0.008 60)",
+      surface2: "oklch(0.36 0.01 60)",
+      text: "oklch(0.97 0.006 60)",
+      muted: "oklch(0.73 0.01 60)",
+      line: "oklch(1 0 0 / 12%)",
+      brand: "oklch(0.85 0.02 60)",
+      brand2: "oklch(0.7 0.03 40)",
+    },
+    light: {
+      bg: "oklch(0.975 0.006 70)",
+      surface: "oklch(1 0.002 70)",
+      surface2: "oklch(0.935 0.01 70)",
+      text: "oklch(0.22 0.01 60)",
+      muted: "oklch(0.5 0.012 60)",
+      line: "oklch(0.35 0.02 60 / 13%)",
+      brand: "oklch(0.4 0.02 55)",
+      brand2: "oklch(0.55 0.04 40)",
+    },
+  },
+
+  /** Near-black with a warm grey lift; softer than Ink. */
+  carbon: {
+    id: "carbon",
+    name: "Carbon",
+    dark: {
+      bg: "oklch(0.1 0.004 60)",
+      surface: "oklch(0.16 0.005 60)",
+      surface2: "oklch(0.24 0.006 60)",
+      text: "oklch(0.96 0.004 60)",
+      muted: "oklch(0.66 0.008 60)",
+      line: "oklch(1 0 0 / 12%)",
+      brand: "oklch(0.88 0.01 60)",
+      brand2: "oklch(0.62 0.02 50)",
+    },
+    light: {
+      bg: "oklch(0.93 0.004 60)",
+      surface: "oklch(0.985 0.002 60)",
+      surface2: "oklch(0.885 0.006 60)",
+      text: "oklch(0.14 0.006 60)",
+      muted: "oklch(0.44 0.008 60)",
+      line: "oklch(0 0 0 / 15%)",
+      brand: "oklch(0.24 0.01 60)",
+      brand2: "oklch(0.45 0.02 50)",
     },
   },
 

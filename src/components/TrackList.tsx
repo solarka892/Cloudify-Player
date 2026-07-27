@@ -4,6 +4,7 @@ import type { Track } from "@/lib/tauri";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
 import { TrackContextMenu, type MenuTarget } from "./TrackContextMenu";
+import { useIncremental } from "@/hooks/useIncremental";
 import { artwork, cn } from "@/lib/utils";
 import { t } from "@/i18n";
 
@@ -23,11 +24,12 @@ function formatDuration(ms: number): string {
  */
 export function TrackList({ tracks }: { tracks: Track[] }) {
   const [menu, setMenu] = useState<MenuTarget | null>(null);
+  const { visible, sentinel, hasMore } = useIncremental(tracks);
 
   return (
     <>
       <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-[var(--radius)] border border-border">
-        {tracks.map((track) => (
+        {visible.map((track) => (
           <TrackRow
             key={track.id}
             track={track}
@@ -39,6 +41,9 @@ export function TrackList({ tracks }: { tracks: Track[] }) {
           />
         ))}
       </ul>
+
+      {/* Grows the rendered window as it scrolls into view. */}
+      {hasMore && <div ref={sentinel} className="h-8" aria-hidden />}
 
       {menu && <TrackContextMenu target={menu} onClose={() => setMenu(null)} />}
     </>
@@ -61,7 +66,7 @@ function TrackRow({
   const isDownloaded = useDownloadsStore((s) => s.ids.has(track.id));
 
   return (
-    <li onContextMenu={onContextMenu}>
+    <li className="row-cv" onContextMenu={onContextMenu}>
       <button
         onClick={() => void playTrack(track, queue)}
         className={cn(

@@ -47,6 +47,8 @@ export interface ThemeState {
   accentFromArtwork: boolean;
   density: Density;
   uiScale: number;
+  /** Liquid-glass surfaces. Costly to render; the toggle is the perf escape. */
+  glass: boolean;
   /** Hand-edited CSS custom properties; win over everything else. */
   overrides: ThemeVars;
 }
@@ -81,6 +83,9 @@ const DEFAULT_THEME: ThemeState = {
   accentFromArtwork: false,
   density: "cozy",
   uiScale: 100,
+  // Off by default: `backdrop-filter` on every surface is the biggest
+  // rendering cost on a software-composited desktop. Opt in, don't opt out.
+  glass: false,
   overrides: {},
 };
 
@@ -157,6 +162,7 @@ export const useSettingsStore = create<SettingsState>()(
           accent: theme.accent,
           density: theme.density,
           uiScale: theme.uiScale,
+          glass: theme.glass,
           // Artwork accent sits under the user's own edits, above the palette.
           overrides: {
             ...(theme.accentFromArtwork && artworkAccent
@@ -368,6 +374,7 @@ export const useSettingsStore = create<SettingsState>()(
     accent: s.theme.accent,
     density: s.theme.density,
     uiScale: s.theme.uiScale,
+    glass: s.theme.glass,
     overrides: s.theme.overrides,
   });
   applyBackdrop({
