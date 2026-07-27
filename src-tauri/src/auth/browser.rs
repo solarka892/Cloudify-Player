@@ -41,7 +41,12 @@ fn cookie_dbs() -> Vec<PathBuf> {
     };
 
     // Each root holds one directory per profile; the DB is directly inside.
+    // Note: on some setups (e.g. this one) browsers keep profiles under
+    // ~/.config/<browser> rather than the classic ~/.<browser>.
     let roots = [
+        home.join(".config/zen"),
+        home.join(".config/mozilla/firefox"),
+        home.join(".config/librewolf"),
         home.join(".zen"),
         home.join(".mozilla/firefox"),
         home.join(".librewolf"),
