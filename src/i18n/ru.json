@@ -20,5 +20,11 @@
     "manualPlaceholder": "Вставьте oauth_token",
     "manualSubmit": "Войти по токену",
     "manualChecking": "Проверка токена…"
+  },
+  "library": {
+    "likes": "Мои лайки",
+    "loading": "Загрузка…",
+    "empty": "Пока нет лайкнутых треков",
+    "error": "Не удалось загрузить библиотеку"
   }
 }

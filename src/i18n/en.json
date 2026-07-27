@@ -20,5 +20,11 @@
     "manualPlaceholder": "Paste oauth_token",
     "manualSubmit": "Sign in with token",
     "manualChecking": "Validating token…"
+  },
+  "library": {
+    "likes": "My likes",
+    "loading": "Loading…",
+    "empty": "No liked tracks yet",
+    "error": "Failed to load library"
   }
 }

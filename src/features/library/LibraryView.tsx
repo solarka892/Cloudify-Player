@@ -1,0 +1,91 @@
+import { useEffect, useState } from "react";
+import { Music } from "lucide-react";
+import { scGetLikes, type Track } from "@/lib/tauri";
+import { t } from "@/i18n";
+
+type LibraryState =
+  | { status: "loading" }
+  | { status: "ok"; tracks: Track[] }
+  | { status: "error"; message: string };
+
+/** Format milliseconds as m:ss. */
+function formatDuration(ms: number): string {
+  const total = Math.floor(ms / 1000);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+/** Bump SoundCloud artwork to a crisper size. */
+function artwork(url: string | null): string | null {
+  return url ? url.replace("-large", "-t120x120") : null;
+}
+
+export function LibraryView({ userId }: { userId: number }) {
+  const [state, setState] = useState<LibraryState>({ status: "loading" });
+
+  useEffect(() => {
+    let cancelled = false;
+    setState({ status: "loading" });
+    scGetLikes(userId)
+      .then((tracks) => !cancelled && setState({ status: "ok", tracks }))
+      .catch((e) => !cancelled && setState({ status: "error", message: String(e) }));
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  return (
+    <section className="flex w-full max-w-2xl flex-col gap-3">
+      <h2 className="text-lg font-semibold">{t.library.likes}</h2>
+
+      {state.status === "loading" && (
+        <p className="text-sm text-muted-foreground">{t.library.loading}</p>
+      )}
+
+      {state.status === "error" && (
+        <p className="text-sm text-red-400">
+          {t.library.error}: {state.message}
+        </p>
+      )}
+
+      {state.status === "ok" && state.tracks.length === 0 && (
+        <p className="text-sm text-muted-foreground">{t.library.empty}</p>
+      )}
+
+      {state.status === "ok" && state.tracks.length > 0 && (
+        <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
+          {state.tracks.map((track) => (
+            <TrackRow key={track.id} track={track} />
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function TrackRow({ track }: { track: Track }) {
+  const art = artwork(track.artwork_url);
+  return (
+    <li className="flex items-center gap-3 bg-card px-3 py-2 transition-colors hover:bg-accent">
+      {art ? (
+        <img src={art} alt="" className="h-10 w-10 rounded object-cover" />
+      ) : (
+        <div className="flex h-10 w-10 items-center justify-center rounded bg-secondary">
+          <Music className="h-4 w-4 text-muted-foreground" />
+        </div>
+      )}
+      <div className="flex min-w-0 flex-col">
+        <span className="truncate text-sm font-medium">{track.title}</span>
+        {track.artist && (
+          <span className="truncate text-xs text-muted-foreground">
+            {track.artist}
+          </span>
+        )}
+      </div>
+      <span className="ml-auto shrink-0 font-mono text-xs text-muted-foreground">
+        {formatDuration(track.duration)}
+      </span>
+    </li>
+  );
+}

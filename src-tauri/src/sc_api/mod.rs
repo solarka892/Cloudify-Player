@@ -13,9 +13,13 @@
 //! Reverse-engineering notes & verified endpoints: `docs/sc-api.md`.
 
 pub mod client_id;
+pub mod likes;
 pub mod me;
 
 pub use error::ScApiError;
+
+/// Base URL of SoundCloud's internal API.
+pub(crate) const API_V2: &str = "https://api-v2.soundcloud.com";
 
 mod error {
     use serde::{Serialize, Serializer};

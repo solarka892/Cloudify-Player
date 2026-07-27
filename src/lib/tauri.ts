@@ -68,3 +68,19 @@ export function scGetMe(): Promise<Me> {
 export function scSetToken(token: string): Promise<Me> {
   return invoke<Me>("sc_set_token", { token });
 }
+
+/** Minimal track projection used across the library/player UI. */
+export interface Track {
+  id: number;
+  /** Duration in milliseconds. */
+  duration: number;
+  title: string;
+  artwork_url: string | null;
+  permalink_url: string | null;
+  artist: string | null;
+}
+
+/** Fetch the given user's liked tracks (first page). Requires login. */
+export function scGetLikes(userId: number, limit?: number): Promise<Track[]> {
+  return invoke<Track[]>("sc_get_likes", { userId, limit });
+}

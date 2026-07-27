@@ -5,9 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{client_id, ScApiError, USER_AGENT};
-
-const API_V2: &str = "https://api-v2.soundcloud.com";
+use super::{client_id, ScApiError, API_V2, USER_AGENT};
 
 /// Minimal projection of the SoundCloud user object we need in the UI.
 #[derive(Debug, Serialize, Deserialize)]

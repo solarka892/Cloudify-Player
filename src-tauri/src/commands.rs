@@ -76,6 +76,20 @@ pub async fn sc_login_browser() -> Result<sc_api::me::Me, String> {
     }
 }
 
+/// Fetch the logged-in user's liked tracks (first page). Requires login.
+#[tauri::command]
+pub async fn sc_get_likes(
+    user_id: u64,
+    limit: Option<u32>,
+) -> Result<Vec<sc_api::likes::Track>, String> {
+    let token = auth::load_token()
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "not logged in".to_string())?;
+    sc_api::likes::get_liked_tracks(&token, user_id, limit.unwrap_or(50))
+        .await
+        .map_err(|e| e.to_string())
+}
+
 /// Manual login: validate a user-provided OAuth token against `/me`, and store
 /// it only if valid. This is the reliable fallback when SoundCloud blocks the
 /// embedded login with a captcha — the user logs in in their real browser and
