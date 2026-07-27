@@ -140,6 +140,13 @@ export function AudioSettings() {
           <p className="text-xs text-muted-foreground">{t.audio.warn}</p>
         </div>
 
+        <Row label={t.audio.visualizer} hint={t.audio.visualizerHint}>
+          <Switch
+            checked={audio.visualizer}
+            onCheckedChange={(visualizer) => setAudio({ visualizer })}
+          />
+        </Row>
+
         <Row label={t.audio.compressor} hint={t.audio.compressorHint}>
           <Switch
             checked={audio.compressor}

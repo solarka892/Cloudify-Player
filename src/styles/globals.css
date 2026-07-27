@@ -252,6 +252,18 @@
     box-shadow: var(--shadow-2);
   }
 
+  /* Fixed chrome (the player bar) sits above the scroll container, so its
+     backdrop is recomputed on every scrolled frame. A small radius plus a
+     more opaque surface reads the same and costs a fraction as much. */
+  :root[data-glass="1"] .panel-chrome {
+    backdrop-filter: blur(min(var(--blur), 10px));
+    background: color-mix(
+      in srgb,
+      var(--card) calc(var(--surface-alpha) + 18%),
+      transparent
+    );
+  }
+
   /* Section headings; uppercase and tracked out in skins that ask for it. */
   .label {
     text-transform: var(--label-transform);
@@ -320,11 +332,9 @@
 @keyframes view-enter {
   from {
     opacity: 0;
-    transform: translateY(6px);
   }
   to {
     opacity: 1;
-    transform: none;
   }
 }
 .view-enter {
@@ -383,7 +393,6 @@
       border-color var(--motion-fast) ease,
       color var(--motion-fast) ease,
       opacity var(--motion-fast) ease,
-      box-shadow var(--motion-fast) ease,
       transform var(--motion-fast) cubic-bezier(0.22, 0.8, 0.3, 1);
   }
 

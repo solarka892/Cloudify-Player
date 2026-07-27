@@ -1,7 +1,11 @@
 import { create } from "zustand";
 import { scGetStreamUrl, scRelatedTracks, type Track } from "@/lib/tauri";
 import { applyAudio, el, fadeTo, prepareForSource, resume } from "@/audio/engine";
-import { DEFAULT_VOLUME, useSettingsStore } from "@/stores/useSettingsStore";
+import {
+  DEFAULT_VOLUME,
+  setSourceReloader,
+  useSettingsStore,
+} from "@/stores/useSettingsStore";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
 
 /**
@@ -90,6 +94,8 @@ interface PlayerState {
   startRadio: (track: Track) => Promise<void>;
   /** Stop playback after N minutes; `null` cancels. */
   setSleep: (minutes: number | null) => void;
+  /** Re-fetch the current source, keeping the position. */
+  reloadSource: () => Promise<void>;
 }
 
 export const usePlayerStore = create<PlayerState>((set, get) => {
@@ -205,6 +211,38 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
     } catch (e) {
       if (token !== playToken) return;
       set({ isLoading: false, error: String(e), isPlaying: false });
+    }
+  }
+
+  /**
+   * Re-fetch the current source and resume where we were.
+   *
+   * Needed when the audio chain changes: the element's CORS mode is only read
+   * at load time, so a graph switched on mid-track does nothing until the
+   * source is re-assigned.
+   */
+  async function reloadInPlace(): Promise<void> {
+    const track = get().current;
+    if (!track) return;
+
+    const a = bindElement();
+    const at = a.currentTime;
+    const wasPlaying = !a.paused;
+    const token = ++playToken;
+
+    try {
+      const src = await resolveSource(track);
+      if (token !== playToken) return;
+
+      prepareForSource(useSettingsStore.getState().audio);
+      a.src = src;
+      a.currentTime = at;
+      a.volume = effectiveVolume();
+      if (wasPlaying) await a.play();
+      resume();
+      applyAudio(useSettingsStore.getState().audio);
+    } catch {
+      // Leave the element as it was; the user can hit play again.
     }
   }
 
@@ -447,6 +485,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
       }
     },
 
+    reloadSource: reloadInPlace,
+
     setSleep(minutes) {
       if (sleepHandle) clearTimeout(sleepHandle);
       if (minutes == null) {
@@ -468,3 +508,12 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
     },
   };
 });
+
+// The settings store asks for this when the audio chain changes; registering
+// it here avoids an import cycle between the two stores.
+setSourceReloader(() => reloadCurrentSource());
+
+/** Module-level handle so the reloader can reach the store's internals. */
+async function reloadCurrentSource(): Promise<void> {
+  await usePlayerStore.getState().reloadSource();
+}

@@ -33,7 +33,7 @@ function Shell({
   return (
     <button
       onClick={onClick}
-      className="group/tile rise-in flex w-full flex-col gap-2 rounded-[var(--radius)] p-2 text-left transition-[background-color,transform] duration-[var(--motion-fast)] hover:-translate-y-0.5 hover:bg-accent/60 active:scale-[0.98]"
+      className="group/tile flex w-full flex-col gap-2 rounded-[var(--radius)] p-2 text-left transition-[background-color,transform] duration-[var(--motion-fast)] hover:-translate-y-0.5 hover:bg-accent/60 active:scale-[0.98]"
     >
       <div className="relative aspect-square w-full">
         {art ? (

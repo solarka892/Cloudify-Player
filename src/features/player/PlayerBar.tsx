@@ -58,7 +58,7 @@ export function PlayerBar() {
           </div>
         )}
 
-        <footer className="panel panel-liquid flex h-20 w-full items-center gap-4 rounded-none border-x-0 border-b-0 px-4">
+        <footer className="panel panel-liquid panel-chrome flex h-20 w-full items-center gap-4 rounded-none border-x-0 border-b-0 px-4">
           {/* Track */}
           <div className="flex w-64 min-w-0 items-center gap-3">
             <button

@@ -8,7 +8,12 @@ import {
   type ThemeMode,
 } from "@/theme/apply";
 import { accentFromArtwork } from "@/theme/artwork";
-import { applyAudio, DEFAULT_AUDIO, type AudioConfig } from "@/audio/engine";
+import {
+  applyAudio,
+  DEFAULT_AUDIO,
+  needsGraph,
+  type AudioConfig,
+} from "@/audio/engine";
 import type { PaletteId } from "@/theme/palettes";
 import type { SkinId } from "@/theme/skins";
 import type { ThemeVars } from "@/theme/tokens";
@@ -178,6 +183,17 @@ interface SettingsState {
   setRadio: (on: boolean) => void;
   setAudio: (patch: Partial<AudioConfig>) => void;
   resetAudio: () => void;
+}
+
+/**
+ * Set by the player store at startup. Lets the settings store ask for a
+ * source reload without importing it — that would be a cycle, since the
+ * player already reads settings on every load.
+ */
+let reloadCurrentSource: () => Promise<void> = async () => {};
+
+export function setSourceReloader(fn: () => Promise<void>): void {
+  reloadCurrentSource = fn;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -376,9 +392,16 @@ export const useSettingsStore = create<SettingsState>()(
         setRadio: (radio) => set({ radio }),
 
         setAudio(patch) {
-          const audio = { ...get().audio, ...patch };
+          const before = get().audio;
+          const audio = { ...before, ...patch };
           set({ audio });
           applyAudio(audio);
+
+          // The CORS mode is fixed at load time, so turning the graph on or
+          // off only takes effect on the next source — reload in place.
+          if (needsGraph(before) !== needsGraph(audio)) {
+            void reloadCurrentSource();
+          }
         },
 
         resetAudio() {

@@ -23,27 +23,31 @@ interface NavProps {
 /** Icon-only column. Widens to show labels on hover. */
 export function NavRail({ view, onNavigate }: NavProps) {
   return (
-    <nav className="group/rail flex h-full w-14 shrink-0 flex-col gap-1 overflow-hidden border-r border-border p-2 transition-[width] duration-[var(--motion-slow)] hover:w-48">
-      <BrandMark compact />
-      {NAV_ITEMS.map(({ id, label, Icon }) => (
-        <button
-          key={id}
-          onClick={() => onNavigate(id)}
-          title={label}
-          className={cn(
-            "flex h-10 shrink-0 items-center gap-3 rounded-md px-2.5 text-sm transition-colors duration-[var(--motion-fast)]",
-            view === id
-              ? "bg-accent text-foreground"
-              : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
-          )}
-        >
-          <Icon className="h-[18px] w-[18px] shrink-0" />
-          <span className="label truncate opacity-0 transition-opacity duration-[var(--motion-fast)] group-hover/rail:opacity-100">
-            {label}
-          </span>
-        </button>
-      ))}
-    </nav>
+    <div className="relative h-full w-14 shrink-0">
+      <nav className="group/rail panel absolute inset-y-0 left-0 z-20 flex w-14 flex-col gap-1 overflow-hidden rounded-none border-y-0 border-l-0 p-2 transition-[width] duration-[var(--motion-slow)] hover:w-48">
+        <BrandMark compact />
+        {NAV_ITEMS.map(({ id, label, Icon }) => (
+          <button
+            key={id}
+            onClick={() => onNavigate(id)}
+            title={label}
+            className={cn(
+              "flex h-10 shrink-0 items-center gap-3 rounded-md px-2.5 text-sm",
+              view === id
+                ? "bg-accent text-foreground"
+                : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+            )}
+          >
+            <Icon className="h-[18px] w-[18px] shrink-0" />
+            {/* Fades in only after the width has finished travelling, so the
+                label is never painted half-clipped. */}
+            <span className="label whitespace-nowrap opacity-0 transition-opacity duration-[var(--motion-fast)] group-hover/rail:opacity-100 group-hover/rail:delay-[var(--motion-slow)]">
+              {label}
+            </span>
+          </button>
+        ))}
+      </nav>
+    </div>
   );
 }
 

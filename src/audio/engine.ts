@@ -18,6 +18,11 @@ export const EQ_BANDS = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
 
 export interface AudioConfig {
   eqEnabled: boolean;
+  /**
+   * Draw the spectrum. Needs the Web Audio graph — and therefore CORS — so it
+   * is a user choice, not something we switch on silently.
+   */
+  visualizer: boolean;
   /** Overall trim in dB, −12…+12. */
   preampDb: number;
   /** Per-band gain in dB, −12…+12; one entry per `EQ_BANDS`. */
@@ -32,6 +37,7 @@ export interface AudioConfig {
 
 export const DEFAULT_AUDIO: AudioConfig = {
   eqEnabled: false,
+  visualizer: false,
   preampDb: 0,
   bands: EQ_BANDS.map(() => 0),
   compressor: false,
@@ -65,6 +71,17 @@ export function el(): HTMLAudioElement {
   return a;
 }
 
+/** Everything that requires routing audio through the graph. */
+export function needsGraph(config: AudioConfig): boolean {
+  return (
+    config.eqEnabled ||
+    config.visualizer ||
+    config.compressor ||
+    config.mono ||
+    config.balance !== 0
+  );
+}
+
 /**
  * Whether the next load needs CORS.
  *
@@ -75,10 +92,8 @@ export function el(): HTMLAudioElement {
  * must be set before `src`, because it is only read at load time.
  */
 export function prepareForSource(config: AudioConfig): void {
-  const needsGraph =
-    config.eqEnabled || config.compressor || config.mono || config.balance !== 0;
   const a = el();
-  if (needsGraph) a.crossOrigin = "anonymous";
+  if (needsGraph(config)) a.crossOrigin = "anonymous";
   else a.removeAttribute("crossorigin");
 }
 
@@ -166,9 +181,7 @@ function ensureGraph(): Graph | null {
 
 /** Push a config onto the graph, building it if the user turned effects on. */
 export function applyAudio(config: AudioConfig): void {
-  const needsGraph =
-    config.eqEnabled || config.compressor || config.mono || config.balance !== 0;
-  if (!needsGraph && !graph) return; // nothing on, nothing built — stay simple
+  if (!needsGraph(config) && !graph) return; // nothing on — stay on the simple path
 
   const g = ensureGraph();
   if (!g) return;

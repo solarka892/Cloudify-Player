@@ -131,7 +131,8 @@
     "downloaded": "Downloaded",
     "sleep": "Sleep timer",
     "sleepCancel": "Cancel timer",
-    "minutes": "min"
+    "minutes": "min",
+    "enableVisualizer": "Enable visualiser"
   },
   "settings": {
     "layout": "Layout",
@@ -233,7 +234,9 @@
     "fadeHint": "Fade out and in when the track changes",
     "radio": "Radio after the queue",
     "radioHint": "Keep playing related tracks once the queue runs out",
-    "warn": "If sound disappears, turn the equaliser off and replay the track"
+    "warn": "If sound disappears, turn the equaliser off and replay the track",
+    "visualizer": "Visualiser",
+    "visualizerHint": "Spectrum in the full-screen player. Routes audio through processing, so the track reloads"
   },
   "keys": {
     "title": "Keyboard shortcuts",

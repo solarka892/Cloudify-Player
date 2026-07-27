@@ -22,6 +22,8 @@ import {
   VolumeControl,
 } from "./controls";
 import { LikeButton } from "@/components/LikeButton";
+import { useSettingsStore } from "@/stores/useSettingsStore";
+import { AudioLines } from "lucide-react";
 import { t } from "@/i18n";
 import { artwork, cn } from "@/lib/utils";
 
@@ -47,6 +49,8 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
   const active = useDownloadsStore((s) => s.active);
   const startDownload = useDownloadsStore((s) => s.start);
 
+  const visualizerOn = useSettingsStore((s) => s.audio.visualizer);
+  const setAudio = useSettingsStore((s) => s.setAudio);
   const [side, setSide] = useState<Side>("none");
   const [showSleep, setShowSleep] = useState(false);
 
@@ -127,7 +131,17 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
             )}
           </div>
 
-          <Visualizer mode="bars" height={48} className="w-full max-w-xl opacity-80" />
+          {visualizerOn ? (
+            <Visualizer mode="bars" height={48} className="w-full max-w-xl opacity-80" />
+          ) : (
+            <button
+              onClick={() => setAudio({ visualizer: true })}
+              className="flex items-center gap-2 rounded-[var(--radius-control)] border border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              <AudioLines className="h-3.5 w-3.5" />
+              {t.player.enableVisualizer}
+            </button>
+          )}
 
           <div className="w-full max-w-xl">
             <SeekBar />
