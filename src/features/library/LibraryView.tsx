@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { HardDriveDownload, Radio, RefreshCw, Search, Trash2 } from "lucide-react";
+import {
+  HardDriveDownload,
+  Radio,
+  RefreshCw,
+  Search,
+  Shuffle,
+  Trash2,
+} from "lucide-react";
 import { scStationTracks, type Track } from "@/lib/tauri";
 import { TrackList } from "@/components/TrackList";
 import { PlaylistList } from "@/components/PlaylistList";
@@ -35,6 +42,31 @@ function useFilter<T>(items: T[], key: (item: T) => string) {
     ? items.filter((item) => key(item).toLowerCase().includes(needle))
     : items;
   return { query, setQuery, filtered };
+}
+
+/** Start a list on shuffle without touching the shuffle toggle first. */
+function ShufflePlayButton({ tracks }: { tracks: Track[] }) {
+  const playTrack = usePlayerStore((s) => s.playTrack);
+  const shuffle = usePlayerStore((s) => s.shuffle);
+  const toggleShuffle = usePlayerStore((s) => s.toggleShuffle);
+
+  return (
+    <button
+      onClick={() => {
+        if (tracks.length === 0) return;
+        // Turn shuffle on first so the queue is built already scrambled.
+        if (!shuffle) toggleShuffle();
+        const first = tracks[Math.floor(Math.random() * tracks.length)]!;
+        void playTrack(first, tracks);
+      }}
+      disabled={tracks.length === 0}
+      title={t.library.shufflePlay}
+      className="flex shrink-0 items-center gap-1.5 rounded-[var(--radius-control)] border border-border px-2.5 py-1.5 text-xs text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground disabled:opacity-40"
+    >
+      <Shuffle className="h-4 w-4" />
+      {t.library.shufflePlay}
+    </button>
+  );
 }
 
 /** Search box shown above a filterable section. */
@@ -83,12 +115,14 @@ export function LibraryView({ userId }: { userId: number }) {
         ))}
       </nav>
 
+      <div key={section} className="view-enter">
       {section === "likes" && <LikesSection userId={userId} />}
       {section === "playlists" && <PlaylistsSection userId={userId} albums={false} />}
       {section === "albums" && <PlaylistsSection userId={userId} albums />}
       {section === "stations" && <StationsSection userId={userId} />}
       {section === "history" && <HistorySection userId={userId} />}
       {section === "downloads" && <DownloadsSection />}
+      </div>
     </div>
   );
 }
@@ -119,6 +153,7 @@ function LikesSection({ userId }: { userId: number }) {
             onChange={setQuery}
             placeholder={t.library.searchLikes}
           />
+          <ShufflePlayButton tracks={filtered} />
           <DownloadAllButton tracks={filtered} />
         </>
       }

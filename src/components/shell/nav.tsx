@@ -1,4 +1,5 @@
 import { Settings } from "lucide-react";
+import { Logo } from "@/components/Logo";
 import { NAV_ITEMS, type ViewId } from "./nav-items";
 import { useLibraryStore } from "@/stores/useLibraryStore";
 import { useNavStore } from "@/stores/useNavStore";
@@ -146,17 +147,7 @@ function BrandMark({ compact = false }: { compact?: boolean }) {
       className="flex h-10 shrink-0 items-center gap-2 px-1.5 text-left"
       aria-label="cloudify"
     >
-      <span className="brand-gradient flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[13px] font-black text-white">
-        c
-      </span>
-      {!compact && (
-        <span
-          className="brand-text text-lg font-bold tracking-tight"
-          style={{ fontFamily: "var(--font-display)" }}
-        >
-          cloudify
-        </span>
-      )}
+      <Logo compact={compact} />
     </button>
   );
 }

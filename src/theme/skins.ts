@@ -9,7 +9,7 @@ import type { SkinVars } from "./tokens";
  * fonts).
  */
 
-export type SkinId = "aurora" | "editorial" | "studio";
+export type SkinId = "aurora" | "editorial" | "studio" | "apple";
 
 export interface Skin {
   id: SkinId;
@@ -18,11 +18,42 @@ export interface Skin {
   vars: SkinVars;
 }
 
+/** What macOS actually uses, with sane fallbacks off-platform. */
+const APPLE_SANS =
+  '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "Segoe UI", Inter, system-ui, sans-serif';
+
 const SANS =
   'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 const SERIF = 'ui-serif, Georgia, "Iowan Old Style", "Times New Roman", serif';
 
 export const SKINS: Record<SkinId, Skin> = {
+  /**
+   * Apple: continuous-looking corners, heavy vibrancy, hairline separators and
+   * almost no shadow. Deliberately quiet — the surface does the work, not
+   * decoration.
+   */
+  apple: {
+    id: "apple",
+    name: "Apple",
+    hint: "Много стекла, крупные скругления, минимум украшений",
+    vars: {
+      "--radius": "1.125rem",
+      "--radius-control": "0.75rem",
+      "--radius-hero": "1.5rem",
+      "--border-width": "0.5px",
+      "--blur": "30px",
+      "--surface-alpha": "62%",
+      "--shadow-1": "0 0.5px 0 oklch(1 0 0 / 0.08), 0 4px 16px oklch(0 0 0 / 0.16)",
+      "--shadow-2": "0 0.5px 0 oklch(1 0 0 / 0.1), 0 16px 48px oklch(0 0 0 / 0.28)",
+      "--font-ui": APPLE_SANS,
+      "--font-display": APPLE_SANS,
+      "--label-transform": "none",
+      "--label-spacing": "-0.01em",
+      "--motion-fast": "160ms",
+      "--motion-slow": "380ms",
+    },
+  },
+
   /** Soft, translucent, generous. Leans on the artwork backdrop. */
   aurora: {
     id: "aurora",

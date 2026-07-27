@@ -64,7 +64,8 @@
     "searchLikes": "Поиск по лайкам",
     "searchTracks": "Поиск по трекам",
     "searchPlaylists": "Поиск по плейлистам",
-    "searchPeople": "Поиск по людям"
+    "searchPeople": "Поиск по людям",
+    "shufflePlay": "Вперемешку"
   },
   "profile": {
     "you": "Ваш профиль",
@@ -188,7 +189,16 @@
     "glass": "Liquid glass",
     "glassHint": "Полупрозрачные поверхности с размытием",
     "glassOn": "Включить стекло",
-    "glassPerf": "Заметно грузит отрисовку — выключите, если интерфейс подтормаживает"
+    "glassPerf": "Заметно грузит отрисовку — выключите, если интерфейс подтормаживает",
+    "apple": "Apple mode",
+    "appleHint": "Оформление в духе macOS: стекло, крупные скругления, минимум декора",
+    "appleOn": "Включить Apple mode",
+    "appleOnHint": "Ставит скин Apple и включает стекло",
+    "vibrancy": "Vibrancy",
+    "vibrancyHint": "Насколько поверхности прозрачные",
+    "roundness": "Скругления",
+    "reduceTransparency": "Меньше прозрачности",
+    "reduceTransparencyHint": "Как в системных настройках Apple: форма остаётся, стекло уходит"
   },
   "lyrics": {
     "loading": "Ищем текст…",

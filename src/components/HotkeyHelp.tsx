@@ -23,7 +23,7 @@ export function HotkeyHelp({ onClose }: { onClose: () => void }) {
       onClick={onClose}
     >
       <div
-        className="panel panel-raised w-full max-w-md p-5"
+        className="panel panel-raised pop-in w-full max-w-md p-5"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-3 flex items-center">

@@ -9,6 +9,7 @@ import {
 } from "@/lib/tauri";
 import { AppShell } from "@/components/shell/AppShell";
 import { Toaster } from "@/components/Toaster";
+import { LogoMark } from "@/components/Logo";
 import { HotkeyHelp } from "@/components/HotkeyHelp";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
@@ -78,7 +79,7 @@ function App() {
   const currentArt = usePlayerStore((s) => s.current?.artwork_url ?? null);
   const setArtwork = useSettingsStore((s) => s.setArtwork);
   useEffect(() => {
-    void setArtwork(artwork(currentArt, "t500x500"));
+    void setArtwork(artwork(currentArt, "t120x120"));
   }, [currentArt, setArtwork]);
 
   const refreshMe = useCallback(async () => {
@@ -139,6 +140,8 @@ function App() {
       <Toaster />
       {showHelp && <HotkeyHelp onClose={() => setShowHelp(false)} />}
 
+      {/* Keyed so a tab change remounts and replays the entry animation. */}
+      <div key={detail ? `detail-${detail.kind}-${detail.id}` : view} className="view-enter">
       {detail ? (
         <DetailView detail={detail} />
       ) : (
@@ -167,6 +170,7 @@ function App() {
           )}
         </>
       )}
+      </div>
     </AppShell>
   );
 }
@@ -192,9 +196,7 @@ function LoginView({
       )}
       <div className="panel panel-raised relative z-10 flex w-full max-w-md flex-col items-center gap-5 rounded-[var(--radius-hero)] p-8">
         <div className="flex flex-col items-center gap-2">
-          <span className="brand-gradient flex h-14 w-14 items-center justify-center rounded-[var(--radius)] text-3xl font-black text-white">
-            c
-          </span>
+          <LogoMark className="h-16 w-24" />
           <h1
             className="brand-text text-4xl font-bold tracking-tight"
             style={{ fontFamily: "var(--font-display)" }}

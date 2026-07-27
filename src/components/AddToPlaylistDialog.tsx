@@ -71,7 +71,7 @@ export function AddToPlaylistDialog({
       onClick={onClose}
     >
       <div
-        className="panel panel-raised flex max-h-[70vh] w-full max-w-md flex-col overflow-hidden"
+        className="panel panel-raised pop-in flex max-h-[70vh] w-full max-w-md flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2 border-b border-border px-4 py-3">

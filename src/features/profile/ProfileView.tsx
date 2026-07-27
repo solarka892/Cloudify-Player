@@ -118,8 +118,6 @@ export function ProfileView({
     { id: "tracks", label: t.profile.tracks, count: profile?.track_count },
     { id: "playlists", label: t.profile.playlists, count: profile?.playlist_count },
     { id: "likes", label: t.library.likes, count: profile?.likes_count },
-    { id: "followers", label: t.profile.followers, count: profile?.followers_count },
-    { id: "following", label: t.profile.following, count: profile?.followings_count },
   ];
 
   return (
@@ -185,9 +183,24 @@ export function ProfileView({
             )}
 
             <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-              <Stat value={profile?.followers_count} label={t.profile.followers} />
-              <Stat value={profile?.followings_count} label={t.profile.following} />
-              <Stat value={profile?.track_count} label={t.profile.tracks} />
+              <Stat
+                value={profile?.followers_count}
+                label={t.profile.followers}
+                active={tab === "followers"}
+                onClick={() => setTab("followers")}
+              />
+              <Stat
+                value={profile?.followings_count}
+                label={t.profile.following}
+                active={tab === "following"}
+                onClick={() => setTab("following")}
+              />
+              <Stat
+                value={profile?.track_count}
+                label={t.profile.tracks}
+                active={tab === "tracks"}
+                onClick={() => setTab("tracks")}
+              />
               {(profile?.city || profile?.country_code) && (
                 <span className="inline-flex items-center gap-1">
                   <MapPin className="h-3.5 w-3.5" />
@@ -315,17 +328,28 @@ export function ProfileView({
   );
 }
 
+/** A header count. Clicking it opens the matching list, like on the website. */
 function Stat({
   value,
   label,
+  active,
+  onClick,
 }: {
   value: number | null | undefined;
   label: string;
+  active: boolean;
+  onClick: () => void;
 }) {
   return (
-    <span>
+    <button
+      onClick={onClick}
+      className={cn(
+        "rounded-[var(--radius-control)] px-1.5 py-0.5 transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground",
+        active && "text-foreground",
+      )}
+    >
       <b className="text-foreground">{formatCount(value)}</b> {label}
-    </span>
+    </button>
   );
 }
 

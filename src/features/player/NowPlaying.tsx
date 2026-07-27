@@ -57,7 +57,7 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
   const downloading = active[current.id];
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-background">
+    <div className="view-enter fixed inset-0 z-50 flex flex-col bg-background">
       {/* The cover, blown up and blurred, is the room's lighting. */}
       {art && (
         <div
@@ -243,7 +243,7 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
 
         {/* Side panel */}
         {side !== "none" && (
-          <aside className="panel hidden w-[26rem] shrink-0 overflow-hidden lg:flex lg:flex-col">
+          <aside className="panel pop-in hidden w-[26rem] shrink-0 overflow-hidden lg:flex lg:flex-col">
             {side === "queue" ? (
               <QueuePanel onClose={() => setSide("none")} />
             ) : (

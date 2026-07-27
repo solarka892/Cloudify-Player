@@ -190,6 +190,10 @@
     filter: blur(var(--backdrop-blur)) saturate(var(--backdrop-saturate));
     /* Overscan so the blur doesn't reveal the edges. */
     transform: scale(1.12);
+    /* The source is a 120px thumbnail: upscaling it costs nothing next to
+       filtering a full-resolution cover, and 40px of blur hides the
+       difference entirely. */
+    image-rendering: auto;
     transition: background-image var(--motion-slow) ease;
   }
   .app-backdrop::after {
@@ -306,4 +310,50 @@
 }
 :root[data-disco="1"] body {
   animation: disco 6s linear infinite;
+}
+
+/* View transitions: content slides up a few pixels as it fades in. Keyed on
+   the active tab, so switching sections always replays it. */
+@keyframes view-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.view-enter {
+  animation: view-enter var(--motion-slow) cubic-bezier(0.22, 0.8, 0.3, 1);
+}
+
+/* Rows and tiles stagger in behind the view. */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.rise-in {
+  animation: rise-in var(--motion-slow) cubic-bezier(0.22, 0.8, 0.3, 1) both;
+}
+
+/* Panels that appear over the app (queue, lyrics, menus, dialogs). */
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.pop-in {
+  animation: pop-in var(--motion-fast) cubic-bezier(0.22, 0.8, 0.3, 1);
 }

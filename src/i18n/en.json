@@ -64,7 +64,8 @@
     "searchLikes": "Search likes",
     "searchTracks": "Search tracks",
     "searchPlaylists": "Search playlists",
-    "searchPeople": "Search people"
+    "searchPeople": "Search people",
+    "shufflePlay": "Shuffle"
   },
   "profile": {
     "you": "Your profile",
@@ -188,7 +189,16 @@
     "glass": "Liquid glass",
     "glassHint": "Translucent, blurred surfaces",
     "glassOn": "Enable glass",
-    "glassPerf": "Costly to render — turn it off if the UI feels sluggish"
+    "glassPerf": "Costly to render — turn it off if the UI feels sluggish",
+    "apple": "Apple mode",
+    "appleHint": "macOS-flavoured: vibrancy, large corners, very little decoration",
+    "appleOn": "Enable Apple mode",
+    "appleOnHint": "Switches to the Apple skin and turns glass on",
+    "vibrancy": "Vibrancy",
+    "vibrancyHint": "How see-through surfaces are",
+    "roundness": "Corner roundness",
+    "reduceTransparency": "Reduce transparency",
+    "reduceTransparencyHint": "Like the Apple accessibility setting: keeps the shape, drops the glass"
   },
   "lyrics": {
     "loading": "Looking for lyrics…",

@@ -60,11 +60,26 @@ let graphUnavailable = false;
 export function el(): HTMLAudioElement {
   if (element) return element;
   const a = new Audio();
-  // Required for Web Audio to read the samples; harmless without it.
-  a.crossOrigin = "anonymous";
   a.preload = "auto";
   element = a;
   return a;
+}
+
+/**
+ * Whether the next load needs CORS.
+ *
+ * `crossOrigin="anonymous"` is required for Web Audio to read the samples, but
+ * it also makes the *media load itself* fail on any host that doesn't answer
+ * with CORS headers. Requesting it unconditionally cost us playback on some
+ * tracks, so it is only set when an effect actually needs the graph — and it
+ * must be set before `src`, because it is only read at load time.
+ */
+export function prepareForSource(config: AudioConfig): void {
+  const needsGraph =
+    config.eqEnabled || config.compressor || config.mono || config.balance !== 0;
+  const a = el();
+  if (needsGraph) a.crossOrigin = "anonymous";
+  else a.removeAttribute("crossorigin");
 }
 
 /**

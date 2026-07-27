@@ -49,6 +49,14 @@ export interface ThemeState {
   uiScale: number;
   /** Liquid-glass surfaces. Costly to render; the toggle is the perf escape. */
   glass: boolean;
+  /** Apple mode: the apple skin plus its own vibrancy/roundness knobs. */
+  apple: boolean;
+  /** Vibrancy as a percentage of opacity, 30–100. Lower is more see-through. */
+  appleVibrancy: number;
+  /** Corner roundness in px, 6–26. */
+  appleRoundness: number;
+  /** Accessibility-style escape hatch: drop transparency, keep the shape. */
+  appleReduceTransparency: boolean;
   /** Hand-edited CSS custom properties; win over everything else. */
   overrides: ThemeVars;
 }
@@ -86,8 +94,31 @@ const DEFAULT_THEME: ThemeState = {
   // Off by default: `backdrop-filter` on every surface is the biggest
   // rendering cost on a software-composited desktop. Opt in, don't opt out.
   glass: false,
+  apple: false,
+  appleVibrancy: 62,
+  appleRoundness: 18,
+  appleReduceTransparency: false,
   overrides: {},
 };
+
+/** Fold the Apple knobs into plain token overrides. */
+function appleOverrides(theme: ThemeState): ThemeState {
+  const overrides = { ...theme.overrides };
+  if (theme.apple) {
+    overrides["--surface-alpha"] = theme.appleReduceTransparency
+      ? "100%"
+      : `${theme.appleVibrancy}%`;
+    overrides["--radius"] = `${theme.appleRoundness}px`;
+    overrides["--radius-control"] = `${Math.round(theme.appleRoundness * 0.62)}px`;
+    overrides["--radius-hero"] = `${Math.round(theme.appleRoundness * 1.4)}px`;
+  } else {
+    delete overrides["--surface-alpha"];
+    delete overrides["--radius"];
+    delete overrides["--radius-control"];
+    delete overrides["--radius-hero"];
+  }
+  return { ...theme, overrides };
+}
 
 const DEFAULT_BACKDROP: BackdropState = {
   mode: "none",
@@ -216,7 +247,18 @@ export const useSettingsStore = create<SettingsState>()(
         },
 
         setTheme(patch) {
-          set({ theme: { ...get().theme, ...patch } });
+          const next = { ...get().theme, ...patch };
+
+          // Entering Apple mode carries its own defaults; leaving it restores
+          // the previous skin rather than stranding the user on `apple`.
+          if (patch.apple === true) {
+            next.skin = "apple";
+            next.glass = !next.appleReduceTransparency;
+          } else if (patch.apple === false && next.skin === "apple") {
+            next.skin = "aurora";
+          }
+
+          set({ theme: appleOverrides(next) });
           sync();
         },
 

@@ -72,7 +72,7 @@ export function TrackContextMenu({
 
   return (
     <div
-      className="panel panel-raised fixed z-[80] flex w-56 flex-col p-1"
+      className="panel panel-raised pop-in fixed z-[80] flex w-56 flex-col p-1"
       style={{ left, top }}
       onClick={(e) => e.stopPropagation()}
       role="menu"

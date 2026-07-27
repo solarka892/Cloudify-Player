@@ -47,7 +47,7 @@ export function PlayerBar() {
 
       <div className="relative">
         {panel !== "none" && (
-          <div className="panel panel-raised absolute bottom-full right-4 mb-2 flex h-[26rem] w-[24rem] flex-col overflow-hidden">
+          <div className="panel panel-raised pop-in absolute bottom-full right-4 mb-2 flex h-[26rem] w-[24rem] flex-col overflow-hidden">
             {panel === "queue" ? (
               <QueuePanel onClose={() => setPanel("none")} />
             ) : (

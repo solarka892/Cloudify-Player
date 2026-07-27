@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { scGetStreamUrl, scRelatedTracks, type Track } from "@/lib/tauri";
-import { applyAudio, el, fadeTo, resume } from "@/audio/engine";
+import { applyAudio, el, fadeTo, prepareForSource, resume } from "@/audio/engine";
 import { DEFAULT_VOLUME, useSettingsStore } from "@/stores/useSettingsStore";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
 
@@ -172,9 +172,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
     // is a network round trip that can be slow or fail, and leaving the old
     // audio running behind the new title/cover is the worst possible state.
     if (fadeMs > 0 && !a.paused) await fadeTo(0, fadeMs);
+    // Pause only. Clearing `src` and calling `load()` fires a spurious error
+    // event for the empty source; assigning the new `src` resets the element
+    // anyway, and a failed resolve then leaves the old track merely paused.
     a.pause();
-    a.removeAttribute("src");
-    a.load();
 
     set({
       pos: orderPos,
@@ -191,6 +192,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
       const src = await resolveSource(track);
       if (token !== playToken) return; // superseded while resolving
 
+      // Must precede `src`: the CORS mode is read at load time.
+      prepareForSource(useSettingsStore.getState().audio);
       a.src = src;
       a.playbackRate = get().rate;
       a.volume = fadeMs > 0 ? 0 : effectiveVolume();

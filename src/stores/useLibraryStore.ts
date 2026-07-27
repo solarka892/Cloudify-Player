@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import {
   scAddToPlaylist,
   scCreatePlaylist,
@@ -22,9 +23,14 @@ import {
  * used to refetch the whole likes list). Sections load once per user; only an
  * explicit refresh re-fetches.
  *
- * A future SQLite-backed cache (`src-tauri/src/cache/`) would make this survive
- * restarts too — this store is the seam it would plug into.
+ * Sections are also written to localStorage, so a restart shows the library
+ * instantly and only refreshes what has gone stale. A likes list of a few
+ * thousand tracks serialises to a few hundred KB; if the quota is ever
+ * exceeded the write is dropped and the app simply refetches next time.
  */
+
+/** Cached sections older than this are refreshed in the background. */
+const STALE_AFTER_MS = 12 * 60 * 60 * 1000;
 
 type Status = "idle" | "loading" | "ok" | "error";
 
@@ -54,6 +60,8 @@ interface LibraryState {
   likedIds: Set<number>;
   /** User ids the user follows. */
   followingIds: Set<number>;
+  /** When each section was last fetched, for staleness checks. */
+  fetchedAt: Partial<Record<string, number>>;
 
   /** Fetch unless already loaded (or loading) for this user. */
   loadLikes: (userId: number) => Promise<void>;
@@ -76,7 +84,9 @@ interface LibraryState {
   createPlaylist: (title: string, track?: Track) => Promise<void>;
 }
 
-export const useLibraryStore = create<LibraryState>((set, get) => {
+export const useLibraryStore = create<LibraryState>()(
+  persist(
+    (set, get) => {
   /** Drop every cached section when the logged-in user changes. */
   function ensureUser(userId: number) {
     if (get().userId === userId) return;
@@ -89,6 +99,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => {
       history: emptySection(),
       likedIds: new Set(),
       followingIds: new Set(),
+      fetchedAt: {},
     });
   }
 
@@ -98,6 +109,13 @@ export const useLibraryStore = create<LibraryState>((set, get) => {
       get().userId === userId &&
       (section.status === "ok" || section.status === "loading")
     );
+  }
+
+  /** Cached data is shown at once; a stale cache refreshes behind it. */
+  function refreshIfStale(key: string, refetch: () => Promise<void>): void {
+    const at = get().fetchedAt[key] ?? 0;
+    if (Date.now() - at < STALE_AFTER_MS) return;
+    void refetch();
   }
 
   /**
@@ -121,7 +139,13 @@ export const useLibraryStore = create<LibraryState>((set, get) => {
     try {
       const result = await fetcher();
       if (get().userId !== userId) return;
-      set(result);
+      set({
+        ...result,
+        fetchedAt: {
+          ...get().fetchedAt,
+          ...Object.fromEntries(keys.map((k) => [k, Date.now()])),
+        },
+      });
     } catch (e) {
       if (get().userId !== userId) return;
       const failed = Object.fromEntries(
@@ -182,21 +206,34 @@ export const useLibraryStore = create<LibraryState>((set, get) => {
     history: emptySection(),
     likedIds: new Set(),
     followingIds: new Set(),
+    fetchedAt: {},
 
     async loadLikes(userId) {
-      if (isFresh(get().likes, userId)) return;
+      if (isFresh(get().likes, userId)) {
+        refreshIfStale("likes", () => loadLikesFor(userId));
+        return;
+      }
       await loadLikesFor(userId);
     },
     async loadPlaylists(userId) {
-      if (isFresh(get().ownPlaylists, userId)) return;
+      if (isFresh(get().ownPlaylists, userId)) {
+        refreshIfStale("ownPlaylists", () => loadPlaylistsFor(userId));
+        return;
+      }
       await loadPlaylistsFor(userId);
     },
     async loadFollowings(userId) {
-      if (isFresh(get().followings, userId)) return;
+      if (isFresh(get().followings, userId)) {
+        refreshIfStale("followings", () => loadFollowingsFor(userId));
+        return;
+      }
       await loadFollowingsFor(userId);
     },
     async loadHistory(userId) {
-      if (isFresh(get().history, userId)) return;
+      if (isFresh(get().history, userId)) {
+        refreshIfStale("history", () => loadHistoryFor(userId));
+        return;
+      }
       await loadHistoryFor(userId);
     },
 
@@ -317,5 +354,35 @@ export const useLibraryStore = create<LibraryState>((set, get) => {
       // The server fills in artwork and the permalink; pick those up quietly.
       if (userId != null) void loadPlaylistsFor(userId);
     },
-  };
-});
+      };
+    },
+    {
+      name: "cloudify.library",
+      version: 1,
+      // Sets don't survive JSON; store ids as arrays and rebuild on load.
+      partialize: (s) => ({
+        userId: s.userId,
+        likes: s.likes,
+        ownPlaylists: s.ownPlaylists,
+        likedPlaylists: s.likedPlaylists,
+        followings: s.followings,
+        history: s.history,
+        fetchedAt: s.fetchedAt,
+        likedIds: [...s.likedIds],
+        followingIds: [...s.followingIds],
+      }),
+      merge: (persisted, current) => {
+        const saved = persisted as Partial<LibraryState> & {
+          likedIds?: number[];
+          followingIds?: number[];
+        };
+        return {
+          ...current,
+          ...saved,
+          likedIds: new Set(saved?.likedIds ?? []),
+          followingIds: new Set(saved?.followingIds ?? []),
+        };
+      },
+    },
+  ),
+);

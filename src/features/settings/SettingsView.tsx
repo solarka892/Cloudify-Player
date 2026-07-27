@@ -294,6 +294,52 @@ export function SettingsView() {
         </Row>
       </Group>
 
+      {/* ── Apple mode ─────────────────────────────────────────────────── */}
+      <Group title={t.settings.apple} hint={t.settings.appleHint}>
+        <Row label={t.settings.appleOn} hint={t.settings.appleOnHint}>
+          <Switch
+            checked={theme.apple}
+            onCheckedChange={(apple) => setTheme({ apple })}
+          />
+        </Row>
+
+        {theme.apple && (
+          <>
+            <Row label={t.settings.vibrancy} hint={t.settings.vibrancyHint}>
+              <Slider
+                value={theme.appleVibrancy}
+                min={30}
+                max={100}
+                step={2}
+                suffix="%"
+                onChange={(appleVibrancy) => setTheme({ appleVibrancy })}
+              />
+            </Row>
+            <Row label={t.settings.roundness}>
+              <Slider
+                value={theme.appleRoundness}
+                min={6}
+                max={26}
+                step={1}
+                suffix="px"
+                onChange={(appleRoundness) => setTheme({ appleRoundness })}
+              />
+            </Row>
+            <Row
+              label={t.settings.reduceTransparency}
+              hint={t.settings.reduceTransparencyHint}
+            >
+              <Switch
+                checked={theme.appleReduceTransparency}
+                onCheckedChange={(appleReduceTransparency) =>
+                  setTheme({ appleReduceTransparency })
+                }
+              />
+            </Row>
+          </>
+        )}
+      </Group>
+
       <Group title={t.settings.glass} hint={t.settings.glassHint}>
         <Row label={t.settings.glassOn} hint={t.settings.glassPerf}>
           <Switch
