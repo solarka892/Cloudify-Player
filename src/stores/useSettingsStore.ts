@@ -8,6 +8,7 @@ import {
   type ThemeMode,
 } from "@/theme/apply";
 import { accentFromArtwork } from "@/theme/artwork";
+import { applyAudio, DEFAULT_AUDIO, type AudioConfig } from "@/audio/engine";
 import type { PaletteId } from "@/theme/palettes";
 import type { SkinId } from "@/theme/skins";
 import type { ThemeVars } from "@/theme/tokens";
@@ -96,10 +97,18 @@ interface SettingsState {
   theme: ThemeState;
   backdrop: BackdropState;
   presets: Preset[];
+  /** Ids of easter-egg extras the user has found. */
+  unlocked: string[];
 
   autoplayNext: boolean;
   rememberVolume: boolean;
   volume: number;
+  /** Cross-track fade in ms; 0 switches instantly. */
+  fadeMs: number;
+  /** Keep playing past the end of the queue with related tracks. */
+  radio: boolean;
+  /** Equaliser and the rest of the signal chain. */
+  audio: AudioConfig;
 
   /** Accent sampled from the current cover. Runtime only — never persisted. */
   artworkAccent: { brand: string; brand2: string } | null;
@@ -107,6 +116,8 @@ interface SettingsState {
   artworkUrl: string | null;
 
   setLayout: (layout: LayoutId) => void;
+  /** Reveal a hidden extra. Returns true the first time only. */
+  unlock: (id: string) => boolean;
   setTheme: (patch: Partial<ThemeState>) => void;
   setOverride: (name: string, value: string | null) => void;
   resetTheme: () => void;
@@ -127,6 +138,10 @@ interface SettingsState {
   setAutoplayNext: (on: boolean) => void;
   setRememberVolume: (on: boolean) => void;
   rememberCurrentVolume: (volume: number) => void;
+  setFadeMs: (ms: number) => void;
+  setRadio: (on: boolean) => void;
+  setAudio: (patch: Partial<AudioConfig>) => void;
+  resetAudio: () => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -174,15 +189,25 @@ export const useSettingsStore = create<SettingsState>()(
         theme: DEFAULT_THEME,
         backdrop: DEFAULT_BACKDROP,
         presets: [],
+        unlocked: [],
 
         autoplayNext: true,
         rememberVolume: true,
         volume: DEFAULT_VOLUME,
+        fadeMs: 0,
+        radio: false,
+        audio: { ...DEFAULT_AUDIO },
 
         artworkAccent: null,
         artworkUrl: null,
 
         setLayout: (layout) => set({ layout }),
+
+        unlock(id) {
+          if (get().unlocked.includes(id)) return false;
+          set({ unlocked: [...get().unlocked, id] });
+          return true;
+        },
 
         setTheme(patch) {
           set({ theme: { ...get().theme, ...patch } });
@@ -293,6 +318,20 @@ export const useSettingsStore = create<SettingsState>()(
         setAutoplayNext: (autoplayNext) => set({ autoplayNext }),
         setRememberVolume: (rememberVolume) => set({ rememberVolume }),
         rememberCurrentVolume: (volume) => set({ volume }),
+        setFadeMs: (fadeMs) => set({ fadeMs }),
+        setRadio: (radio) => set({ radio }),
+
+        setAudio(patch) {
+          const audio = { ...get().audio, ...patch };
+          set({ audio });
+          applyAudio(audio);
+        },
+
+        resetAudio() {
+          const audio = { ...DEFAULT_AUDIO };
+          set({ audio });
+          applyAudio(audio);
+        },
       };
     },
     {
@@ -304,9 +343,13 @@ export const useSettingsStore = create<SettingsState>()(
         theme: s.theme,
         backdrop: s.backdrop,
         presets: s.presets,
+        unlocked: s.unlocked,
         autoplayNext: s.autoplayNext,
         rememberVolume: s.rememberVolume,
         volume: s.volume,
+        fadeMs: s.fadeMs,
+        radio: s.radio,
+        audio: s.audio,
       }),
       // v1 stored a flat {theme, accent, ...}; start those users clean rather
       // than half-migrating into the three-axis model.

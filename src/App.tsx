@@ -8,6 +8,10 @@ import {
   type Me,
 } from "@/lib/tauri";
 import { AppShell } from "@/components/shell/AppShell";
+import { Toaster } from "@/components/Toaster";
+import { HotkeyHelp } from "@/components/HotkeyHelp";
+import { useHotkeys } from "@/hooks/useHotkeys";
+import { useDownloadsStore } from "@/stores/useDownloadsStore";
 import type { ViewId } from "@/components/shell/nav";
 import { HomeView } from "@/features/home/HomeView";
 import { LibraryView } from "@/features/library/LibraryView";
@@ -32,8 +36,42 @@ type AuthStatus =
 function App() {
   const [auth, setAuth] = useState<AuthStatus>({ state: "unknown" });
   const [view, setView] = useState<ViewId>("home");
+  const [showHelp, setShowHelp] = useState(false);
   const detail = useNavStore((s) => s.detail);
   const closeDetail = useNavStore((s) => s.back);
+  const nowPlaying = useNavStore((s) => s.nowPlaying);
+  const setNowPlaying = useNavStore((s) => s.setNowPlaying);
+  const requestSearchFocus = useNavStore((s) => s.requestSearchFocus);
+  const loadDownloads = useDownloadsStore((s) => s.load);
+  const current = usePlayerStore((s) => s.current);
+
+  // The offline library gates the download buttons and the playback source,
+  // so it has to be known before the first play.
+  useEffect(() => {
+    void loadDownloads();
+  }, [loadDownloads]);
+
+  // Window title follows the music, the way a media player should.
+  useEffect(() => {
+    document.title = current
+      ? `${current.title}${current.artist ? ` — ${current.artist}` : ""}`
+      : "cloudify";
+  }, [current]);
+
+  useHotkeys({
+    toggleHelp: () => setShowHelp((v) => !v),
+    focusSearch: () => {
+      setView("search");
+      requestSearchFocus();
+    },
+    toggleFullscreen: () => {
+      if (usePlayerStore.getState().current) setNowPlaying(!nowPlaying);
+    },
+    closeOverlays: () => {
+      setShowHelp(false);
+      setNowPlaying(false);
+    },
+  });
 
   // Feed the playing cover to the theme engine: it drives the artwork
   // backdrop and, when enabled, the accent colour.
@@ -98,6 +136,9 @@ function App() {
       }}
       player={<PlayerBar />}
     >
+      <Toaster />
+      {showHelp && <HotkeyHelp onClose={() => setShowHelp(false)} />}
+
       {detail ? (
         <DetailView detail={detail} />
       ) : (

@@ -4,13 +4,15 @@
 //!   - `sc_api`    — EVERYTHING touching the SoundCloud internal API lives here.
 //!   - `auth`      — OAuth flow, keyring, sessions.
 //!   - `cache`     — local SQLite metadata cache.
-//!   - `downloads` — track downloads (added later).
+//!   - `downloads` — offline library: files on disk + SQLite index.
+//!   - `lyrics`    — LRCLIB (the only non-SoundCloud service we talk to).
 //!   - `commands`  — Tauri commands, the Rust↔JS bridge.
 
 mod auth;
 mod cache;
 mod commands;
 mod downloads;
+mod lyrics;
 mod sc_api;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -35,7 +37,16 @@ pub fn run() {
             commands::sc_search_tracks,
             commands::sc_search_users,
             commands::sc_search_playlists,
-            commands::sc_get_stream_url
+            commands::sc_get_stream_url,
+            commands::sc_mixed_selections,
+            commands::sc_related_tracks,
+            commands::sc_station_tracks,
+            commands::sc_stream,
+            commands::sc_play_history,
+            commands::get_lyrics,
+            commands::download_track,
+            commands::list_downloads,
+            commands::delete_download
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

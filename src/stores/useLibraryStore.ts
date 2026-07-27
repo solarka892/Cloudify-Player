@@ -4,6 +4,7 @@ import {
   scGetLikedPlaylists,
   scGetLikes,
   scGetPlaylists,
+  scPlayHistory,
   type Playlist,
   type Track,
   type User,
@@ -43,15 +44,19 @@ interface LibraryState {
   ownPlaylists: Section<Playlist>;
   likedPlaylists: Section<Playlist>;
   followings: Section<User>;
+  /** Recently played, newest first. */
+  history: Section<Track>;
 
   /** Fetch unless already loaded (or loading) for this user. */
   loadLikes: (userId: number) => Promise<void>;
   loadPlaylists: (userId: number) => Promise<void>;
   loadFollowings: (userId: number) => Promise<void>;
+  loadHistory: (userId: number) => Promise<void>;
   /** Re-fetch, discarding what's cached. */
   refreshLikes: (userId: number) => Promise<void>;
   refreshPlaylists: (userId: number) => Promise<void>;
   refreshFollowings: (userId: number) => Promise<void>;
+  refreshHistory: (userId: number) => Promise<void>;
 }
 
 export const useLibraryStore = create<LibraryState>((set, get) => {
@@ -64,6 +69,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => {
       ownPlaylists: emptySection(),
       likedPlaylists: emptySection(),
       followings: emptySection(),
+      history: emptySection(),
     });
   }
 
@@ -130,6 +136,15 @@ export const useLibraryStore = create<LibraryState>((set, get) => {
       };
     });
 
+  const loadHistoryFor = (userId: number) =>
+    fetchInto(userId, ["history"], async () => ({
+      history: {
+        items: await scPlayHistory(),
+        status: "ok" as const,
+        error: null,
+      },
+    }));
+
   const loadFollowingsFor = (userId: number) =>
     fetchInto(userId, ["followings"], async () => ({
       followings: {
@@ -145,6 +160,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => {
     ownPlaylists: emptySection(),
     likedPlaylists: emptySection(),
     followings: emptySection(),
+    history: emptySection(),
 
     async loadLikes(userId) {
       if (isFresh(get().likes, userId)) return;
@@ -158,6 +174,10 @@ export const useLibraryStore = create<LibraryState>((set, get) => {
       if (isFresh(get().followings, userId)) return;
       await loadFollowingsFor(userId);
     },
+    async loadHistory(userId) {
+      if (isFresh(get().history, userId)) return;
+      await loadHistoryFor(userId);
+    },
 
     async refreshLikes(userId) {
       if (get().likes.status === "loading") return;
@@ -170,6 +190,10 @@ export const useLibraryStore = create<LibraryState>((set, get) => {
     async refreshFollowings(userId) {
       if (get().followings.status === "loading") return;
       await loadFollowingsFor(userId);
+    },
+    async refreshHistory(userId) {
+      if (get().history.status === "loading") return;
+      await loadHistoryFor(userId);
     },
   };
 });

@@ -1,5 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Play, Shuffle } from "lucide-react";
+import { scMixedSelections, scStream, type Selection, type Track } from "@/lib/tauri";
 import { PlaylistTile, SectionHeader, TileGrid, TrackTile } from "@/components/ArtTile";
 import { useLibraryStore } from "@/stores/useLibraryStore";
 import { usePlayerStore } from "@/stores/usePlayerStore";
@@ -18,6 +19,16 @@ function greeting(): string {
   return t.home.evening;
 }
 
+/** Fisher–Yates on a copy; the caller's list is a store value. */
+function shuffled<T>(items: T[]): T[] {
+  const out = [...items];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j]!, out[i]!];
+  }
+  return out;
+}
+
 export function HomeView({
   userId,
   onNavigate,
@@ -27,15 +38,36 @@ export function HomeView({
 }) {
   const likes = useLibraryStore((s) => s.likes);
   const own = useLibraryStore((s) => s.ownPlaylists);
-  const liked = useLibraryStore((s) => s.likedPlaylists);
+  const history = useLibraryStore((s) => s.history);
   const loadLikes = useLibraryStore((s) => s.loadLikes);
   const loadPlaylists = useLibraryStore((s) => s.loadPlaylists);
+  const loadHistory = useLibraryStore((s) => s.loadHistory);
   const playTrack = usePlayerStore((s) => s.playTrack);
+
+  // Feed and curated rows are home-only, so they live here rather than in the
+  // library store — nothing else needs them cached.
+  const [feed, setFeed] = useState<Track[]>([]);
+  const [selections, setSelections] = useState<Selection[]>([]);
 
   useEffect(() => {
     void loadLikes(userId);
     void loadPlaylists(userId);
-  }, [userId, loadLikes, loadPlaylists]);
+    void loadHistory(userId);
+  }, [userId, loadLikes, loadPlaylists, loadHistory]);
+
+  useEffect(() => {
+    let cancelled = false;
+    // Both are best-effort: home still works if either endpoint moves.
+    scStream(60)
+      .then((tracks) => !cancelled && setFeed(tracks))
+      .catch(() => undefined);
+    scMixedSelections(6)
+      .then((rows) => !cancelled && setSelections(rows))
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
 
   const tracks = likes.items;
   const hero = tracks[0];
@@ -97,18 +129,30 @@ export function HomeView({
         <p className="text-sm text-muted-foreground">{t.library.loading}</p>
       )}
 
+      {history.items.length > 0 && (
+        <Row
+          title={t.home.recent}
+          onSeeAll={() => onNavigate("library")}
+          tracks={history.items.slice(0, ROW)}
+          queue={history.items}
+        />
+      )}
+
+      {feed.length > 0 && (
+        <Row
+          title={t.home.feed}
+          tracks={feed.slice(0, ROW)}
+          queue={feed}
+        />
+      )}
+
       {tracks.length > 0 && (
-        <section className="stack">
-          <SectionHeader
-            title={t.home.fromLikes}
-            action={{ label: t.home.seeAll, onClick: () => onNavigate("library") }}
-          />
-          <TileGrid>
-            {tracks.slice(0, ROW).map((track) => (
-              <TrackTile key={track.id} track={track} queue={tracks} />
-            ))}
-          </TileGrid>
-        </section>
+        <Row
+          title={t.home.fromLikes}
+          onSeeAll={() => onNavigate("library")}
+          tracks={tracks.slice(0, ROW)}
+          queue={tracks}
+        />
       )}
 
       {own.items.length > 0 && (
@@ -125,26 +169,43 @@ export function HomeView({
         </section>
       )}
 
-      {liked.items.length > 0 && (
-        <section className="stack">
-          <SectionHeader title={t.library.likedPlaylists} />
+      {/* SoundCloud's own curated rows. */}
+      {selections.map((selection) => (
+        <section key={selection.id} className="stack">
+          <SectionHeader title={selection.title} />
           <TileGrid>
-            {liked.items.slice(0, ROW).map((playlist) => (
+            {selection.playlists.slice(0, ROW).map((playlist) => (
               <PlaylistTile key={playlist.id} playlist={playlist} />
             ))}
           </TileGrid>
         </section>
-      )}
+      ))}
     </div>
   );
 }
 
-/** Fisher–Yates on a copy; the caller's list is a store value. */
-function shuffled<T>(items: T[]): T[] {
-  const out = [...items];
-  for (let i = out.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [out[i], out[j]] = [out[j]!, out[i]!];
-  }
-  return out;
+function Row({
+  title,
+  onSeeAll,
+  tracks,
+  queue,
+}: {
+  title: string;
+  onSeeAll?: () => void;
+  tracks: Track[];
+  queue: Track[];
+}) {
+  return (
+    <section className="stack">
+      <SectionHeader
+        title={title}
+        action={onSeeAll ? { label: t.home.seeAll, onClick: onSeeAll } : undefined}
+      />
+      <TileGrid>
+        {tracks.map((track) => (
+          <TrackTile key={track.id} track={track} queue={queue} />
+        ))}
+      </TileGrid>
+    </section>
+  );
 }

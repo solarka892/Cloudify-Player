@@ -10,7 +10,10 @@ use serde::{Deserialize, Serialize};
 // ---------------------------------------------------------------- track ----
 
 /// Minimal track projection for list/grid rendering in the UI.
-#[derive(Debug, Serialize)]
+///
+/// `Deserialize` too: the offline library hands a track back to Rust when the
+/// user asks to download it, rather than re-fetching metadata the UI has.
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Track {
     pub id: u64,
     pub title: String,

@@ -9,7 +9,7 @@
 //!
 //! Only public data is touched; nothing here needs a login.
 
-use super::{playlists, search, users};
+use super::{discover, playlists, search, users};
 
 /// A long-lived public account (`soundcloud.com/forss`) used as a fixture.
 const FIXTURE_USER: u64 = 183;
@@ -139,4 +139,34 @@ async fn large_playlist_hydrates_every_batch() {
         tracks.len(),
         big.track_count
     );
+}
+
+/// The discovery endpoints that replaced the dead `/charts`.
+#[tokio::test]
+#[ignore = "hits the live SoundCloud API"]
+async fn discovery_endpoints_answer() {
+    let rows = discover::mixed_selections(5).await.expect("selections");
+    assert!(!rows.is_empty(), "no curated rows came back");
+    assert!(rows.iter().all(|r| !r.playlists.is_empty()));
+    println!(
+        "selections: {}",
+        rows.iter()
+            .map(|r| format!("{} ({})", r.title, r.playlists.len()))
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+
+    let found = search::search_tracks("lofi", 1, 0).await.expect("seed");
+    let seed = found.items.first().expect("a seed track");
+
+    let related = discover::related_tracks(seed.id, 10)
+        .await
+        .expect("related");
+    assert!(!related.is_empty());
+
+    let station = discover::station_tracks("track", seed.id, 10)
+        .await
+        .expect("station");
+    assert!(!station.is_empty());
+    assert!(station.iter().all(|t| !t.title.is_empty()));
 }

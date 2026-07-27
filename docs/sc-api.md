@@ -206,6 +206,68 @@ Implemented: `sc_api::users::get_followings`, command `sc_get_followings`.
 Returns track objects, newest first. Public.
 Implemented: `sc_api::users::get_user_tracks`, command `sc_get_user_tracks`.
 
+### Discovery ✅ verified (2026-07-27)
+
+⚠️ **`/charts` is dead** — `GET /charts?kind=top&genre=…` returns **404**. Don't
+reach for it; the replacement is `/mixed-selections`, which is what
+soundcloud.com renders on its own home page.
+
+```
+GET /mixed-selections?client_id=<CID>&limit=6
+GET /tracks/{id}/related?client_id=<CID>&limit=30
+GET /stations/soundcloud:track-stations:{id}/tracks?client_id=<CID>&limit=50
+GET /stations/soundcloud:artist-stations:{user_id}/tracks?client_id=<CID>&limit=50
+GET /stream?client_id=<CID>&limit=200&linked_partitioning=1      (OAuth)
+GET /me/play-history?client_id=<CID>&limit=200&linked_partitioning=1  (OAuth)
+```
+
+| Endpoint | Shape | Notes |
+|---|---|---|
+| `/mixed-selections` | `{collection: [{id, title, items: {collection: [playlist]}}]}` | Items are `kind: "selection"`; the payload is playlists. Live rows seen: "Trending by genre", "Artists to watch out for", "Curated by SoundCloud". Rows whose payload isn't playlists are dropped. |
+| `/tracks/{id}/related` | `{collection: [track], next_href}` | Full track objects. Powers radio and queue-end autoplay. |
+| `/stations/…/tracks` | `{collection: [track]}` | **No `next_href`** — one request, not a paginated walk. The station *object* (`/stations/{urn}` without `/tracks`) 404s; only the track list works. Seed urns: `soundcloud:track-stations:{id}`, `soundcloud:artist-stations:{user_id}`. |
+| `/stream` | `{collection: [{type, track?, playlist?}], next_href}` | The follow feed. `type` is `track` / `track-repost` / `playlist` / `playlist-repost`; playlist entries are skipped. **OAuth, untested here.** |
+| `/me/play-history` | `{collection: [{played_at, track}], next_href}` | Newest first; the same track recurs per play, so results are de-duplicated. **OAuth, untested here.** |
+
+Implemented in `sc_api::discover`; commands `sc_mixed_selections`,
+`sc_related_tracks`, `sc_station_tracks`, `sc_stream`, `sc_play_history`.
+
+---
+
+## Beyond SoundCloud
+
+### Lyrics — LRCLIB
+
+SoundCloud serves **no lyrics of any kind**, so this is the only non-SoundCloud
+service the app talks to. [LRCLIB](https://lrclib.net) is free and keyless:
+
+```
+GET https://lrclib.net/api/get?artist_name=…&track_name=…&duration=<seconds>
+GET https://lrclib.net/api/search?q=…
+```
+
+Returns `{syncedLyrics, plainLyrics}`; `syncedLyrics` is LRC (`[mm:ss.xx] line`).
+
+SoundCloud titles rarely match a release database, so `lyrics::get` strips
+bracketed noise (`(Official Video)`, `[Free DL]`) and a leading `Artist - `
+before querying, then falls back from the exact endpoint to fuzzy search. A
+miss returns `None` — for remixes, sets and edits that is the normal outcome,
+not an error.
+
+### Offline downloads
+
+`sc_api::stream::get_stream_url` → the signed CDN mp3 → `{app_data}/downloads/{id}.mp3`,
+tagged with `id3` (title, artist, embedded cover) and indexed in SQLite
+(`{app_data}/library.db`, table `downloads`). Playback of a local file goes
+through Tauri's asset protocol, which is why `tauri.conf.json` enables
+`assetProtocol` for `$APPDATA` and the crate takes the `protocol-asset` feature.
+
+**Quality ceiling: 128 kbps** — that's what the `progressive` transcoding is.
+
+The CDN sends `access-control-allow-origin: *` (verified), which is what makes
+the Web Audio equaliser possible: `crossOrigin="anonymous"` plus
+`createMediaElementSource` would otherwise yield silence.
+
 ---
 
 ## Auth model (what needs OAuth vs. not)

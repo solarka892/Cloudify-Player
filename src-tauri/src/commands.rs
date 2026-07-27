@@ -215,3 +215,103 @@ pub async fn sc_set_token(token: String) -> Result<sc_api::me::Me, String> {
     auth::save_token(token).map_err(|e| e.to_string())?;
     Ok(me)
 }
+
+// ─────────────────────────────────────────────────────────── discovery ────
+
+/// SoundCloud's own curated home-page rows. Public.
+#[tauri::command]
+pub async fn sc_mixed_selections(
+    limit: Option<u32>,
+) -> Result<Vec<sc_api::discover::Selection>, String> {
+    sc_api::discover::mixed_selections(limit.unwrap_or(10))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// "More like this" for a track. Public.
+#[tauri::command]
+pub async fn sc_related_tracks(
+    track_id: u64,
+    limit: Option<u32>,
+) -> Result<Vec<sc_api::Track>, String> {
+    sc_api::discover::related_tracks(track_id, limit.unwrap_or(30))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// An endless station seeded by a track (`seed = "track"`) or an artist
+/// (`seed = "artist"`). Public.
+#[tauri::command]
+pub async fn sc_station_tracks(
+    seed: String,
+    seed_id: u64,
+    limit: Option<u32>,
+) -> Result<Vec<sc_api::Track>, String> {
+    if seed != "track" && seed != "artist" {
+        return Err("seed must be \"track\" or \"artist\"".to_string());
+    }
+    sc_api::discover::station_tracks(&seed, seed_id, limit.unwrap_or(50))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// The logged-in user's feed. Requires login.
+#[tauri::command]
+pub async fn sc_stream(limit: Option<u32>) -> Result<Vec<sc_api::Track>, String> {
+    let token = require_token()?;
+    sc_api::discover::stream(&token, limit.unwrap_or(200))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Recently played, newest first, de-duplicated. Requires login.
+#[tauri::command]
+pub async fn sc_play_history(limit: Option<u32>) -> Result<Vec<sc_api::Track>, String> {
+    let token = require_token()?;
+    sc_api::discover::play_history(&token, limit.unwrap_or(200))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+// ────────────────────────────────────────────────────────────── lyrics ────
+
+/// Lyrics for a track, from LRCLIB. `None` when the track has none — which is
+/// the common case on SoundCloud, and not an error.
+#[tauri::command]
+pub async fn get_lyrics(
+    artist: Option<String>,
+    title: String,
+    duration_ms: Option<u64>,
+) -> Result<Option<crate::lyrics::Lyrics>, String> {
+    crate::lyrics::get(artist.as_deref().unwrap_or(""), &title, duration_ms)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+// ─────────────────────────────────────────────────────────── downloads ────
+
+/// Download a track for offline playback. Progress arrives on the
+/// `download://progress` event.
+#[tauri::command]
+pub async fn download_track(
+    app: tauri::AppHandle,
+    track: sc_api::Track,
+) -> Result<crate::downloads::DownloadedTrack, String> {
+    crate::downloads::download(&app, track)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Everything in the offline library, newest first.
+#[tauri::command]
+pub fn list_downloads(
+    app: tauri::AppHandle,
+) -> Result<Vec<crate::downloads::DownloadedTrack>, String> {
+    crate::downloads::list(&app).map_err(|e| e.to_string())
+}
+
+/// Delete a downloaded track, file and index row.
+#[tauri::command]
+pub fn delete_download(app: tauri::AppHandle, track_id: u64) -> Result<(), String> {
+    crate::downloads::remove(&app, track_id).map_err(|e| e.to_string())
+}

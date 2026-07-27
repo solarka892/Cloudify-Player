@@ -244,3 +244,27 @@
     color: transparent;
   }
 }
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Konami payoff: a slow hue sweep over the whole window. */
+@keyframes disco {
+  from {
+    filter: hue-rotate(0deg);
+  }
+  to {
+    filter: hue-rotate(360deg);
+  }
+}
+:root[data-disco="1"] body {
+  animation: disco 6s linear infinite;
+}

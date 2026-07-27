@@ -17,7 +17,8 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+# `protocol-asset` lets the webview play downloaded files straight off disk.
+tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -45,6 +46,10 @@ keyring = { version = "3", features = [
 
 # For the login-cookie polling loop (Tauri's async runtime provides the driver).
 tokio = { version = "1", features = ["time"] }
+
+# Tag downloaded mp3s (title/artist + embedded cover) so they make sense in
+# any other player too.
+id3 = "1"
 
 # Read the oauth_token cookie from a Firefox-family browser's cookies.sqlite
 # (browser login flow). Bundled = no system SQLite dependency.

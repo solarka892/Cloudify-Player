@@ -1,4 +1,5 @@
-import { invoke } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 /**
  * Typed bridge to the Rust backend.
@@ -194,4 +195,113 @@ export function scSearchPlaylists(
  */
 export function scGetStreamUrl(trackId: number): Promise<string> {
   return invoke<string>("sc_get_stream_url", { trackId });
+}
+
+// ───────────────────────────────────────────────────────── discovery ────
+
+/** A curated home-page row from SoundCloud. */
+export interface Selection {
+  id: string;
+  title: string;
+  playlists: Playlist[];
+}
+
+/** SoundCloud's own curated rows. Public. */
+export function scMixedSelections(limit?: number): Promise<Selection[]> {
+  return invoke<Selection[]>("sc_mixed_selections", { limit });
+}
+
+/** "More like this" for a track. Public — powers radio and autoplay. */
+export function scRelatedTracks(
+  trackId: number,
+  limit?: number,
+): Promise<Track[]> {
+  return invoke<Track[]>("sc_related_tracks", { trackId, limit });
+}
+
+/** An endless station seeded by a track or an artist. Public. */
+export function scStationTracks(
+  seed: "track" | "artist",
+  seedId: number,
+  limit?: number,
+): Promise<Track[]> {
+  return invoke<Track[]>("sc_station_tracks", { seed, seedId, limit });
+}
+
+/** The logged-in user's feed: new uploads and reposts from who they follow. */
+export function scStream(limit?: number): Promise<Track[]> {
+  return invoke<Track[]>("sc_stream", { limit });
+}
+
+/** Recently played, newest first, de-duplicated. Requires login. */
+export function scPlayHistory(limit?: number): Promise<Track[]> {
+  return invoke<Track[]>("sc_play_history", { limit });
+}
+
+// ──────────────────────────────────────────────────────────── lyrics ────
+
+export interface Lyrics {
+  /** Raw LRC (`[mm:ss.xx] line`) when a synced transcription exists. */
+  synced: string | null;
+  plain: string | null;
+  source: string;
+}
+
+/**
+ * Lyrics from LRCLIB — the one non-SoundCloud service the app talks to.
+ * Resolves to `null` when the track has none, which is common on SoundCloud.
+ */
+export function getLyrics(
+  title: string,
+  artist: string | null,
+  durationMs?: number,
+): Promise<Lyrics | null> {
+  return invoke<Lyrics | null>("get_lyrics", { title, artist, durationMs });
+}
+
+// ───────────────────────────────────────────────────────── downloads ────
+
+/** A track that lives on disk. Carries every `Track` field, plus location. */
+export interface DownloadedTrack extends Track {
+  path: string;
+  bytes: number;
+  /** Unix seconds. */
+  downloaded_at: number;
+}
+
+/** Progress payload of the `download://progress` event. */
+export interface DownloadProgress {
+  track_id: number;
+  received: number;
+  total: number | null;
+}
+
+/** Download a track for offline playback. Progress arrives via `onDownloadProgress`. */
+export function downloadTrack(track: Track): Promise<DownloadedTrack> {
+  return invoke<DownloadedTrack>("download_track", { track });
+}
+
+/** Everything in the offline library, newest first. */
+export function listDownloads(): Promise<DownloadedTrack[]> {
+  return invoke<DownloadedTrack[]>("list_downloads");
+}
+
+/** Delete a downloaded track, file and index row. */
+export function deleteDownload(trackId: number): Promise<void> {
+  return invoke<void>("delete_download", { trackId });
+}
+
+/** Subscribe to download progress. Returns an unsubscribe function. */
+export function onDownloadProgress(
+  handler: (progress: DownloadProgress) => void,
+): Promise<UnlistenFn> {
+  return listen<DownloadProgress>("download://progress", (e) => handler(e.payload));
+}
+
+/**
+ * Turn an absolute path into a URL the webview can play.
+ * Requires `assetProtocol` in tauri.conf.json, which is enabled for app data.
+ */
+export function localFileUrl(path: string): string {
+  return convertFileSrc(path);
 }

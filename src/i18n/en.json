@@ -34,7 +34,10 @@
     "playLikes": "Play likes",
     "shuffle": "Shuffle",
     "fromLikes": "From your likes",
-    "seeAll": "See all"
+    "seeAll": "See all",
+    "feed": "New from following",
+    "forYou": "For you",
+    "recent": "Recently played"
   },
   "library": {
     "likes": "Likes",
@@ -50,7 +53,14 @@
     "noPlaylists": "No playlists yet",
     "noFollowing": "Not following anyone yet",
     "error": "Failed to load library",
-    "refresh": "Refresh"
+    "refresh": "Refresh",
+    "history": "History",
+    "stations": "Stations",
+    "downloads": "Downloads",
+    "albums": "Albums",
+    "noHistory": "No history yet",
+    "stationsHint": "An endless stream seeded by a track or an artist",
+    "startStation": "Start station"
   },
   "profile": {
     "you": "Your profile",
@@ -73,14 +83,43 @@
     "kindPlaylists": "Playlists",
     "kindUsers": "People",
     "loadMore": "Load more",
-    "found": "found"
+    "found": "found",
+    "filters": "Filters",
+    "any": "Any",
+    "short": "under 3 min",
+    "medium": "3–10 min",
+    "long": "over 10 min",
+    "duration": "Duration",
+    "recent": "Recent searches",
+    "clearRecent": "Clear"
   },
   "player": {
     "play": "Play",
     "pause": "Pause",
     "prev": "Previous track",
     "next": "Next track",
-    "queue": "Queue"
+    "queue": "Queue",
+    "queueEmpty": "The queue is empty",
+    "clearQueue": "Clear",
+    "removeFromQueue": "Remove from queue",
+    "close": "Close",
+    "shuffle": "Shuffle",
+    "repeatOff": "Repeat off",
+    "repeatAll": "Repeat queue",
+    "repeatOne": "Repeat track",
+    "seek": "Seek",
+    "volume": "Volume",
+    "mute": "Mute",
+    "lyrics": "Lyrics",
+    "expand": "Expand player",
+    "collapse": "Collapse",
+    "nowPlaying": "Now playing",
+    "radio": "Radio",
+    "download": "Download",
+    "downloaded": "Downloaded",
+    "sleep": "Sleep timer",
+    "sleepCancel": "Cancel timer",
+    "minutes": "min"
   },
   "settings": {
     "layout": "Layout",
@@ -134,5 +173,66 @@
     "imageTooLarge": "Image is over 4 MB — pick a smaller file",
     "importFailed": "Could not read that theme file",
     "imported": "Theme loaded"
+  },
+  "lyrics": {
+    "loading": "Looking for lyrics…",
+    "none": "No lyrics — normal for remixes, sets and edits"
+  },
+  "downloads": {
+    "title": "Downloads",
+    "empty": "Nothing downloaded yet",
+    "hint": "Downloaded tracks play with no connection",
+    "remove": "Delete from disk",
+    "size": "MB",
+    "downloading": "Downloading",
+    "failed": "Download failed"
+  },
+  "audio": {
+    "title": "Sound",
+    "hint": "Equaliser and signal chain",
+    "eq": "Equaliser",
+    "eqHint": "10 bands, 31 Hz to 16 kHz",
+    "preset": "Preset",
+    "preamp": "Preamp",
+    "reset": "Reset",
+    "compressor": "Compressor",
+    "compressorHint": "Evens out loudness between tracks",
+    "balance": "Balance",
+    "mono": "Mono",
+    "monoHint": "Collapse to one channel",
+    "fade": "Fade",
+    "fadeHint": "Fade out and in when the track changes",
+    "radio": "Radio after the queue",
+    "radioHint": "Keep playing related tracks once the queue runs out",
+    "warn": "If sound disappears, turn the equaliser off and replay the track"
+  },
+  "keys": {
+    "title": "Keyboard shortcuts",
+    "playPause": "Play / pause",
+    "seek": "Seek ±5 s",
+    "prevNext": "Previous / next",
+    "volume": "Volume",
+    "mute": "Mute",
+    "shuffle": "Shuffle",
+    "repeat": "Repeat mode",
+    "fullscreen": "Full-screen player",
+    "search": "Jump to search",
+    "close": "Close overlay",
+    "help": "This sheet",
+    "hint": "Inactive while a text field has focus. And yes, there is one more code hidden here."
+  },
+  "eggs": {
+    "vaporFound": "Found the hidden Vapor palette",
+    "vaporAgain": "Vapor again"
+  },
+  "track": {
+    "playNext": "Play next",
+    "addToQueue": "Add to queue",
+    "startRadio": "Start radio",
+    "download": "Download",
+    "downloaded": "Already downloaded",
+    "copyLink": "Copy link",
+    "openOnSc": "Open on SoundCloud",
+    "linkCopied": "Link copied"
   }
 }

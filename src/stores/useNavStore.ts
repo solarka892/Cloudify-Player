@@ -14,13 +14,21 @@ export type Detail =
 
 interface NavState {
   detail: Detail | null;
+  /** Whether the full-screen player is up. Lives here so a hotkey can toggle it. */
+  nowPlaying: boolean;
+  /** Bumped to ask the search view to focus its input. */
+  searchFocusToken: number;
   openPlaylist: (playlist: Playlist) => void;
   openUser: (user: User) => void;
   back: () => void;
+  setNowPlaying: (open: boolean) => void;
+  requestSearchFocus: () => void;
 }
 
 export const useNavStore = create<NavState>((set) => ({
   detail: null,
+  nowPlaying: false,
+  searchFocusToken: 0,
 
   openPlaylist: (playlist) =>
     set({
@@ -43,4 +51,7 @@ export const useNavStore = create<NavState>((set) => ({
     }),
 
   back: () => set({ detail: null }),
+  setNowPlaying: (nowPlaying) => set({ nowPlaying }),
+  requestSearchFocus: () =>
+    set((state) => ({ searchFocusToken: state.searchFocusToken + 1 })),
 }));

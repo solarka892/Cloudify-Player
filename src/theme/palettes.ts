@@ -10,6 +10,7 @@ import type { Shade } from "./tokens";
  */
 
 export type PaletteId =
+  | "vapor"
   | "midnight"
   | "noir"
   | "ocean"
@@ -22,9 +23,38 @@ export interface Palette {
   name: string;
   dark: Shade;
   light: Shade;
+  /** Hidden from the picker until unlocked. Some things are worth finding. */
+  hidden?: boolean;
 }
 
 export const PALETTES: Record<PaletteId, Palette> = {
+  /** Not in the picker. Ten keystrokes away. */
+  vapor: {
+    id: "vapor",
+    name: "Vapor",
+    hidden: true,
+    dark: {
+      bg: "oklch(0.19 0.06 300)",
+      surface: "oklch(0.25 0.08 300)",
+      surface2: "oklch(0.33 0.1 300)",
+      text: "oklch(0.97 0.02 320)",
+      muted: "oklch(0.75 0.06 320)",
+      line: "oklch(0.85 0.12 320 / 22%)",
+      brand: "oklch(0.78 0.19 340)",
+      brand2: "oklch(0.82 0.14 200)",
+    },
+    light: {
+      bg: "oklch(0.96 0.03 320)",
+      surface: "oklch(0.99 0.015 320)",
+      surface2: "oklch(0.92 0.04 320)",
+      text: "oklch(0.26 0.06 300)",
+      muted: "oklch(0.55 0.06 310)",
+      line: "oklch(0.5 0.1 320 / 20%)",
+      brand: "oklch(0.62 0.2 340)",
+      brand2: "oklch(0.66 0.14 205)",
+    },
+  },
+
   /** Neutral greys, warm accent. The default. */
   midnight: {
     id: "midnight",
@@ -182,7 +212,15 @@ export const PALETTES: Record<PaletteId, Palette> = {
   },
 };
 
-export const PALETTE_IDS = Object.keys(PALETTES) as PaletteId[];
+/** Everything the picker offers by default. */
+export const PALETTE_IDS = (Object.keys(PALETTES) as PaletteId[]).filter(
+  (id) => !PALETTES[id].hidden,
+);
+
+/** Palettes that only appear once found. */
+export const HIDDEN_PALETTE_IDS = (Object.keys(PALETTES) as PaletteId[]).filter(
+  (id) => PALETTES[id].hidden,
+);
 
 /** Quick accent overrides, applied on top of whatever palette is active. */
 export const ACCENTS: Record<string, { brand: string; brand2: string }> = {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
 import {
   scSearchPlaylists,
@@ -12,6 +12,7 @@ import {
 import { TrackList } from "@/components/TrackList";
 import { PlaylistList } from "@/components/PlaylistList";
 import { UserList } from "@/components/UserList";
+import { useNavStore } from "@/stores/useNavStore";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 
@@ -77,6 +78,14 @@ export function SearchView() {
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState<Kind>("tracks");
   const [state, setState] = useState<State>({ status: "idle" });
+  const inputRef = useRef<HTMLInputElement>(null);
+  const focusToken = useNavStore((s) => s.searchFocusToken);
+
+  // The `/` hotkey bumps a token rather than reaching into this component.
+  useEffect(() => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, [focusToken]);
 
   useEffect(() => {
     const q = query.trim();
@@ -147,6 +156,7 @@ export function SearchView() {
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <input
+          ref={inputRef}
           value={query}
           onChange={(e) => setQuery(e.currentTarget.value)}
           placeholder={t.search.placeholder}

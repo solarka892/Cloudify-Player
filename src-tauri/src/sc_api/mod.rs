@@ -13,6 +13,7 @@
 //! Reverse-engineering notes & verified endpoints: `docs/sc-api.md`.
 
 pub mod client_id;
+pub mod discover;
 pub mod likes;
 pub mod me;
 pub mod models;

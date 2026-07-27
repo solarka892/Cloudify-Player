@@ -10,8 +10,15 @@ import {
   Upload,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { AudioSettings } from "./AudioSettings";
 import { useSettingsStore, type LayoutId } from "@/stores/useSettingsStore";
-import { PALETTES, PALETTE_IDS, ACCENTS, ACCENT_IDS } from "@/theme/palettes";
+import {
+  PALETTES,
+  PALETTE_IDS,
+  HIDDEN_PALETTE_IDS,
+  ACCENTS,
+  ACCENT_IDS,
+} from "@/theme/palettes";
 import { SKINS, SKIN_IDS } from "@/theme/skins";
 import type { Density, ThemeMode } from "@/theme/apply";
 import { t } from "@/i18n";
@@ -29,6 +36,7 @@ export function SettingsView() {
   const theme = useSettingsStore((s) => s.theme);
   const backdrop = useSettingsStore((s) => s.backdrop);
   const presets = useSettingsStore((s) => s.presets);
+  const unlocked = useSettingsStore((s) => s.unlocked);
   const autoplayNext = useSettingsStore((s) => s.autoplayNext);
   const rememberVolume = useSettingsStore((s) => s.rememberVolume);
 
@@ -171,7 +179,13 @@ export function SettingsView() {
 
         <Row label={t.settings.palette}>
           <div className="flex flex-wrap gap-2">
-            {PALETTE_IDS.map((id) => {
+            {[
+              ...PALETTE_IDS,
+              // Easter-egg palettes appear only once they've been found.
+              ...HIDDEN_PALETTE_IDS.filter((id) =>
+                unlocked.includes(`palette:${id}`),
+              ),
+            ].map((id) => {
               const shade = PALETTES[id].dark;
               return (
                 <button
@@ -352,6 +366,8 @@ export function SettingsView() {
           <Switch checked={rememberVolume} onCheckedChange={setRememberVolume} />
         </Row>
       </Group>
+
+      <AudioSettings />
 
       {/* ── Presets ────────────────────────────────────────────────────── */}
       <Group title={t.settings.presets} hint={t.settings.presetsHint}>
