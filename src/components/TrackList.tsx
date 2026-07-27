@@ -3,6 +3,7 @@ import { Download, Music, Pause, Play } from "lucide-react";
 import type { Track } from "@/lib/tauri";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
+import { useLibraryStore } from "@/stores/useLibraryStore";
 import { TrackContextMenu, type MenuTarget } from "./TrackContextMenu";
 import { LikeButton } from "./LikeButton";
 import { AddToPlaylistDialog } from "./AddToPlaylistDialog";
@@ -77,6 +78,7 @@ function TrackRow({
   const isCurrent = usePlayerStore((s) => s.current?.id === track.id);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const isDownloaded = useDownloadsStore((s) => s.ids.has(track.id));
+  const liked = useLibraryStore((s) => s.likedIds.has(track.id));
 
   return (
     <li className="row-cv" onContextMenu={onContextMenu}>
@@ -132,10 +134,15 @@ function TrackRow({
               aria-label={t.player.downloaded}
             />
           )}
-          {/* Hidden until hover so a long list stays calm. */}
-          <span className="opacity-0 transition-opacity duration-[var(--motion-fast)] group-hover:opacity-100 [&:has(.fill-current)]:opacity-100">
-            <LikeButton track={track} />
-          </span>
+          {/* Dimmed until hover so a long list stays calm; a liked track
+              keeps its heart at full strength. */}
+          <LikeButton
+            track={track}
+            className={cn(
+              "transition-opacity duration-[var(--motion-fast)] group-hover:opacity-100",
+              liked ? "opacity-100" : "opacity-0",
+            )}
+          />
           <span className="font-mono text-xs tabular-nums text-muted-foreground">
             {formatDuration(track.duration)}
           </span>

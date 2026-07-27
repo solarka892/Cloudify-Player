@@ -3,7 +3,6 @@ import { HardDriveDownload, Radio, RefreshCw, Search, Trash2 } from "lucide-reac
 import { scStationTracks, type Track } from "@/lib/tauri";
 import { TrackList } from "@/components/TrackList";
 import { PlaylistList } from "@/components/PlaylistList";
-import { UserList } from "@/components/UserList";
 import { DownloadAllButton } from "@/components/DownloadAllButton";
 import { useLibraryStore, type Section } from "@/stores/useLibraryStore";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
@@ -17,8 +16,7 @@ type SectionId =
   | "albums"
   | "stations"
   | "history"
-  | "downloads"
-  | "following";
+  | "downloads";
 
 const SECTIONS: { id: SectionId; label: string }[] = [
   { id: "likes", label: t.library.likes },
@@ -27,7 +25,6 @@ const SECTIONS: { id: SectionId; label: string }[] = [
   { id: "stations", label: t.library.stations },
   { id: "history", label: t.library.history },
   { id: "downloads", label: t.library.downloads },
-  { id: "following", label: t.library.following },
 ];
 
 /** Case-insensitive substring match over a title-ish field. */
@@ -92,7 +89,6 @@ export function LibraryView({ userId }: { userId: number }) {
       {section === "stations" && <StationsSection userId={userId} />}
       {section === "history" && <HistorySection userId={userId} />}
       {section === "downloads" && <DownloadsSection />}
-      {section === "following" && <FollowingSection userId={userId} />}
     </div>
   );
 }
@@ -468,39 +464,6 @@ function DownloadsSection() {
         )
       )}
     </div>
-  );
-}
-
-function FollowingSection({ userId }: { userId: number }) {
-  const followings = useLibraryStore((s) => s.followings);
-  const load = useLibraryStore((s) => s.loadFollowings);
-  const refresh = useLibraryStore((s) => s.refreshFollowings);
-
-  useEffect(() => {
-    void load(userId);
-  }, [userId, load]);
-
-  const { query, setQuery, filtered } = useFilter(
-    followings.items,
-    (u) => u.username,
-  );
-
-  return (
-    <Shell
-      section={followings}
-      count={filtered.length}
-      onRefresh={() => void refresh(userId)}
-      emptyLabel={t.library.noFollowing}
-      tools={
-        <FilterBox
-          value={query}
-          onChange={setQuery}
-          placeholder={t.library.searchPeople}
-        />
-      }
-    >
-      <UserList users={filtered} />
-    </Shell>
   );
 }
 
