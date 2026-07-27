@@ -11,6 +11,9 @@ describe("cn", () => {
   });
 
   it("handles conditionals", () => {
-    expect(cn("a", false && "b", "c")).toBe("a c");
+    // Via a variable, not a literal: a literal `false &&` is dead code eslint
+    // rightly rejects, but the falsy-argument behaviour is what we're testing.
+    const enabled: boolean = false;
+    expect(cn("a", enabled && "b", "c")).toBe("a c");
   });
 });
