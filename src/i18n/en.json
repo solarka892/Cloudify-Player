@@ -25,7 +25,8 @@
     "likes": "My likes",
     "loading": "Loading…",
     "empty": "No liked tracks yet",
-    "error": "Failed to load library"
+    "error": "Failed to load library",
+    "refresh": "Refresh"
   },
   "nav": {
     "library": "Library",
