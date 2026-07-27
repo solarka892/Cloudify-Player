@@ -53,14 +53,17 @@ cross-platform entry point.
 First `tauri dev` compiles the whole Rust/Tauri tree (~1 min). Subsequent runs
 are incremental (seconds).
 
-### Audio playback (GStreamer)
+### Audio playback (GStreamer) — required
 
-WebKitGTK plays HTML5 audio through GStreamer. If tracks are silent / fail to
-play, install the codec plugins (mp3 lives in the good/ugly/libav sets):
+WebKitGTK plays HTML5 audio through GStreamer. **These plugins are required** —
+without them the audio pipeline fails to build (`autoaudiosink not found`),
+which crashes the WebKit process and blanks the window (not just silence):
 
 ```fish
 sudo pacman -S --needed gst-plugins-base gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav
 ```
+
+`autoaudiosink` is in `gst-plugins-good`; the mp3 decoder is in `gst-libav`.
 
 ### Login / keyring requirement
 
