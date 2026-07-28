@@ -1,7 +1,9 @@
 {
   "app": {
     "name": "cloudify",
-    "tagline": "Cliente não oficial do SoundCloud"
+    "tagline": "Cliente não oficial do SoundCloud",
+    "crashed": "Algo quebrou nesta tela",
+    "reload": "Recarregar"
   },
   "nav": {
     "home": "Início",
@@ -133,7 +135,9 @@
     "sleep": "Timer de sono",
     "sleepCancel": "Cancelar o timer",
     "minutes": "min",
+    "minutesShort": "min",
     "enableVisualizer": "Ativar o visualizador",
+    "visualizerBlocked": "O visualizador não consegue ler esta faixa — o servidor dela não permite. O som não é afetado.",
     "playbackFailed": "Não foi possível tocar",
     "localFileBroken": "O arquivo baixado não pode ser lido — tocando pela internet"
   },
@@ -145,6 +149,11 @@
     "layoutSidebar": "Barra lateral",
     "skin": "Estilo",
     "skinHint": "Forma: raios, sombras, desfoque, tipografia",
+    "skinHints": {
+      "aurora": "Vidro, desfoque e um brilho suave",
+      "editorial": "Tipografia grande, linhas duras, sem sombras",
+      "studio": "Controles táteis, profundidade discreta, onda"
+    },
     "colour": "Cor",
     "theme": "Tema",
     "themeDark": "Escuro",
@@ -206,7 +215,18 @@
     "slotBrand": "Destaque",
     "slotBrand2": "Destaque 2",
     "language": "Idioma",
-    "languageHint": "Idioma da interface"
+    "languageHint": "Idioma da interface",
+    "effects": "Efeitos",
+    "effectsHint": "Partículas caindo sobre toda a janela. É uma animação e custa quadros — desligada por padrão.",
+    "effectIntensity": "Intensidade",
+    "effectNames": {
+      "none": "Nenhum",
+      "sakura": "Sakura",
+      "snow": "Neve",
+      "rain": "Chuva",
+      "leaves": "Folhas de outono",
+      "fireflies": "Vaga-lumes"
+    }
   },
   "lyrics": {
     "loading": "Procurando a letra…",
@@ -248,7 +268,12 @@
     "radioHint": "Continuar com faixas parecidas quando a fila acabar",
     "warn": "Se o som desaparecer, desligue o equalizador e toque a faixa de novo",
     "visualizer": "Visualizador",
-    "visualizerHint": "Espectro no player em tela cheia. Passa o áudio pelo processamento, então a faixa recarrega"
+    "visualizerHint": "Espectro no player em tela cheia. Passa o áudio pelo processamento, então a faixa recarrega",
+    "diagnostics": "Diagnóstico",
+    "diagnosticsHint": "O que o motor de áudio está fazendo agora — útil quando uma faixa toca sem som",
+    "diagnosticsRun": "Verificar",
+    "diagnosticsTone": "Tom de teste",
+    "graphUnsupported": "Este webview não consegue rotear o áudio pelos efeitos — equalizador e visualizador desligados. O som não é afetado."
   },
   "keys": {
     "title": "Atalhos do teclado",
@@ -288,6 +313,9 @@
     "newPlaylist": "Nova playlist",
     "create": "Criar",
     "addToPlaylist": "Adicionar a uma playlist",
-    "queuedNext": "Toca em seguida"
+    "queuedNext": "Toca em seguida",
+    "share": "Compartilhar",
+    "shareCopied": "Link copiado",
+    "shareFailed": "Não foi possível copiar o link"
   }
 }

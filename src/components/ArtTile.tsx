@@ -137,7 +137,7 @@ export function PlaylistTile({ playlist }: { playlist: Playlist }) {
 /** Responsive grid the tiles live in. */
 export function TileGrid({ children }: { children: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-2 gap-1 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
+    <div className="grid grid-cols-2 gap-[calc(0.5rem*var(--density))] sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
       {children}
     </div>
   );

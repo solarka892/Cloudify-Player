@@ -13,7 +13,7 @@ import type { Track } from "@/lib/tauri";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
 import { useLibraryStore } from "@/stores/useLibraryStore";
-import { toast } from "@/stores/useToastStore";
+import { copyLink } from "@/lib/share";
 import { t } from "@/i18n";
 
 /** Where a context menu was opened, in viewport coordinates. */
@@ -120,12 +120,7 @@ export function TrackContextMenu({
           <Item
             Icon={LinkIcon}
             label={t.track.copyLink}
-            onClick={() =>
-              run(() => {
-                void navigator.clipboard.writeText(track.permalink_url!);
-                toast(t.track.linkCopied, "success");
-              })
-            }
+            onClick={() => run(() => void copyLink(track.permalink_url!))}
           />
           <Item
             Icon={ExternalLink}

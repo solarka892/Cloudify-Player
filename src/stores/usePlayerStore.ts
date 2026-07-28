@@ -1,6 +1,16 @@
 import { create } from "zustand";
 import { scGetStreamUrl, scRelatedTracks, type Track } from "@/lib/tauri";
-import { applyAudio, el, fadeTo, prepareForSource, resume } from "@/audio/engine";
+import {
+  abandonGraph,
+  applyAudio,
+  applyRate,
+  el,
+  fadeTo,
+  graphIsAudible,
+  needsGraph,
+  prepareForSource,
+  resume,
+} from "@/audio/engine";
 import {
   DEFAULT_VOLUME,
   setSourceReloader,
@@ -139,43 +149,71 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
     if (a.dataset.bound === "1") return a;
     a.dataset.bound = "1";
 
-    a.addEventListener("timeupdate", () => {
-      // Coalesce: `timeupdate` fires ~4x/s and every listener re-renders.
-      const next = a.currentTime;
-      if (Math.abs(next - get().position) < 0.25) return;
-      set({ position: next });
-    });
-    a.addEventListener("durationchange", () =>
-      set({ duration: Number.isFinite(a.duration) ? a.duration : 0 }),
+    /**
+     * Ignore events from an element the engine has already replaced.
+     *
+     * Elements are disposable here (see `audio/engine.ts`), and a discarded one
+     * keeps emitting: releasing its source fires `error`, and a swap mid-track
+     * can still let it reach `ended`. Acting on either would report a failure
+     * or skip a track that has nothing to do with what is now playing.
+     */
+    const live = (fn: () => void) => () => {
+      if (a === el()) fn();
+    };
+
+    a.addEventListener(
+      "timeupdate",
+      live(() => {
+        // Coalesce: `timeupdate` fires ~4x/s and every listener re-renders.
+        const next = a.currentTime;
+        if (Math.abs(next - get().position) < 0.25) return;
+        set({ position: next });
+      }),
     );
-    a.addEventListener("play", () => set({ isPlaying: true }));
-    a.addEventListener("pause", () => set({ isPlaying: false }));
-    a.addEventListener("ended", () => {
-      set({ isPlaying: false, position: 0 });
-      const { repeat } = get();
-      if (repeat === "one") {
-        get().playAt(get().pos);
-        return;
-      }
-      if (useSettingsStore.getState().autoplayNext) get().next();
-    });
-    a.addEventListener("error", () => {
-      const track = get().current;
-      const local = track
-        ? useDownloadsStore.getState().localUrl(track.id)
-        : null;
+    a.addEventListener(
+      "durationchange",
+      live(() => set({ duration: Number.isFinite(a.duration) ? a.duration : 0 })),
+    );
+    a.addEventListener("play", live(() => set({ isPlaying: true })));
+    a.addEventListener("pause", live(() => set({ isPlaying: false })));
+    a.addEventListener(
+      "ended",
+      live(() => {
+        set({ isPlaying: false, position: 0 });
+        const { repeat } = get();
+        if (repeat === "one") {
+          get().playAt(get().pos);
+          return;
+        }
+        if (useSettingsStore.getState().autoplayNext) get().next();
+      }),
+    );
+    a.addEventListener(
+      "error",
+      live(() => {
+        const track = get().current;
+        const local = track
+          ? useDownloadsStore.getState().localUrl(track.id)
+          : null;
 
-      // A downloaded file that won't decode (truncated download, asset
-      // protocol refusing the path) shouldn't strand the track — retry it
-      // from SoundCloud once before giving up.
-      if (track && local && a.src === local) {
-        void playFromNetwork(track);
-        return;
-      }
+        // A downloaded file that won't decode (truncated download, asset
+        // protocol refusing the path) shouldn't strand the track — retry it
+        // from SoundCloud once before giving up.
+        if (track && local && a.src === local) {
+          void playFromNetwork(track);
+          return;
+        }
 
-      set({ error: "playback error", isPlaying: false, isLoading: false });
-      toast(t.player.playbackFailed, "error");
-    });
+        // MediaError codes: 1 aborted, 2 network, 3 decode, 4 unsupported.
+        const reason = a.error ? `${a.error.code}` : "?";
+        set({
+          error: `playback error ${reason}`,
+          isPlaying: false,
+          isLoading: false,
+        });
+        toast(`${t.player.playbackFailed} (${reason})`, "error");
+      }),
+    );
     return a;
   }
 
@@ -278,20 +316,34 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
 
       // Must precede `src`: the CORS mode is read at load time. This can hand
       // back a different element, so rebind before touching it.
-      prepareForSource(useSettingsStore.getState().audio, src);
+      await prepareForSource(useSettingsStore.getState().audio, src);
+      if (token !== playToken) return; // superseded while deciding the routing
       a = bindElement();
       a.src = src;
-      a.playbackRate = get().rate;
+      applyRate(a, get().rate);
       a.volume = fadeMs > 0 ? 0 : effectiveVolume();
       await a.play();
-      resume();
+      // Order matters: `applyAudio` is what builds the graph, so resuming
+      // before it had nothing to resume — and a graph whose context stays
+      // suspended plays in total silence.
       applyAudio(useSettingsStore.getState().audio);
+      resume();
+      void confirmGraphAudible();
       if (fadeMs > 0) void fadeTo(effectiveVolume(), fadeMs);
       set({ isLoading: false });
       warmNext();
     } catch (e) {
       if (token !== playToken) return;
       set({ isLoading: false, error: String(e), isPlaying: false });
+      // The element was faded to silence on the way in, and nothing is going to
+      // fade it back — leaving it there would make the *next* successful play
+      // silent as well.
+      a.volume = effectiveVolume();
+      // `error` in the store is not rendered anywhere, so without this a track
+      // that will not start does nothing at all: no sound, no reason. The
+      // message matters — a throttled client_id, a dead track and a blocked
+      // autoplay all land here and need different responses.
+      toast(`${t.player.playbackFailed}: ${e}`, "error");
     }
   }
 
@@ -315,14 +367,15 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
       const src = await resolveSource(track);
       if (token !== playToken) return;
 
-      prepareForSource(useSettingsStore.getState().audio, src);
+      await prepareForSource(useSettingsStore.getState().audio, src);
+      if (token !== playToken) return;
       a = bindElement();
       a.src = src;
       a.currentTime = at;
       a.volume = effectiveVolume();
       if (wasPlaying) await a.play();
-      resume();
       applyAudio(useSettingsStore.getState().audio);
+      resume();
     } catch {
       // Leave the element as it was; the user can hit play again.
     }
@@ -335,7 +388,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
     try {
       const src = await resolveSource(track, true);
       if (token !== playToken) return;
-      prepareForSource(useSettingsStore.getState().audio, src);
+      await prepareForSource(useSettingsStore.getState().audio, src);
+      if (token !== playToken) return;
       a = bindElement();
       a.src = src;
       a.volume = effectiveVolume();
@@ -348,6 +402,23 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
       set({ isLoading: false, error: String(e), isPlaying: false });
       toast(`${t.player.playbackFailed}: ${e}`, "error");
     }
+  }
+
+  /**
+   * Make sure switching effects on has not switched sound off.
+   *
+   * The graph can be silent with nothing reporting a fault (see
+   * `graphIsAudible`), and the user's only clue is a track that plays with no
+   * audio. So the engine is asked, and if it went quiet the effects are dropped
+   * and the track reloaded on the plain path — sound outranks the equaliser.
+   */
+  async function confirmGraphAudible(): Promise<void> {
+    if (!needsGraph(useSettingsStore.getState().audio)) return;
+    if (await graphIsAudible()) return;
+
+    abandonGraph();
+    await reloadInPlace();
+    toast(t.audio.graphUnsupported, "error");
   }
 
   function effectiveVolume(): number {
@@ -485,7 +556,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
 
     setRate(rate) {
       set({ rate });
-      bindElement().playbackRate = rate;
+      applyRate(bindElement(), rate);
     },
 
     toggleShuffle() {

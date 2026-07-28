@@ -1,6 +1,7 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Check,
+  ChevronDown,
   Download,
   Image as ImageIcon,
   Monitor,
@@ -27,6 +28,7 @@ import {
   ACCENT_IDS,
 } from "@/theme/palettes";
 import { SKINS, SKIN_IDS } from "@/theme/skins";
+import { EFFECT_IDS } from "@/theme/particles";
 import type { Density, ThemeMode } from "@/theme/apply";
 import {
   LOCALES,
@@ -34,6 +36,7 @@ import {
   t,
   type Locale,
 } from "@/i18n";
+import { scrollViewToTop } from "@/lib/scroll";
 import { cn } from "@/lib/utils";
 
 /**
@@ -64,8 +67,6 @@ export function SettingsView() {
   const exportTheme = useSettingsStore((s) => s.exportTheme);
   const importTheme = useSettingsStore((s) => s.importTheme);
   const setAutoplayNext = useSettingsStore((s) => s.setAutoplayNext);
-  const glideScroll = useSettingsStore((s) => s.glideScroll);
-  const setGlideScroll = useSettingsStore((s) => s.setGlideScroll);
   const locale = useSettingsStore((s) => s.locale);
   const setLocale = useSettingsStore((s) => s.setLocale);
   const setRememberVolume = useSettingsStore((s) => s.setRememberVolume);
@@ -75,6 +76,12 @@ export function SettingsView() {
   const [notice, setNotice] = useState<string | null>(null);
   const imageInput = useRef<HTMLInputElement>(null);
   const themeInput = useRef<HTMLInputElement>(null);
+
+  // The section list is sticky, so a section can be picked from far down a long
+  // one. The next section starts at its own top rather than at that offset.
+  useEffect(() => {
+    scrollViewToTop();
+  }, [section]);
 
   function pickImage(file: File) {
     const reader = new FileReader();
@@ -161,17 +168,31 @@ export function SettingsView() {
       {/* ── Language ───────────────────────────────────────────────────── */}
       <Group title={t.settings.language} hint={t.settings.languageHint}>
         <Row label={t.settings.language}>
-          <select
-            value={locale}
-            onChange={(e) => setLocale(e.currentTarget.value as Locale)}
-            className="rounded-[var(--radius-control)] border border-border bg-card px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring"
-          >
-            {LOCALES.map((id) => (
-              <option key={id} value={id}>
-                {LOCALE_NAMES[id]}
-              </option>
-            ))}
-          </select>
+          {/* `appearance-none` is the whole point: left native, the control
+              paints the platform's own widget — a light box on a light GTK
+              theme — under our light `foreground` text, and the current
+              language becomes unreadable. Stripping the native look means our
+              colours apply, at the price of drawing the arrow ourselves. */}
+          <div className="relative">
+            <select
+              value={locale}
+              onChange={(e) => setLocale(e.currentTarget.value as Locale)}
+              className="appearance-none rounded-[var(--radius-control)] border border-border bg-card py-1.5 pl-3 pr-9 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring"
+            >
+              {LOCALES.map((id) => (
+                <option
+                  key={id}
+                  value={id}
+                  // The dropdown list is drawn by the platform, which does not
+                  // inherit any of the above; these two are all it honours.
+                  className="bg-popover text-popover-foreground"
+                >
+                  {LOCALE_NAMES[id]}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          </div>
         </Row>
       </Group>
 
@@ -238,7 +259,7 @@ export function SettingsView() {
                 <span className="min-w-0">
                   <span className="block text-sm font-medium">{skin.name}</span>
                   <span className="block text-xs text-muted-foreground">
-                    {skin.hint}
+                    {t.settings.skinHints[id]}
                   </span>
                 </span>
               </button>
@@ -487,6 +508,43 @@ export function SettingsView() {
         </Row>
       </Group>
 
+      {/* ── Ambient effects ───────────────────────────────────────────────── */}
+      <Group
+        title={t.settings.effects}
+        hint={t.settings.effectsHint}
+        onReset={() => setBackdrop({ effect: "none", effectIntensity: 1 })}
+      >
+        <div className="flex flex-wrap gap-2 px-4 py-3">
+          {(["none", ...EFFECT_IDS] as const).map((id) => (
+            <button
+              key={id}
+              onClick={() => setBackdrop({ effect: id })}
+              className={cn(
+                "rounded-[var(--radius-control)] border px-3 py-1.5 text-sm transition-colors duration-[var(--motion-fast)]",
+                backdrop.effect === id
+                  ? "border-brand bg-accent text-foreground"
+                  : "border-border text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+              )}
+            >
+              {t.settings.effectNames[id]}
+            </button>
+          ))}
+        </div>
+
+        {backdrop.effect !== "none" && (
+          <Row label={t.settings.effectIntensity}>
+            <Slider
+              value={Math.round(backdrop.effectIntensity * 100)}
+              min={25}
+              max={200}
+              step={25}
+              suffix="%"
+              onChange={(v) => setBackdrop({ effectIntensity: v / 100 })}
+            />
+          </Row>
+        )}
+      </Group>
+
       </>)}
 
       {section === "metrics" && (<>
@@ -535,9 +593,6 @@ export function SettingsView() {
           setRememberVolume(true);
         }}
       >
-        <Row label={t.settings.glide} hint={t.settings.glideHint}>
-          <Switch checked={glideScroll} onCheckedChange={setGlideScroll} />
-        </Row>
         <Row label={t.settings.autoplayNext} hint={t.settings.autoplayNextHint}>
           <Switch checked={autoplayNext} onCheckedChange={setAutoplayNext} />
         </Row>
@@ -746,7 +801,7 @@ function Row({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-[calc(0.75rem*var(--density))]">
       <div className="min-w-0">
         <div className="text-sm font-medium">{label}</div>
         {hint && <div className="text-xs text-muted-foreground">{hint}</div>}

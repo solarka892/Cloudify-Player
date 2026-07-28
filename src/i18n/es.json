@@ -1,7 +1,9 @@
 {
   "app": {
     "name": "cloudify",
-    "tagline": "Cliente no oficial de SoundCloud"
+    "tagline": "Cliente no oficial de SoundCloud",
+    "crashed": "Algo se ha roto en esta pantalla",
+    "reload": "Recargar"
   },
   "nav": {
     "home": "Inicio",
@@ -133,7 +135,9 @@
     "sleep": "Temporizador",
     "sleepCancel": "Cancelar el temporizador",
     "minutes": "min",
+    "minutesShort": "min",
     "enableVisualizer": "Activar el visualizador",
+    "visualizerBlocked": "El visualizador no puede leer esta pista: su servidor no lo permite. El sonido no se ve afectado.",
     "playbackFailed": "No se pudo reproducir",
     "localFileBroken": "El archivo descargado no se puede leer: se reproduce en línea"
   },
@@ -145,6 +149,11 @@
     "layoutSidebar": "Barra lateral",
     "skin": "Estilo",
     "skinHint": "Forma: radios, sombras, desenfoque, tipografía",
+    "skinHints": {
+      "aurora": "Cristal, desenfoque y un brillo suave",
+      "editorial": "Tipografía grande, líneas duras, sin sombras",
+      "studio": "Controles táctiles, profundidad sutil, onda"
+    },
     "colour": "Color",
     "theme": "Tema",
     "themeDark": "Oscuro",
@@ -206,7 +215,18 @@
     "slotBrand": "Acento",
     "slotBrand2": "Acento 2",
     "language": "Idioma",
-    "languageHint": "Idioma de la interfaz"
+    "languageHint": "Idioma de la interfaz",
+    "effects": "Efectos",
+    "effectsHint": "Partículas cayendo sobre toda la ventana. Es una animación y cuesta fotogramas: desactivada por defecto.",
+    "effectIntensity": "Intensidad",
+    "effectNames": {
+      "none": "Ninguno",
+      "sakura": "Sakura",
+      "snow": "Nieve",
+      "rain": "Lluvia",
+      "leaves": "Hojas de otoño",
+      "fireflies": "Luciérnagas"
+    }
   },
   "lyrics": {
     "loading": "Buscando la letra…",
@@ -248,7 +268,12 @@
     "radioHint": "Seguir con pistas parecidas cuando la cola termine",
     "warn": "Si el sonido desaparece, apaga el ecualizador y vuelve a poner la pista",
     "visualizer": "Visualizador",
-    "visualizerHint": "Espectro en el reproductor a pantalla completa. Pasa el audio por el procesado, así que la pista se recarga"
+    "visualizerHint": "Espectro en el reproductor a pantalla completa. Pasa el audio por el procesado, así que la pista se recarga",
+    "diagnostics": "Diagnóstico",
+    "diagnosticsHint": "Qué está haciendo el motor de audio ahora mismo — útil cuando una pista suena sin audio",
+    "diagnosticsRun": "Comprobar",
+    "diagnosticsTone": "Tono de prueba",
+    "graphUnsupported": "Este webview no puede enrutar el audio por los efectos: el ecualizador y el visualizador están desactivados. El sonido no se ve afectado."
   },
   "keys": {
     "title": "Atajos de teclado",
@@ -288,6 +313,9 @@
     "newPlaylist": "Nueva lista",
     "create": "Crear",
     "addToPlaylist": "Añadir a una lista",
-    "queuedNext": "Suena a continuación"
+    "queuedNext": "Suena a continuación",
+    "share": "Compartir",
+    "shareCopied": "Enlace copiado",
+    "shareFailed": "No se pudo copiar el enlace"
   }
 }

@@ -1,7 +1,15 @@
+import { useState } from "react";
 import { RotateCcw } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useSettingsStore } from "@/stores/useSettingsStore";
-import { EQ_BANDS } from "@/audio/engine";
+import {
+  EQ_BANDS,
+  el,
+  graphBlock,
+  probeSource,
+  report,
+  testTone,
+} from "@/audio/engine";
 import { EQ_PRESETS, matchPreset } from "@/audio/presets";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
@@ -97,21 +105,24 @@ export function AudioSettings() {
                   <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
                     {value > 0 ? `+${value}` : value}
                   </span>
-                  <input
-                    type="range"
-                    min={-RANGE}
-                    max={RANGE}
-                    step={1}
-                    value={value}
-                    onChange={(e) => setBand(i, Number(e.currentTarget.value))}
-                    aria-label={`${bandLabel(hz)} Hz`}
-                    // Vertical sliders: rotated so the curve reads like a real EQ.
-                    className="h-24 w-6 cursor-pointer accent-[var(--brand)]"
-                    style={{
-                      writingMode: "vertical-lr",
-                      direction: "rtl",
-                    }}
-                  />
+                  {/* Vertical, the way every hardware EQ is: boost at the top.
+                      Done with a rotation rather than `writing-mode` or
+                      `appearance: slider-vertical` — WebKitGTK honours neither,
+                      and left them lying on their side. The wrapper reserves the
+                      rotated footprint, since a transform doesn't affect
+                      layout. */}
+                  <div className="flex h-24 w-6 items-center justify-center">
+                    <input
+                      type="range"
+                      min={-RANGE}
+                      max={RANGE}
+                      step={1}
+                      value={value}
+                      onChange={(e) => setBand(i, Number(e.currentTarget.value))}
+                      aria-label={`${bandLabel(hz)} Hz`}
+                      className="h-1 w-24 -rotate-90 cursor-pointer accent-[var(--brand)]"
+                    />
+                  </div>
                   <span className="font-mono text-[10px] text-muted-foreground">
                     {bandLabel(hz)}
                   </span>
@@ -138,6 +149,10 @@ export function AudioSettings() {
           </label>
 
           <p className="text-xs text-muted-foreground">{t.audio.warn}</p>
+
+          {graphBlock() === "unsupported" && (
+            <p className="text-xs text-destructive">{t.audio.graphUnsupported}</p>
+          )}
         </div>
 
         <Row label={t.audio.visualizer} hint={t.audio.visualizerHint}>
@@ -200,8 +215,69 @@ export function AudioSettings() {
         <Row label={t.audio.radio} hint={t.audio.radioHint}>
           <Switch checked={radio} onCheckedChange={setRadio} />
         </Row>
+
+        <Diagnostics />
       </div>
     </section>
+  );
+}
+
+/**
+ * Reads the engine's state out loud.
+ *
+ * Silence has several indistinguishable causes — a muted element, a suspended
+ * context, a source Web Audio may not read, an output device that produces
+ * nothing at all — and none of them announce themselves. This shows which one
+ * it is instead of leaving it to be guessed at.
+ */
+function Diagnostics() {
+  const [lines, setLines] = useState<string[]>([]);
+
+  return (
+    <div className="flex flex-col gap-2 px-4 py-3">
+      <div>
+        <div className="text-sm font-medium">{t.audio.diagnostics}</div>
+        <div className="text-xs text-muted-foreground">
+          {t.audio.diagnosticsHint}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={() => {
+            const r = report();
+            setLines(Object.entries(r).map(([key, value]) => `${key}: ${value}`));
+            // Then try the same source on a bare element: if that loads, the
+            // fault is in how we drive playback, not in the source itself.
+            const src = el().currentSrc || el().src;
+            if (src) {
+              void probeSource(src).then((verdict) =>
+                setLines((prev) => [...prev, `probe: ${verdict}`]),
+              );
+            }
+          }}
+          className="rounded-[var(--radius-control)] border border-border bg-secondary px-3 py-1.5 text-sm transition-colors duration-[var(--motion-fast)] hover:bg-accent"
+        >
+          {t.audio.diagnosticsRun}
+        </button>
+        <button
+          onClick={() => {
+            void testTone().then((verdict) =>
+              setLines((prev) => [...prev, `testTone: ${verdict}`]),
+            );
+          }}
+          className="rounded-[var(--radius-control)] border border-border bg-secondary px-3 py-1.5 text-sm transition-colors duration-[var(--motion-fast)] hover:bg-accent"
+        >
+          {t.audio.diagnosticsTone}
+        </button>
+      </div>
+
+      {lines.length > 0 && (
+        <pre className="overflow-x-auto rounded-[var(--radius-control)] border border-border bg-card p-3 font-mono text-[11px] leading-relaxed text-muted-foreground">
+          {lines.join("\n")}
+        </pre>
+      )}
+    </div>
   );
 }
 
@@ -215,7 +291,7 @@ function Row({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-[calc(0.75rem*var(--density))]">
       <div className="min-w-0">
         <div className="text-sm font-medium">{label}</div>
         {hint && <div className="text-xs text-muted-foreground">{hint}</div>}

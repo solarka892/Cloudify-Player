@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getLyrics, type Lyrics as LyricsData, type Track } from "@/lib/tauri";
+import { el } from "@/audio/engine";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
@@ -50,9 +51,54 @@ type State =
   | { status: "none" }
   | { status: "error" };
 
-export function LyricsPanel({ track }: { track: Track }) {
+/**
+ * How far ahead of the clock a line lights up, in seconds.
+ *
+ * A line that changes exactly on its timestamp always reads as late: the eye
+ * needs to find it and start reading before the words are sung. Every lyric
+ * player leads by something in this range.
+ */
+const LEAD = 0.25;
+
+/**
+ * The playing position, sampled per frame.
+ *
+ * The store's `position` is fed by `timeupdate`, which fires about four times a
+ * second and is then coalesced further to keep the whole UI from re-rendering
+ * on it — fine for a seek bar, visibly behind for lyrics. Reading the element
+ * directly costs one property access per frame and only while lyrics are open.
+ */
+function useLivePosition(): number {
+  const [position, setPosition] = useState(() => el().currentTime);
+
+  useEffect(() => {
+    let frame = 0;
+    let last = -1;
+    function tick() {
+      frame = requestAnimationFrame(tick);
+      const now = el().currentTime;
+      // Only re-render when it could change which line is active.
+      if (Math.abs(now - last) < 0.05) return;
+      last = now;
+      setPosition(now);
+    }
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  return position;
+}
+
+export function LyricsPanel({
+  track,
+  /** Smaller type, for the narrow popup over the player bar. */
+  compact = false,
+}: {
+  track: Track;
+  compact?: boolean;
+}) {
   const [state, setState] = useState<State>({ status: "idle" });
-  const position = usePlayerStore((s) => s.position);
+  const position = useLivePosition();
   const seek = usePlayerStore((s) => s.seek);
   const activeRef = useRef<HTMLButtonElement>(null);
 
@@ -78,7 +124,7 @@ export function LyricsPanel({ track }: { track: Track }) {
     [state],
   );
 
-  // Last line whose timestamp has passed.
+  // Last line whose timestamp has passed, less the lead.
   const activeIndex = useMemo(() => {
     if (lines.length === 0) return -1;
     let lo = 0;
@@ -86,7 +132,7 @@ export function LyricsPanel({ track }: { track: Track }) {
     let found = -1;
     while (lo <= hi) {
       const mid = (lo + hi) >> 1;
-      if (lines[mid]!.time <= position) {
+      if (lines[mid]!.time <= position + LEAD) {
         found = mid;
         lo = mid + 1;
       } else {
@@ -118,7 +164,8 @@ export function LyricsPanel({ track }: { track: Track }) {
             ref={i === activeIndex ? activeRef : undefined}
             onClick={() => seek(line.time)}
             className={cn(
-              "mx-auto max-w-2xl rounded-[var(--radius-control)] px-3 py-1.5 text-balance text-xl font-semibold leading-snug transition-all duration-[var(--motion-slow)]",
+              "mx-auto max-w-2xl rounded-[var(--radius-control)] px-4 py-1.5 text-balance font-semibold leading-snug transition-all duration-[var(--motion-slow)]",
+              compact ? "text-base" : "text-xl",
               i === activeIndex
                 ? "scale-[1.02] text-foreground"
                 : "text-muted-foreground/50 hover:text-muted-foreground",
@@ -133,7 +180,12 @@ export function LyricsPanel({ track }: { track: Track }) {
 
   // Plain text: no timings, so just render it.
   return (
-    <div className="mx-auto max-w-2xl whitespace-pre-wrap py-8 text-center text-lg leading-relaxed text-muted-foreground">
+    <div
+      className={cn(
+        "mx-auto max-w-2xl whitespace-pre-wrap px-4 py-8 text-center leading-relaxed text-muted-foreground",
+        compact ? "text-sm" : "text-lg",
+      )}
+    >
       {state.data.plain}
     </div>
   );

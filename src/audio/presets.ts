@@ -25,7 +25,6 @@ export const EQ_PRESETS: EqPreset[] = [
   { id: "rock", name: "Rock", bands: [4, 3, 1, -1, -2, 0, 2, 3, 4, 4] },
   { id: "electronic", name: "Electronic", bands: [5, 4, 1, 0, -2, 1, 1, 2, 4, 5] },
   { id: "jazz", name: "Jazz", bands: [3, 2, 1, 2, -1, -1, 0, 1, 2, 3] },
-  { id: "podcast", name: "Podcast", bands: [-4, -3, 0, 3, 4, 4, 3, 1, -1, -2] },
   { id: "night", name: "Night", bands: [-2, -1, 0, 1, 2, 2, 1, 0, -2, -3] },
 ];
 

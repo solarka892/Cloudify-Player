@@ -135,8 +135,9 @@
     font-size: var(--ui-scale);
   }
   /* No `scroll-behavior: smooth` here on purpose: WebKit applies it to wheel
-     input on a curve that starts slow and then lurches, and it fights the
-     inertia in `useGlideScroll`, which owns the feel instead. */
+     input too, on a curve that starts slow and then lurches. Scrolling is left
+     entirely to the platform — anything that animates the offset from script
+     forces a repaint per frame, which is what made it stutter. */
   [class*="overflow-y-auto"] {
     overscroll-behavior: contain;
   }
@@ -191,18 +192,22 @@
     position: fixed;
     /* Promote to its own layer so the blur is computed once, not per frame. */
     will-change: transform;
-    inset: 0;
+    /* Grown by the blur radius rather than scaled up.
+
+       A blur samples past the element's edges, and what it pulls in from
+       outside comes back transparent and pales the border — which is what the
+       old `scale(1.12)` was hiding, at the cost of cropping 12% of the image
+       off every side no matter the settings. Overspilling by exactly the radius
+       hides the same thing with the least crop there is, and at blur 0 there is
+       none at all: the image is then as zoomed-out as it can be while still
+       filling the window. */
+    inset: calc(-1 * var(--backdrop-blur));
     z-index: 0;
     pointer-events: none;
     background-image: var(--backdrop-image);
     background-size: cover;
     background-position: center;
     filter: blur(var(--backdrop-blur)) saturate(var(--backdrop-saturate));
-    /* Overscan so the blur doesn't reveal the edges. */
-    transform: scale(1.12);
-    /* The source is a 120px thumbnail: upscaling it costs nothing next to
-       filtering a full-resolution cover, and 40px of blur hides the
-       difference entirely. */
     image-rendering: auto;
     transition: background-image var(--motion-slow) ease;
   }

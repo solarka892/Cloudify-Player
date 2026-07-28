@@ -1,7 +1,9 @@
 {
   "app": {
     "name": "cloudify",
-    "tagline": "Unoffizieller SoundCloud-Client"
+    "tagline": "Unoffizieller SoundCloud-Client",
+    "crashed": "Auf diesem Bildschirm ist etwas kaputtgegangen",
+    "reload": "Neu laden"
   },
   "nav": {
     "home": "Start",
@@ -133,7 +135,9 @@
     "sleep": "Sleeptimer",
     "sleepCancel": "Timer abbrechen",
     "minutes": "Min.",
+    "minutesShort": "Min",
     "enableVisualizer": "Visualisierung einschalten",
+    "visualizerBlocked": "Der Visualizer kann diesen Track nicht lesen — sein Host erlaubt es nicht. Der Ton bleibt unberührt.",
     "playbackFailed": "Konnte nicht abgespielt werden",
     "localFileBroken": "Die heruntergeladene Datei lässt sich nicht lesen — es wird gestreamt"
   },
@@ -145,6 +149,11 @@
     "layoutSidebar": "Seitenleiste",
     "skin": "Stil",
     "skinHint": "Form: Radien, Schatten, Weichzeichnung, Typografie",
+    "skinHints": {
+      "aurora": "Glas, Weichzeichnung, sanftes Leuchten",
+      "editorial": "Große Typografie, harte Linien, keine Schatten",
+      "studio": "Haptische Regler, dezente Tiefe, Wellenform"
+    },
     "colour": "Farbe",
     "theme": "Erscheinungsbild",
     "themeDark": "Dunkel",
@@ -206,7 +215,18 @@
     "slotBrand": "Akzent",
     "slotBrand2": "Akzent 2",
     "language": "Sprache",
-    "languageHint": "Sprache der Oberfläche"
+    "languageHint": "Sprache der Oberfläche",
+    "effects": "Effekte",
+    "effectsHint": "Fallende Partikel über dem ganzen Fenster. Eine Animation, die Frames kostet — standardmäßig aus.",
+    "effectIntensity": "Intensität",
+    "effectNames": {
+      "none": "Keine",
+      "sakura": "Sakura",
+      "snow": "Schnee",
+      "rain": "Regen",
+      "leaves": "Herbstblätter",
+      "fireflies": "Glühwürmchen"
+    }
   },
   "lyrics": {
     "loading": "Songtext wird gesucht…",
@@ -248,7 +268,12 @@
     "radioHint": "Mit ähnlichen Tracks weiterspielen, wenn die Warteschlange leer ist",
     "warn": "Wenn der Ton verschwindet: Equalizer aus und Track neu starten",
     "visualizer": "Visualisierung",
-    "visualizerHint": "Spektrum im Vollbildplayer. Leitet den Ton durch die Verarbeitung, daher wird der Track neu geladen"
+    "visualizerHint": "Spektrum im Vollbildplayer. Leitet den Ton durch die Verarbeitung, daher wird der Track neu geladen",
+    "diagnostics": "Diagnose",
+    "diagnosticsHint": "Was die Audio-Engine gerade tut — hilfreich, wenn ein Track ohne Ton läuft",
+    "diagnosticsRun": "Prüfen",
+    "diagnosticsTone": "Testton",
+    "graphUnsupported": "Dieses WebView kann Audio nicht durch Effekte leiten — Equalizer und Visualizer sind aus. Der Ton bleibt unberührt."
   },
   "keys": {
     "title": "Tastenkürzel",
@@ -288,6 +313,9 @@
     "newPlaylist": "Neue Playlist",
     "create": "Erstellen",
     "addToPlaylist": "Zur Playlist hinzufügen",
-    "queuedNext": "Läuft als Nächstes"
+    "queuedNext": "Läuft als Nächstes",
+    "share": "Teilen",
+    "shareCopied": "Link kopiert",
+    "shareFailed": "Link konnte nicht kopiert werden"
   }
 }

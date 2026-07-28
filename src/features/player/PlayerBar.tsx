@@ -4,6 +4,8 @@ import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
 import { useNavStore } from "@/stores/useNavStore";
 import { LikeButton } from "@/components/LikeButton";
+import { ShareButton } from "@/components/ShareButton";
+import { Ambient } from "@/components/Ambient";
 import { NowPlaying } from "./NowPlaying";
 import { QueuePanel } from "./QueuePanel";
 import { LyricsPanel } from "./Lyrics";
@@ -47,12 +49,20 @@ export function PlayerBar() {
 
       <div className="relative">
         {panel !== "none" && (
-          <div className="panel panel-raised pop-in absolute bottom-full right-4 mb-2 flex h-[26rem] w-[24rem] flex-col overflow-hidden">
+          // Narrow, and clear of both the window edge and the bar it sits on:
+          // a floating panel that touches either reads as part of the chrome
+          // rather than as something laid over it.
+          <div className="panel panel-raised pop-in absolute bottom-full right-6 mb-3 flex h-[26rem] w-[20rem] flex-col overflow-hidden">
             {panel === "queue" ? (
               <QueuePanel onClose={() => setPanel("none")} />
             ) : (
-              <div className="min-h-0 flex-1 overflow-y-auto">
-                <LyricsPanel track={current} />
+              <div className="relative min-h-0 flex-1 overflow-hidden">
+                <Ambient />
+                <div className="relative h-full overflow-y-auto">
+                  {/* Smaller type: at this width the full-size lines would wrap
+                      every few words and sit against the panel's edges. */}
+                  <LyricsPanel track={current} compact />
+                </div>
               </div>
             )}
           </div>
@@ -92,6 +102,7 @@ export function PlayerBar() {
             </div>
 
             <LikeButton track={current} />
+            <ShareButton url={current.permalink_url} />
 
             <button
               onClick={() => void startDownload(current)}

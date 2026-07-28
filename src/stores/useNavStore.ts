@@ -8,9 +8,17 @@ import type { Playlist, User } from "@/lib/tauri";
  * results), so "what is open" lives in a store rather than being threaded
  * through every list component.
  */
+interface Opened {
+  id: number;
+  title: string;
+  subtitle: string | null;
+  /** soundcloud.com page for it, for the share button. */
+  url: string | null;
+}
+
 export type Detail =
-  | { kind: "playlist"; id: number; title: string; subtitle: string | null }
-  | { kind: "user"; id: number; title: string; subtitle: string | null };
+  | ({ kind: "playlist" } & Opened)
+  | ({ kind: "user" } & Opened);
 
 interface NavState {
   detail: Detail | null;
@@ -37,6 +45,7 @@ export const useNavStore = create<NavState>((set) => ({
         id: playlist.id,
         title: playlist.title,
         subtitle: playlist.owner,
+        url: playlist.permalink_url,
       },
     }),
 
@@ -47,6 +56,7 @@ export const useNavStore = create<NavState>((set) => ({
         id: user.id,
         title: user.username,
         subtitle: null,
+        url: user.permalink_url,
       },
     }),
 

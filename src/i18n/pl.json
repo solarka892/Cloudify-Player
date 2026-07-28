@@ -1,7 +1,9 @@
 {
   "app": {
     "name": "cloudify",
-    "tagline": "Nieoficjalny klient SoundCloud"
+    "tagline": "Nieoficjalny klient SoundCloud",
+    "crashed": "Coś się zepsuło na tym ekranie",
+    "reload": "Załaduj ponownie"
   },
   "nav": {
     "home": "Główna",
@@ -133,7 +135,9 @@
     "sleep": "Wyłącznik czasowy",
     "sleepCancel": "Anuluj wyłącznik",
     "minutes": "min",
+    "minutesShort": "min",
     "enableVisualizer": "Włącz wizualizator",
+    "visualizerBlocked": "Wizualizator nie może odczytać tego utworu — jego host na to nie pozwala. Dźwięk działa normalnie.",
     "playbackFailed": "Nie udało się odtworzyć",
     "localFileBroken": "Pobrany plik jest nieczytelny — odtwarzam z sieci"
   },
@@ -145,6 +149,11 @@
     "layoutSidebar": "Panel z boku",
     "skin": "Styl",
     "skinHint": "Forma: zaokrąglenia, cienie, rozmycie, typografia",
+    "skinHints": {
+      "aurora": "Szkło, rozmycie i delikatna poświata",
+      "editorial": "Duża typografia, twarde linie, bez cieni",
+      "studio": "Dotykowe kontrolki, subtelna głębia, fala"
+    },
     "colour": "Kolor",
     "theme": "Motyw",
     "themeDark": "Ciemny",
@@ -206,7 +215,18 @@
     "slotBrand": "Akcent",
     "slotBrand2": "Akcent 2",
     "language": "Język",
-    "languageHint": "Język interfejsu"
+    "languageHint": "Język interfejsu",
+    "effects": "Efekty",
+    "effectsHint": "Spadające cząstki na całym oknie. To animacja, kosztuje klatki — domyślnie wyłączone.",
+    "effectIntensity": "Intensywność",
+    "effectNames": {
+      "none": "Brak",
+      "sakura": "Sakura",
+      "snow": "Śnieg",
+      "rain": "Deszcz",
+      "leaves": "Jesienne liście",
+      "fireflies": "Świetliki"
+    }
   },
   "lyrics": {
     "loading": "Szukam tekstu…",
@@ -248,7 +268,12 @@
     "radioHint": "Graj podobne utwory, gdy kolejka się skończy",
     "warn": "Jeśli dźwięk zniknie, wyłącz korektor i włącz utwór ponownie",
     "visualizer": "Wizualizator",
-    "visualizerHint": "Widmo w pełnoekranowym odtwarzaczu. Prowadzi dźwięk przez obróbkę, więc utwór wczytuje się od nowa"
+    "visualizerHint": "Widmo w pełnoekranowym odtwarzaczu. Prowadzi dźwięk przez obróbkę, więc utwór wczytuje się od nowa",
+    "diagnostics": "Diagnostyka",
+    "diagnosticsHint": "Co robi teraz silnik audio — przydaje się, gdy utwór gra bez dźwięku",
+    "diagnosticsRun": "Sprawdź",
+    "diagnosticsTone": "Ton testowy",
+    "graphUnsupported": "Ten webview nie potrafi przepuścić dźwięku przez efekty — korektor i wizualizator wyłączone. Dźwięk działa normalnie."
   },
   "keys": {
     "title": "Skróty klawiszowe",
@@ -288,6 +313,9 @@
     "newPlaylist": "Nowa playlista",
     "create": "Utwórz",
     "addToPlaylist": "Dodaj do playlisty",
-    "queuedNext": "Zagra jako następny"
+    "queuedNext": "Zagra jako następny",
+    "share": "Udostępnij",
+    "shareCopied": "Link skopiowany",
+    "shareFailed": "Nie udało się skopiować linku"
   }
 }

@@ -17,6 +17,10 @@ use super::{client_id, ScApiError, API_V2, USER_AGENT};
 #[derive(Deserialize)]
 struct Format {
     protocol: String,
+    /// `audio/mpeg` for the plain mp3; occasionally opus, or an encrypted
+    /// preset on Go+ tracks that no `<audio>` element can decode.
+    #[serde(default)]
+    mime_type: String,
 }
 
 #[derive(Deserialize)]
@@ -71,11 +75,20 @@ async fn resolve(track_id: u64, fresh_client_id: bool) -> Result<String, ScApiEr
     }
     let track: RawTrack = resp.error_for_status()?.json().await?;
 
-    let transcoding = track
+    // Prefer the mp3 among the progressive transcodings rather than whichever
+    // comes first: a track can also offer opus, or an encrypted preset, and
+    // both are a coin toss in a WebView — one that lands on silence or a decode
+    // error. Any progressive will still do if there is no mp3 at all.
+    let progressive: Vec<Transcoding> = track
         .media
         .transcodings
         .into_iter()
-        .find(|t| t.format.protocol == "progressive")
+        .filter(|t| t.format.protocol == "progressive")
+        .collect();
+    let transcoding = progressive
+        .iter()
+        .find(|t| t.format.mime_type.contains("mpeg") || t.format.mime_type.contains("mp3"))
+        .or_else(|| progressive.first())
         .ok_or(ScApiError::NoStream)?;
 
     let resp = client

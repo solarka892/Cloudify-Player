@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BadgeCheck, ExternalLink, MapPin, User as UserIcon } from "lucide-react";
 import {
   scGetFollowers,
@@ -16,6 +16,7 @@ import { PlaylistList } from "@/components/PlaylistList";
 import { TrackList } from "@/components/TrackList";
 import { UserList } from "@/components/UserList";
 import { DownloadAllButton } from "@/components/DownloadAllButton";
+import { ShareButton } from "@/components/ShareButton";
 import { useLibraryStore } from "@/stores/useLibraryStore";
 import { toast } from "@/stores/useToastStore";
 import { t } from "@/i18n";
@@ -64,6 +65,13 @@ export function ProfileView({
   const [tab, setTab] = useState<Tab>("tracks");
   const [data, setData] = useState<Loaded>(EMPTY);
   const [loading, setLoading] = useState<Tab | null>(null);
+  /**
+   * Which tabs have been fetched, whatever came back. Emptiness cannot stand in
+   * for this: a tab that legitimately has nothing in it — the common case for
+   * "tracks" on a listener's own profile — would be indistinguishable from one
+   * that has not loaded, and the fetch would repeat without end.
+   */
+  const fetched = useRef(new Set<Tab>());
 
   const following = useLibraryStore((s) => s.followingIds.has(userId));
   const toggleFollow = useLibraryStore((s) => s.toggleFollow);
@@ -73,6 +81,7 @@ export function ProfileView({
     setProfile(null);
     setData(EMPTY);
     setTab("tracks");
+    fetched.current = new Set();
     scGetProfile(userId)
       .then((p) => !cancelled && setProfile(p))
       .catch(() => undefined);
@@ -84,13 +93,8 @@ export function ProfileView({
   // Lazy per tab: fetch the first time a tab is shown, then keep it.
   useEffect(() => {
     let cancelled = false;
-    const already =
-      (tab === "tracks" && data.tracks.length > 0) ||
-      (tab === "playlists" && data.playlists.length > 0) ||
-      (tab === "likes" && data.likes.length > 0) ||
-      (tab === "followers" && data.followers.length > 0) ||
-      (tab === "following" && data.following.length > 0);
-    if (already) return;
+    if (fetched.current.has(tab)) return;
+    fetched.current.add(tab);
 
     const fetcher: Record<Tab, () => Promise<Partial<Loaded>>> = {
       tracks: async () => ({ tracks: await scGetUserTracks(userId) }),
@@ -103,13 +107,14 @@ export function ProfileView({
     setLoading(tab);
     fetcher[tab]()
       .then((patch) => !cancelled && setData((d) => ({ ...d, ...patch })))
-      .catch(() => undefined)
+      // A tab that failed is worth another try when the user comes back to it.
+      .catch(() => fetched.current.delete(tab))
       .finally(() => !cancelled && setLoading(null));
 
     return () => {
       cancelled = true;
     };
-  }, [tab, userId, data]);
+  }, [tab, userId]);
 
   const avatar = artwork(profile?.avatar_url ?? null, "t300x300");
   const banner = profile?.banner_url ?? null;
@@ -228,6 +233,10 @@ export function ProfileView({
               </p>
             )}
           </div>
+
+          {profile && (
+            <ShareButton url={profile.permalink_url} withLabel className="self-start" />
+          )}
 
           {!isSelf && profile && (
             <button

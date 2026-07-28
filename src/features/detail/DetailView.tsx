@@ -3,6 +3,7 @@ import { ArrowLeft, Play } from "lucide-react";
 import { scGetPlaylistTracks, type Track } from "@/lib/tauri";
 import { TrackList } from "@/components/TrackList";
 import { DownloadAllButton } from "@/components/DownloadAllButton";
+import { ShareButton } from "@/components/ShareButton";
 import { ProfileView } from "@/features/profile/ProfileView";
 import { useNavStore, type Detail } from "@/stores/useNavStore";
 import { usePlayerStore } from "@/stores/usePlayerStore";
@@ -76,6 +77,8 @@ function PlaylistDetail({ detail }: { detail: Detail }) {
             </span>
           )}
         </div>
+
+        <ShareButton url={detail.url} />
 
         {tracks.length > 0 && <DownloadAllButton tracks={tracks} />}
 

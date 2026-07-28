@@ -1,7 +1,9 @@
 {
   "app": {
     "name": "cloudify",
-    "tagline": "Client SoundCloud non ufficiale"
+    "tagline": "Client SoundCloud non ufficiale",
+    "crashed": "Qualcosa si è rotto in questa schermata",
+    "reload": "Ricarica"
   },
   "nav": {
     "home": "Home",
@@ -133,7 +135,9 @@
     "sleep": "Timer di spegnimento",
     "sleepCancel": "Annulla il timer",
     "minutes": "min",
+    "minutesShort": "min",
     "enableVisualizer": "Attiva il visualizzatore",
+    "visualizerBlocked": "Il visualizzatore non può leggere questo brano: il suo host non lo consente. L'audio non è interessato.",
     "playbackFailed": "Impossibile riprodurre",
     "localFileBroken": "Il file scaricato non è leggibile: riproduco dalla rete"
   },
@@ -145,6 +149,11 @@
     "layoutSidebar": "Barra laterale",
     "skin": "Stile",
     "skinHint": "Forma: raggi, ombre, sfocatura, tipografia",
+    "skinHints": {
+      "aurora": "Vetro, sfocatura e un bagliore morbido",
+      "editorial": "Tipografia grande, linee nette, senza ombre",
+      "studio": "Controlli tattili, profondità misurata, onda"
+    },
     "colour": "Colore",
     "theme": "Tema",
     "themeDark": "Scuro",
@@ -206,7 +215,18 @@
     "slotBrand": "Accento",
     "slotBrand2": "Accento 2",
     "language": "Lingua",
-    "languageHint": "Lingua dell’interfaccia"
+    "languageHint": "Lingua dell’interfaccia",
+    "effects": "Effetti",
+    "effectsHint": "Particelle che cadono su tutta la finestra. È un'animazione e costa frame: disattivata per impostazione predefinita.",
+    "effectIntensity": "Intensità",
+    "effectNames": {
+      "none": "Nessuno",
+      "sakura": "Sakura",
+      "snow": "Neve",
+      "rain": "Pioggia",
+      "leaves": "Foglie d'autunno",
+      "fireflies": "Lucciole"
+    }
   },
   "lyrics": {
     "loading": "Cerco il testo…",
@@ -248,7 +268,12 @@
     "radioHint": "Continua con brani simili quando la coda finisce",
     "warn": "Se l’audio sparisce, disattiva l’equalizzatore e riavvia il brano",
     "visualizer": "Visualizzatore",
-    "visualizerHint": "Spettro nel player a schermo intero. Instrada l’audio nell’elaborazione, quindi il brano viene ricaricato"
+    "visualizerHint": "Spettro nel player a schermo intero. Instrada l’audio nell’elaborazione, quindi il brano viene ricaricato",
+    "diagnostics": "Diagnostica",
+    "diagnosticsHint": "Cosa sta facendo il motore audio in questo momento — utile quando un brano suona senza audio",
+    "diagnosticsRun": "Controlla",
+    "diagnosticsTone": "Tono di prova",
+    "graphUnsupported": "Questo webview non può instradare l'audio attraverso gli effetti: equalizzatore e visualizzatore disattivati. L'audio non è interessato."
   },
   "keys": {
     "title": "Scorciatoie da tastiera",
@@ -288,6 +313,9 @@
     "newPlaylist": "Nuova playlist",
     "create": "Crea",
     "addToPlaylist": "Aggiungi a una playlist",
-    "queuedNext": "In riproduzione dopo"
+    "queuedNext": "In riproduzione dopo",
+    "share": "Condividi",
+    "shareCopied": "Link copiato",
+    "shareFailed": "Impossibile copiare il link"
   }
 }

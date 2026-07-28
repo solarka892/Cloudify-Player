@@ -1,6 +1,7 @@
 import { User as UserIcon } from "lucide-react";
 import type { User } from "@/lib/tauri";
 import { useNavStore } from "@/stores/useNavStore";
+import { ShareButton } from "./ShareButton";
 import { useIncremental } from "@/hooks/useIncremental";
 import { t } from "@/i18n";
 import { artwork } from "@/lib/utils";
@@ -21,11 +22,16 @@ export function UserList({ users }: { users: User[] }) {
     <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-[var(--radius)] border border-border">
       {visible.map((user) => {
         const avatar = artwork(user.avatar_url);
+        // The row and the share action are siblings, not nested buttons —
+        // which would be invalid, and unclickable.
         return (
-          <li key={user.id}>
+          <li
+            key={user.id}
+            className="group/row flex items-center bg-row pr-2 transition-[background-color] duration-[var(--motion-fast)] hover:bg-accent"
+          >
             <button
               onClick={() => openUser(user)}
-              className="flex w-full items-center gap-3 bg-row px-3 py-2 text-left transition-[background-color] duration-[var(--motion-fast)] hover:bg-accent"
+              className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2 text-left"
             >
               {avatar ? (
                 <img
@@ -56,6 +62,10 @@ export function UserList({ users }: { users: User[] }) {
                 </span>
               )}
             </button>
+            <ShareButton
+              url={user.permalink_url}
+              className="opacity-0 transition-opacity duration-[var(--motion-fast)] group-hover/row:opacity-100"
+            />
           </li>
         );
       })}

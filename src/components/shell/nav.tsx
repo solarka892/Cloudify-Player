@@ -148,7 +148,16 @@ function BrandMark({ compact = false }: { compact?: boolean }) {
   return (
     <button
       onClick={bump}
-      className="flex h-10 shrink-0 items-center gap-2 pr-1.5 text-left"
+      className={cn(
+        "flex h-10 shrink-0 items-center gap-2 text-left",
+        // In the rail the mark is centred on the icons' axis, not aligned to
+        // their left edge: it is 30px wide against their 18px, so sharing an
+        // edge puts its weight 6px to the right of the column. That axis is
+        // 27px from the rail's edge (8px rail padding + 10px button padding +
+        // half an 18px icon), so a 30px mark starts 4px in. Fixed padding, not
+        // centring, because the rail widens to 192px on hover.
+        compact ? "pl-1" : "px-2.5",
+      )}
       aria-label="cloudify"
     >
       <Logo compact={compact} />

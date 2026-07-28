@@ -79,7 +79,8 @@ pub async fn sc_get_me() -> Result<sc_api::me::Me, String> {
 /// Browsers whose cookie store this build can read. Chromium-family browsers
 /// encrypt cookie values with a key held in the OS keychain, so they are out.
 #[cfg(target_os = "macos")]
-const SUPPORTED_BROWSERS: &str = "Safari (needs Full Disk Access for cloudify), Firefox, Zen, LibreWolf and Waterfox";
+const SUPPORTED_BROWSERS: &str =
+    "Safari (needs Full Disk Access for cloudify), Firefox, Zen, LibreWolf and Waterfox";
 #[cfg(not(target_os = "macos"))]
 const SUPPORTED_BROWSERS: &str = "Firefox, Zen and LibreWolf";
 

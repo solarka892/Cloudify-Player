@@ -21,7 +21,9 @@ import {
 } from "@/audio/engine";
 import type { PaletteId } from "@/theme/palettes";
 import type { SkinId } from "@/theme/skins";
+import type { EffectId } from "@/theme/particles";
 import type { ThemeVars } from "@/theme/tokens";
+import { fillDefaults } from "@/lib/merge";
 
 /**
  * Everything the user can change about the app, persisted to the webview's
@@ -37,6 +39,10 @@ export type LayoutId = "rail" | "top" | "sidebar";
 export interface BackdropState {
   /** `artwork` tracks the playing cover; `image` is a user file. */
   mode: "none" | "artwork" | "image";
+  /** Falling particles over the whole app. Independent of `mode`. */
+  effect: EffectId | "none";
+  /** Particle count multiplier, 0.25–2. */
+  effectIntensity: number;
   /** Data URL of the user's background image. */
   image: string | null;
   /** Blur radius in px. */
@@ -82,6 +88,7 @@ export interface ThemeFile {
 
 export const DEFAULT_VOLUME = 0.8;
 
+
 /** Reject background images bigger than this — localStorage is not a filesystem. */
 const MAX_BACKGROUND_BYTES = 4_000_000;
 
@@ -103,6 +110,10 @@ const DEFAULT_BACKDROP: BackdropState = {
   // The playing cover, blurred, is the app's default wallpaper — leaving this
   // at "none" meant the feature existed but nobody ever saw it.
   mode: "artwork",
+  // Off by default: an animated full-window layer is exactly the kind of cost
+  // this app is careful about, so it stays something the user asks for.
+  effect: "none",
+  effectIntensity: 1,
   image: null,
   blur: 40,
   dim: 0.55,
@@ -117,8 +128,6 @@ interface SettingsState {
   /** Ids of easter-egg extras the user has found. */
   unlocked: string[];
 
-  /** Inertial wheel scrolling. Off leaves the platform's own behaviour. */
-  glideScroll: boolean;
   /** UI language. Applied to the live `t` dictionary, not just stored. */
   locale: Locale;
   autoplayNext: boolean;
@@ -156,7 +165,6 @@ interface SettingsState {
   /** Returns an error message, or `null` on success. */
   importTheme: (json: string) => string | null;
 
-  setGlideScroll: (on: boolean) => void;
   setLocale: (locale: Locale) => void;
   setAutoplayNext: (on: boolean) => void;
   setRememberVolume: (on: boolean) => void;
@@ -211,6 +219,7 @@ export const useSettingsStore = create<SettingsState>()(
             : backdrop.mode === "artwork"
               ? artworkUrl
               : null;
+
         applyBackdrop({
           "--backdrop-image": source ? `url("${source}")` : "none",
           "--backdrop-blur": `${backdrop.blur}px`,
@@ -226,7 +235,6 @@ export const useSettingsStore = create<SettingsState>()(
         presets: [],
         unlocked: [],
 
-        glideScroll: true,
         locale: detectLocale(),
         autoplayNext: true,
         rememberVolume: true,
@@ -352,7 +360,6 @@ export const useSettingsStore = create<SettingsState>()(
           return null;
         },
 
-        setGlideScroll: (glideScroll) => set({ glideScroll }),
         setLocale: (locale) => {
           applyLocale(locale);
           set({ locale });
@@ -385,7 +392,8 @@ export const useSettingsStore = create<SettingsState>()(
     },
     {
       name: "cloudify.settings",
-      version: 3,
+      version: 4,
+      merge: (persisted, current) => fillDefaults(current, persisted),
       // Runtime-only artwork state must not be written to disk.
       partialize: (s) => ({
         layout: s.layout,
@@ -393,7 +401,6 @@ export const useSettingsStore = create<SettingsState>()(
         backdrop: s.backdrop,
         presets: s.presets,
         unlocked: s.unlocked,
-        glideScroll: s.glideScroll,
         locale: s.locale,
         autoplayNext: s.autoplayNext,
         rememberVolume: s.rememberVolume,
@@ -412,9 +419,11 @@ export const useSettingsStore = create<SettingsState>()(
         // and drop the settings that went with it.
         const state = persisted as {
           theme?: Record<string, unknown>;
+          presets?: { theme?: Record<string, unknown> }[];
         } | null;
-        const theme = state?.theme;
-        if (theme) {
+
+        function retire(theme: Record<string, unknown> | undefined): void {
+          if (!theme) return;
           if (theme.skin === "apple") theme.skin = "aurora";
           if (theme.palette === "apple") theme.palette = "midnight";
           for (const dead of [
@@ -426,6 +435,12 @@ export const useSettingsStore = create<SettingsState>()(
             delete theme[dead];
           }
         }
+
+        retire(state?.theme);
+        // v4: the same cleanup for saved presets, which v3 forgot — applying
+        // one of those put an unresolvable id back into the live theme.
+        for (const preset of state?.presets ?? []) retire(preset?.theme);
+
         return state as never;
       },
     },

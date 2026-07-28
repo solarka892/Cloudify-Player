@@ -344,7 +344,10 @@ mod tests {
     #[test]
     fn ignores_other_sites_and_other_cookies() {
         let other = binarycookies(".example.com", "oauth_token", "nope");
-        assert_eq!(safari::find_cookie(&other, "oauth_token", "soundcloud.com"), None);
+        assert_eq!(
+            safari::find_cookie(&other, "oauth_token", "soundcloud.com"),
+            None
+        );
 
         let wrong_name = binarycookies(".soundcloud.com", "session", "nope");
         assert_eq!(
@@ -355,7 +358,13 @@ mod tests {
 
     #[test]
     fn rejects_a_file_that_is_not_a_cookie_jar() {
-        assert_eq!(safari::find_cookie(b"not a jar at all", "oauth_token", "soundcloud.com"), None);
-        assert_eq!(safari::find_cookie(b"cook", "oauth_token", "soundcloud.com"), None);
+        assert_eq!(
+            safari::find_cookie(b"not a jar at all", "oauth_token", "soundcloud.com"),
+            None
+        );
+        assert_eq!(
+            safari::find_cookie(b"cook", "oauth_token", "soundcloud.com"),
+            None
+        );
     }
 }

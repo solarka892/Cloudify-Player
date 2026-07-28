@@ -1,7 +1,9 @@
 {
   "app": {
     "name": "cloudify",
-    "tagline": "Resmi olmayan SoundCloud istemcisi"
+    "tagline": "Resmi olmayan SoundCloud istemcisi",
+    "crashed": "Bu ekranda bir şey bozuldu",
+    "reload": "Yeniden yükle"
   },
   "nav": {
     "home": "Ana sayfa",
@@ -133,7 +135,9 @@
     "sleep": "Uyku zamanlayıcısı",
     "sleepCancel": "Zamanlayıcıyı iptal et",
     "minutes": "dk",
+    "minutesShort": "dk",
     "enableVisualizer": "Görselleştiriciyi aç",
+    "visualizerBlocked": "Görselleştirici bu parçayı okuyamıyor — sunucusu izin vermiyor. Ses etkilenmez.",
     "playbackFailed": "Çalınamadı",
     "localFileBroken": "İndirilen dosya okunamıyor — internetten çalıyorum"
   },
@@ -145,6 +149,11 @@
     "layoutSidebar": "Yan panel",
     "skin": "Biçim",
     "skinHint": "Form: köşeler, gölgeler, bulanıklık, tipografi",
+    "skinHints": {
+      "aurora": "Cam, bulanıklık ve yumuşak bir parıltı",
+      "editorial": "Büyük tipografi, keskin çizgiler, gölge yok",
+      "studio": "Dokunsal kontroller, ölçülü derinlik, dalga"
+    },
     "colour": "Renk",
     "theme": "Tema",
     "themeDark": "Koyu",
@@ -206,7 +215,18 @@
     "slotBrand": "Vurgu",
     "slotBrand2": "Vurgu 2",
     "language": "Dil",
-    "languageHint": "Arayüz dili"
+    "languageHint": "Arayüz dili",
+    "effects": "Efektler",
+    "effectsHint": "Pencerenin tamamına düşen parçacıklar. Bir animasyon, kare maliyeti var — varsayılan olarak kapalı.",
+    "effectIntensity": "Yoğunluk",
+    "effectNames": {
+      "none": "Yok",
+      "sakura": "Sakura",
+      "snow": "Kar",
+      "rain": "Yağmur",
+      "leaves": "Sonbahar yaprakları",
+      "fireflies": "Ateş böcekleri"
+    }
   },
   "lyrics": {
     "loading": "Şarkı sözü aranıyor…",
@@ -248,7 +268,12 @@
     "radioHint": "Sıra bitince benzer parçalarla devam et",
     "warn": "Ses kaybolursa ekolayzeri kapat ve parçayı yeniden başlat",
     "visualizer": "Görselleştirici",
-    "visualizerHint": "Tam ekran oynatıcıda spektrum. Sesi işlemeden geçirir, bu yüzden parça yeniden yüklenir"
+    "visualizerHint": "Tam ekran oynatıcıda spektrum. Sesi işlemeden geçirir, bu yüzden parça yeniden yüklenir",
+    "diagnostics": "Tanılama",
+    "diagnosticsHint": "Ses motoru şu anda ne yapıyor — bir parça sessiz çalıyorsa işe yarar",
+    "diagnosticsRun": "Kontrol et",
+    "diagnosticsTone": "Test tonu",
+    "graphUnsupported": "Bu webview sesi efektlerden geçiremiyor — ekolayzer ve görselleştirici kapalı. Ses etkilenmez."
   },
   "keys": {
     "title": "Klavye kısayolları",
@@ -288,6 +313,9 @@
     "newPlaylist": "Yeni çalma listesi",
     "create": "Oluştur",
     "addToPlaylist": "Çalma listesine ekle",
-    "queuedNext": "Sıradaki olarak çalacak"
+    "queuedNext": "Sıradaki olarak çalacak",
+    "share": "Paylaş",
+    "shareCopied": "Bağlantı kopyalandı",
+    "shareFailed": "Bağlantı kopyalanamadı"
   }
 }

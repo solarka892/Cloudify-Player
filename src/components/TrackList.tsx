@@ -8,16 +8,26 @@ import { useLibraryStore } from "@/stores/useLibraryStore";
 import { TrackContextMenu, type MenuTarget } from "./TrackContextMenu";
 import { AddToPlaylistDialog } from "./AddToPlaylistDialog";
 import { LikeButton } from "./LikeButton";
+import { ShareButton } from "./ShareButton";
 import { useVirtual } from "@/hooks/useVirtual";
+import { useSettingsStore } from "@/stores/useSettingsStore";
+import type { Density } from "@/theme/apply";
 import { artwork, cn } from "@/lib/utils";
 import { t } from "@/i18n";
 
 /**
- * Row height in px. Fixed on purpose: it is what lets the list be windowed,
- * and it must match the row's actual rendered height exactly or the scrollbar
- * drifts. Changing the row's padding means changing this.
+ * Row height in px, per density setting.
+ *
+ * A number rather than CSS because the virtualiser positions rows by it, and it
+ * must match the rendered height exactly or the scrollbar drifts. This is what
+ * makes the density control mean something on the screen where it counts —
+ * `.stack` gaps alone were invisible.
  */
-const ROW_HEIGHT = 56;
+const ROW_HEIGHT: Record<Density, number> = {
+  compact: 46,
+  cozy: 56,
+  spacious: 68,
+};
 
 /** Format milliseconds as m:ss. */
 function formatDuration(ms: number): string {
@@ -38,7 +48,8 @@ function formatDuration(ms: number): string {
 export function TrackList({ tracks }: { tracks: Track[] }) {
   const [menu, setMenu] = useState<MenuTarget | null>(null);
   const [addTo, setAddTo] = useState<Track | null>(null);
-  const { ref, start, end } = useVirtual(tracks.length, ROW_HEIGHT);
+  const rowHeight = ROW_HEIGHT[useSettingsStore((s) => s.theme.density)];
+  const { ref, start, end } = useVirtual(tracks.length, rowHeight);
 
   const visible = tracks.slice(start, end);
 
@@ -48,14 +59,15 @@ export function TrackList({ tracks }: { tracks: Track[] }) {
         ref={ref}
         className="relative overflow-hidden rounded-[var(--radius)] border border-border"
         // The full height is reserved up front so the scrollbar is honest.
-        style={{ height: tracks.length * ROW_HEIGHT }}
+        style={{ height: tracks.length * rowHeight }}
       >
         {visible.map((track, index) => (
           <TrackRow
             key={track.id}
             track={track}
             queue={tracks}
-            top={(start + index) * ROW_HEIGHT}
+            top={(start + index) * rowHeight}
+            height={rowHeight}
             onContextMenu={(e) => {
               e.preventDefault();
               setMenu({ track, x: e.clientX, y: e.clientY });
@@ -83,11 +95,13 @@ const TrackRow = memo(function TrackRow({
   track,
   queue,
   top,
+  height,
   onContextMenu,
 }: {
   track: Track;
   queue: Track[];
   top: number;
+  height: number;
   onContextMenu: (e: React.MouseEvent) => void;
 }) {
   const art = artwork(track.artwork_url);
@@ -101,7 +115,7 @@ const TrackRow = memo(function TrackRow({
   return (
     <div
       onContextMenu={onContextMenu}
-      style={{ top, height: ROW_HEIGHT }}
+      style={{ top, height }}
       className="absolute inset-x-0"
     >
       <button
@@ -182,6 +196,10 @@ const TrackRow = memo(function TrackRow({
               "transition-opacity duration-[var(--motion-fast)] group-hover:opacity-100",
               liked ? "opacity-100" : "opacity-0",
             )}
+          />
+          <ShareButton
+            url={track.permalink_url}
+            className="opacity-0 transition-opacity duration-[var(--motion-fast)] group-hover:opacity-100"
           />
           <span className="font-mono text-xs tabular-nums text-muted-foreground">
             {formatDuration(track.duration)}

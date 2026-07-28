@@ -1,7 +1,9 @@
 {
   "app": {
     "name": "cloudify",
-    "tagline": "Client SoundCloud non officiel"
+    "tagline": "Client SoundCloud non officiel",
+    "crashed": "Quelque chose a cassé sur cet écran",
+    "reload": "Recharger"
   },
   "nav": {
     "home": "Accueil",
@@ -133,7 +135,9 @@
     "sleep": "Minuteur",
     "sleepCancel": "Annuler le minuteur",
     "minutes": "min",
+    "minutesShort": "min",
     "enableVisualizer": "Activer le visualiseur",
+    "visualizerBlocked": "Le visualiseur ne peut pas lire ce morceau : son hôte l'interdit. Le son n'est pas affecté.",
     "playbackFailed": "Lecture impossible",
     "localFileBroken": "Le fichier téléchargé est illisible — lecture en ligne"
   },
@@ -145,6 +149,11 @@
     "layoutSidebar": "Barre latérale",
     "skin": "Style",
     "skinHint": "Forme : rayons, ombres, flou, typographie",
+    "skinHints": {
+      "aurora": "Verre, flou et lueur douce",
+      "editorial": "Grande typographie, lignes nettes, sans ombres",
+      "studio": "Contrôles tactiles, profondeur discrète, onde"
+    },
     "colour": "Couleur",
     "theme": "Thème",
     "themeDark": "Sombre",
@@ -206,7 +215,18 @@
     "slotBrand": "Accent",
     "slotBrand2": "Accent 2",
     "language": "Langue",
-    "languageHint": "Langue de l’interface"
+    "languageHint": "Langue de l’interface",
+    "effects": "Effets",
+    "effectsHint": "Particules qui tombent sur toute la fenêtre. C'est une animation, elle coûte des images — désactivée par défaut.",
+    "effectIntensity": "Intensité",
+    "effectNames": {
+      "none": "Aucun",
+      "sakura": "Sakura",
+      "snow": "Neige",
+      "rain": "Pluie",
+      "leaves": "Feuilles d'automne",
+      "fireflies": "Lucioles"
+    }
   },
   "lyrics": {
     "loading": "Recherche des paroles…",
@@ -248,7 +268,12 @@
     "radioHint": "Continuer avec des titres similaires quand la file est vide",
     "warn": "Si le son disparaît, coupez l’égaliseur et relancez le titre",
     "visualizer": "Visualiseur",
-    "visualizerHint": "Spectre dans le lecteur plein écran. Le son passe par le traitement, le titre est donc rechargé"
+    "visualizerHint": "Spectre dans le lecteur plein écran. Le son passe par le traitement, le titre est donc rechargé",
+    "diagnostics": "Diagnostic",
+    "diagnosticsHint": "Ce que fait le moteur audio en ce moment — utile quand un morceau joue sans son",
+    "diagnosticsRun": "Vérifier",
+    "diagnosticsTone": "Tonalité de test",
+    "graphUnsupported": "Ce webview ne peut pas faire passer l'audio par les effets : égaliseur et visualiseur désactivés. Le son n'est pas affecté."
   },
   "keys": {
     "title": "Raccourcis clavier",
@@ -288,6 +313,9 @@
     "newPlaylist": "Nouvelle playlist",
     "create": "Créer",
     "addToPlaylist": "Ajouter à une playlist",
-    "queuedNext": "Sera lu juste après"
+    "queuedNext": "Sera lu juste après",
+    "share": "Partager",
+    "shareCopied": "Lien copié",
+    "shareFailed": "Impossible de copier le lien"
   }
 }

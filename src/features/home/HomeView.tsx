@@ -88,7 +88,9 @@ export function HomeView({
             src={artwork(hero.artwork_url, "t500x500") ?? undefined}
             alt=""
             aria-hidden
-            className="pointer-events-none absolute -right-10 -top-10 h-56 w-56 rotate-12 rounded-[var(--radius-hero)] opacity-20 blur-[2px]"
+            // `will-change` promotes this to its own layer, so the blur is
+            // computed once instead of on every scrolled frame.
+            className="pointer-events-none absolute -right-10 -top-10 h-56 w-56 rotate-12 rounded-[var(--radius-hero)] opacity-20 blur-[2px] will-change-transform"
           />
         )}
         <div className="relative">

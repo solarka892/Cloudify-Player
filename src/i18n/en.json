@@ -1,7 +1,9 @@
 {
   "app": {
     "name": "cloudify",
-    "tagline": "Unofficial SoundCloud client"
+    "tagline": "Unofficial SoundCloud client",
+    "crashed": "Something broke on this screen",
+    "reload": "Reload"
   },
   "nav": {
     "home": "Home",
@@ -133,7 +135,9 @@
     "sleep": "Sleep timer",
     "sleepCancel": "Cancel timer",
     "minutes": "min",
+    "minutesShort": "m",
     "enableVisualizer": "Enable visualiser",
+    "visualizerBlocked": "The visualiser can't read this track — its host doesn't allow it. Sound is unaffected.",
     "playbackFailed": "Could not play that",
     "localFileBroken": "The downloaded file won't decode — streaming instead"
   },
@@ -145,6 +149,11 @@
     "layoutSidebar": "Sidebar",
     "skin": "Skin",
     "skinHint": "Form: radii, shadows, blur, typography",
+    "skinHints": {
+      "aurora": "Glass, blur and a soft glow",
+      "editorial": "Large type, hard lines, no shadows",
+      "studio": "Tactile controls, careful depth, a waveform"
+    },
     "colour": "Colour",
     "theme": "Theme",
     "themeDark": "Dark",
@@ -207,8 +216,17 @@
     "slotBrand2": "Accent 2",
     "language": "Language",
     "languageHint": "Interface language",
-    "glide": "Gliding scroll",
-    "glideHint": "Inertia for the mouse wheel; touchpads keep their own"
+    "effects": "Effects",
+    "effectsHint": "Falling particles over the whole window. Animated, so it costs frames — off by default.",
+    "effectIntensity": "Intensity",
+    "effectNames": {
+      "none": "None",
+      "sakura": "Sakura",
+      "snow": "Snow",
+      "rain": "Rain",
+      "leaves": "Autumn leaves",
+      "fireflies": "Fireflies"
+    }
   },
   "lyrics": {
     "loading": "Looking for lyrics…",
@@ -250,7 +268,12 @@
     "radioHint": "Keep playing related tracks once the queue runs out",
     "warn": "If sound disappears, turn the equaliser off and replay the track",
     "visualizer": "Visualiser",
-    "visualizerHint": "Spectrum in the full-screen player. Routes audio through processing, so the track reloads"
+    "visualizerHint": "Spectrum in the full-screen player. Routes audio through processing, so the track reloads",
+    "diagnostics": "Diagnostics",
+    "diagnosticsHint": "What the audio engine is doing right now — useful when a track plays with no sound",
+    "diagnosticsRun": "Check",
+    "diagnosticsTone": "Test tone",
+    "graphUnsupported": "This webview can't route audio through effects — the equaliser and visualiser are off. Sound is unaffected."
   },
   "keys": {
     "title": "Keyboard shortcuts",
@@ -290,6 +313,9 @@
     "newPlaylist": "New playlist",
     "create": "Create",
     "addToPlaylist": "Add to playlist",
-    "queuedNext": "Playing next"
+    "queuedNext": "Playing next",
+    "share": "Share",
+    "shareCopied": "Link copied",
+    "shareFailed": "Couldn't copy the link"
   }
 }

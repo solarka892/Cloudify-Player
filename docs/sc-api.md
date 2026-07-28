@@ -308,12 +308,46 @@ Returns the full user object. We project `{ id, username, avatar_url,
 permalink_url, followers_count }` (`sc_api::me::Me`). A `401`/`403` means the
 token is stale → prompt re-login (and `client_id::get(force=true)`).
 
+### Write actions — likes and follows ✅ route shapes verified (2026-07-28)
+
+```
+PUT    /users/{me_id}/track_likes/{track_id}       like a track
+DELETE /users/{me_id}/track_likes/{track_id}       unlike
+PUT    /users/{me_id}/playlist_likes/{playlist_id} like a playlist/album
+DELETE /users/{me_id}/playlist_likes/{playlist_id} unlike
+POST   /me/followings/{user_id}                    follow
+DELETE /me/followings/{user_id}                    unfollow
+```
+
+All need `Authorization: OAuth <token>` + `client_id`, and a body — even an
+empty `{}` — because a bodyless `PUT` comes back `415`.
+
+**How these were verified without an account.** Unauthenticated, a route that
+exists answers `401`/`403` while one that does not answers `404`, which is
+enough to tell the shapes apart. That distinction found two wrong guesses that
+had been sitting here since the actions were written:
+
+| what we sent | result | correct |
+| --- | --- | --- |
+| `PUT /likes/tracks/{id}` | `404` | nested under `/users/{me_id}/track_likes/` |
+| `PUT /me/followings/{id}` | `404` | `POST` — only the delete is idempotent-style |
+
+Both failed silently behind an optimistic UI, so a like appeared to work and
+was simply never saved.
+
+⚠️ Still unverified: the **response** bodies, and whether a `401` here means a
+dead token or a rotated `client_id` (`/me` needs the same one-retry treatment).
+Note likes are keyed on the signed-in user's id, not `/me`, so
+`sc_api::actions` caches it (`SELF_ID`) and clears it whenever the stored token
+changes.
+
 ---
 
 ## TODO (to reverse next)
 
 - [x] ~~OAuth token capture (embedded webview + `oauth_token` cookie) + `/me`~~ — done, pending live verification.
-- [ ] like/repost/follow actions (need OAuth); handle `401` → refresh flow.
+- [~] like/follow actions — route shapes verified 2026-07-28 (see above); responses
+      and the `401` → `client_id` refresh flow still untested. Reposts not started.
 - [x] ~~`/users/{id}/likes` pagination~~ — done (`linked_partitioning=1` + `next_href`).
 - [x] ~~Stream URL resolution from a `transcoding.url`~~ — done (see above).
 - [ ] HLS manifest handling in the app (`hls.js`) & CDN signing lifetime (URLs expire).

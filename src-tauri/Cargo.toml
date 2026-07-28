@@ -1,6 +1,6 @@
 [package]
 name = "cloudify-player"
-version = "0.1.0"
+version = "0.2.0"
 description = "Unofficial cross-platform SoundCloud desktop client"
 authors = ["solarka892"]
 edition = "2021"
@@ -57,6 +57,12 @@ open = "5"
 # Read the oauth_token cookie from a Firefox-family browser's cookies.sqlite
 # (browser login flow). Bundled = no system SQLite dependency.
 rusqlite = { version = "0.32", features = ["bundled"] }
+
+# Reaching the WebKitGTK settings behind the webview, to turn off its own
+# wheel-scroll animation (see `platform`). Pinned to the version wry already
+# links, so there is only ever one set of GTK bindings in the build.
+[target.'cfg(target_os = "linux")'.dependencies]
+webkit2gtk = "=2.0.2"
 
 [dev-dependencies]
 # Network smoke tests for the api-v2 client are `#[ignore]`d by default; run

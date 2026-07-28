@@ -22,6 +22,8 @@ import {
   VolumeControl,
 } from "./controls";
 import { LikeButton } from "@/components/LikeButton";
+import { ShareButton } from "@/components/ShareButton";
+import { Ambient } from "@/components/Ambient";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { AudioLines } from "lucide-react";
 import { t } from "@/i18n";
@@ -158,6 +160,7 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
           {/* Secondary actions */}
           <div className="flex flex-wrap items-center justify-center gap-2">
             <LikeButton track={current} size="md" />
+            <ShareButton url={current.permalink_url} size="md" />
             <VolumeControl />
 
             <button
@@ -221,7 +224,7 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
               >
                 <Moon className="h-3.5 w-3.5" />
                 {sleepAt
-                  ? `${Math.max(0, Math.round((sleepAt - Date.now()) / 60000))}м`
+                  ? `${Math.max(0, Math.round((sleepAt - Date.now()) / 60000))}${t.player.minutesShort}`
                   : t.player.sleep}
               </button>
               {showSleep && (
@@ -261,8 +264,11 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
             {side === "queue" ? (
               <QueuePanel onClose={() => setSide("none")} />
             ) : (
-              <div className="min-h-0 flex-1 overflow-y-auto">
-                <LyricsPanel track={current} />
+              <div className="relative min-h-0 flex-1 overflow-hidden">
+                <Ambient />
+                <div className="relative h-full overflow-y-auto">
+                  <LyricsPanel track={current} />
+                </div>
               </div>
             )}
           </aside>

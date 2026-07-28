@@ -9,6 +9,7 @@ import {
 } from "@/lib/tauri";
 import { AppShell } from "@/components/shell/AppShell";
 import { Toaster } from "@/components/Toaster";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LogoMark } from "@/components/Logo";
 import { HotkeyHelp } from "@/components/HotkeyHelp";
 import { useHotkeys } from "@/hooks/useHotkeys";
@@ -82,7 +83,10 @@ function App() {
   const setArtwork = useSettingsStore((s) => s.setArtwork);
   const locale = useSettingsStore((s) => s.locale);
   useEffect(() => {
-    void setArtwork(artwork(currentArt, "t120x120"));
+    // 500px, not a thumbnail: this is stretched across the whole window, and
+    // the blur is a user setting — turn it down and a 120px source is a mess of
+    // squares. The accent sampler downscales to 24px regardless.
+    void setArtwork(artwork(currentArt, "t500x500"));
   }, [currentArt, setArtwork]);
 
   const refreshMe = useCallback(async () => {
@@ -155,6 +159,8 @@ function App() {
 
       {/* Keyed so a tab change remounts and replays the entry animation. */}
       <div key={detail ? `detail-${detail.kind}-${detail.id}` : view} className="view-enter">
+      {/* Inside the keyed wrapper, so navigating away clears a crashed view. */}
+      <ErrorBoundary>
       {detail ? (
         <DetailView detail={detail} />
       ) : (
@@ -183,6 +189,7 @@ function App() {
           )}
         </>
       )}
+      </ErrorBoundary>
       </div>
     </AppShell>
   );

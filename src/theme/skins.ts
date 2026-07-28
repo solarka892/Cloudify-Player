@@ -13,8 +13,9 @@ export type SkinId = "aurora" | "editorial" | "studio";
 
 export interface Skin {
   id: SkinId;
+  /** Untranslated on purpose — a skin's name is a name. The one-line
+   *  description that goes with it lives in `settings.skinHints`. */
   name: string;
-  hint: string;
   vars: SkinVars;
 }
 
@@ -27,7 +28,6 @@ export const SKINS: Record<SkinId, Skin> = {
   aurora: {
     id: "aurora",
     name: "Aurora Glass",
-    hint: "Стекло, размытие, мягкое свечение",
     vars: {
       "--radius": "1rem",
       "--radius-control": "0.625rem",
@@ -50,7 +50,6 @@ export const SKINS: Record<SkinId, Skin> = {
   editorial: {
     id: "editorial",
     name: "Editorial",
-    hint: "Крупная типографика, жёсткие линии, без теней",
     vars: {
       "--radius": "0.125rem",
       "--radius-control": "0.125rem",
@@ -73,7 +72,6 @@ export const SKINS: Record<SkinId, Skin> = {
   studio: {
     id: "studio",
     name: "Studio",
-    hint: "Тактильные контролы, аккуратная глубина, волна",
     vars: {
       "--radius": "0.625rem",
       "--radius-control": "0.5rem",

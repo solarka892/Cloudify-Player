@@ -17,6 +17,7 @@ import { useDownloadsStore } from "@/stores/useDownloadsStore";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { toast } from "@/stores/useToastStore";
 import { t } from "@/i18n";
+import { scrollViewToTop } from "@/lib/scroll";
 import { artwork, cn } from "@/lib/utils";
 
 type SectionId =
@@ -109,6 +110,11 @@ function FilterBox({
 
 export function LibraryView({ userId }: { userId: number }) {
   const [section, setSection] = useState<SectionId>("likes");
+
+  // A new list starts at its own top, not at the previous one's offset.
+  useEffect(() => {
+    scrollViewToTop();
+  }, [section]);
 
   return (
     <div className="flex w-full flex-col gap-3">

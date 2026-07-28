@@ -1,6 +1,9 @@
-import { useRef } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSettingsStore } from "@/stores/useSettingsStore";
-import { useGlideScroll } from "@/hooks/useGlideScroll";
+import { useNavStore } from "@/stores/useNavStore";
+import { setViewScroller, scrollViewToTop } from "@/lib/scroll";
+import { useWheelStep } from "@/hooks/useWheelStep";
+import { Ambient } from "@/components/Ambient";
 import { NavRail, NavSidebar, NavTop, type ViewId } from "./nav";
 
 /**
@@ -26,8 +29,25 @@ export function AppShell({
   // A full-screen 40px blur costs the same whether or not it has an image
   // behind it, so the element simply isn't mounted when it has nothing to do.
   const showBackdrop = useSettingsStore((s) => s.backdrop.mode !== "none");
-  const scroller = useRef<HTMLElement | null>(null);
-  useGlideScroll(scroller, useSettingsStore((s) => s.glideScroll));
+  const detail = useNavStore((s) => s.detail);
+
+  // The scroller belongs to the shell but is scrolled by whoever swaps the
+  // content, so it is published rather than passed down. Held in state as well,
+  // so hooks that attach to the element re-attach when the layout replaces it.
+  const [scrollerEl, setScrollerEl] = useState<HTMLElement | null>(null);
+  const scroller = useCallback((el: HTMLElement | null) => {
+    setScrollerEl(el);
+    setViewScroller(el);
+  }, []);
+
+  useWheelStep(scrollerEl);
+
+  // A new page always starts at its top. Without this the offset from the
+  // previous tab survives, and anything shorter than that offset reads as an
+  // empty page.
+  useEffect(() => {
+    scrollViewToTop();
+  }, [view, detail]);
 
   const main = (
     <main ref={scroller} className="relative z-10 min-h-0 flex-1 overflow-y-auto">
@@ -38,6 +58,9 @@ export function AppShell({
   return (
     <div className="relative flex h-full w-full flex-col overflow-hidden bg-background text-foreground">
       {showBackdrop && <div className="app-backdrop" aria-hidden />}
+      {/* Between the wallpaper and the content: the weather falls behind the
+          interface, never over it. */}
+      <Ambient className="fixed z-[1]" />
 
       {layout === "top" ? (
         <div className="relative z-10 flex min-h-0 flex-1 flex-col">

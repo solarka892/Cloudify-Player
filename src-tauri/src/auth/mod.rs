@@ -69,6 +69,9 @@ fn entry() -> Result<Entry, AuthError> {
 /// Persist the OAuth token in the OS keyring.
 pub fn save_token(token: &str) -> Result<(), AuthError> {
     entry()?.set_password(token)?;
+    // A different token may be a different account, and anything cached about
+    // "who I am" is now a guess.
+    crate::sc_api::actions::forget_self_id();
     Ok(())
 }
 
@@ -83,6 +86,7 @@ pub fn load_token() -> Result<Option<String>, AuthError> {
 
 /// Remove the stored token (logout). No-op if nothing is stored.
 pub fn clear_token() -> Result<(), AuthError> {
+    crate::sc_api::actions::forget_self_id();
     match entry()?.delete_credential() {
         Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
         Err(e) => Err(e.into()),

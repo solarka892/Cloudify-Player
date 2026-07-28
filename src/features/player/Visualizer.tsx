@@ -1,14 +1,20 @@
-import { useEffect, useRef } from "react";
-import { analyser } from "@/audio/engine";
+import { useEffect, useRef, useState } from "react";
+import { analyser, graphBlock } from "@/audio/engine";
 import { usePlayerStore } from "@/stores/usePlayerStore";
+import { t } from "@/i18n";
+import { cn } from "@/lib/utils";
 
 /**
  * Spectrum / waveform drawn from the engine's analyser node.
  *
- * The analyser only exists once the Web Audio graph has been built, which
- * happens the first time any audio effect is switched on. Without it this
- * renders nothing rather than a dead canvas — the visualiser is decoration,
- * and it must never be a reason for playback to break.
+ * The analyser only exists once the Web Audio graph has been built, and it is
+ * not built for every track: a source whose host does not let Web Audio read it
+ * plays on a plain element instead, because sound outranks decoration. When
+ * that happens this says so — a canvas sitting flat looks like a bug.
+ *
+ * Whether the node exists is watched from inside the draw loop rather than
+ * passed in, because it appears asynchronously, after a track is reloaded with
+ * the graph attached, and nothing re-renders at that moment.
  */
 
 export type VisualizerMode = "bars" | "wave";
@@ -24,6 +30,10 @@ export function Visualizer({
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const [available, setAvailable] = useState(() => analyser() !== null);
+  // The loop runs outside React, so it needs its own view of the last value it
+  // reported; setting state on every frame would be absurd.
+  const reported = useRef(available);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -39,6 +49,10 @@ export function Visualizer({
     function draw() {
       raf = requestAnimationFrame(draw);
       const node = analyser();
+      if (reported.current !== (node !== null)) {
+        reported.current = node !== null;
+        setAvailable(node !== null);
+      }
       if (!canvas || !ctx) return;
 
       // Match the backing store to the CSS size, accounting for HiDPI.
@@ -102,12 +116,23 @@ export function Visualizer({
     return () => cancelAnimationFrame(raf);
   }, [mode, height, isPlaying]);
 
+  // The canvas stays mounted either way: the draw loop lives off it, and it is
+  // what notices the analyser arriving.
   return (
-    <canvas
-      ref={canvasRef}
-      style={{ height }}
-      className={className}
-      aria-hidden
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        style={{ height }}
+        className={cn(className, !available && "hidden")}
+        aria-hidden
+      />
+      {!available && (
+        <p className="max-w-md text-balance text-center text-xs text-muted-foreground">
+          {graphBlock() === "unsupported"
+            ? t.audio.graphUnsupported
+            : t.player.visualizerBlocked}
+        </p>
+      )}
+    </>
   );
 }

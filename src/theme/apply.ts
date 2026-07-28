@@ -1,5 +1,6 @@
 import { PALETTES, ACCENTS, type PaletteId } from "./palettes";
 import { SKINS, type SkinId } from "./skins";
+import { THEME_EVENT } from "./particles";
 import { shadeToVars, type ThemeVars } from "./tokens";
 
 /**
@@ -90,6 +91,10 @@ export function applyTheme(input: ThemeInput): void {
   root.classList.toggle("dark", resolveDark(input.mode));
   // CSS gates every `backdrop-filter` on this attribute.
   root.dataset.glass = input.glass ? "1" : "0";
+
+  // Anything painting outside CSS — the canvas effects — cannot see a custom
+  // property change, so it is announced.
+  window.dispatchEvent(new Event(THEME_EVENT));
 }
 
 /** Write the backdrop layer (user image / artwork / gradient). */
