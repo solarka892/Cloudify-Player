@@ -134,7 +134,7 @@ jobs:
 
       # Unsigned APKs cannot be installed, so without these secrets the artifact
       # would be useless — better to say so than to publish something broken.
-      # Generate with: base64 -w0 cloudify-release.jks
+      # Generate with: base64 -w0 cloudify-signing.jks
       - name: Write the signing config
         env:
           KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -146,9 +146,9 @@ jobs:
             echo "::error::ANDROID_KEYSTORE_BASE64 is not set — see docs/android.md"
             exit 1
           fi
-          printf '%s' "$KEYSTORE" | base64 -d > src-tauri/gen/android/cloudify-release.jks
+          printf '%s' "$KEYSTORE" | base64 -d > src-tauri/gen/android/cloudify-signing.jks
           cat > src-tauri/gen/android/keystore.properties <<EOF
-          storeFile=cloudify-release.jks
+          storeFile=cloudify-signing.jks
           storePassword=$STORE_PASSWORD
           keyAlias=$KEY_ALIAS
           keyPassword=$KEY_PASSWORD

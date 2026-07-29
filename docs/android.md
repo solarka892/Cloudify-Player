@@ -51,10 +51,10 @@ has not broken anything, but Android will refuse to install it.
 
 ```bash
 cd src-tauri/gen/android
-keytool -genkeypair -v -keystore cloudify-release.jks -alias cloudify \
+keytool -genkeypair -v -keystore cloudify-signing.jks -alias cloudify \
   -keyalg RSA -keysize 4096 -validity 10950
 cat > keystore.properties <<EOF
-storeFile=cloudify-release.jks
+storeFile=cloudify-signing.jks
 storePassword=…
 keyAlias=cloudify
 keyPassword=…
