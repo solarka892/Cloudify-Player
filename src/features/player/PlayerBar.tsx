@@ -18,6 +18,8 @@ import {
   ShuffleButton,
   VolumeControl,
 } from "./controls";
+import { useCompact } from "@/hooks/useCompact";
+import type { Track } from "@/lib/tauri";
 import { t } from "@/i18n";
 import { artwork, cn } from "@/lib/utils";
 
@@ -29,12 +31,22 @@ export function PlayerBar() {
   const [panel, setPanel] = useState<Panel>("none");
   const expanded = useNavStore((s) => s.nowPlaying);
   const setExpanded = useNavStore((s) => s.setNowPlaying);
+  const compact = useCompact();
 
   const downloadedIds = useDownloadsStore((s) => s.ids);
   const active = useDownloadsStore((s) => s.active);
   const startDownload = useDownloadsStore((s) => s.start);
 
   if (!current) return null;
+
+  if (compact) {
+    return (
+      <>
+        {expanded && <NowPlaying onClose={() => setExpanded(false)} />}
+        <CompactBar track={current} onExpand={() => setExpanded(true)} />
+      </>
+    );
+  }
 
   const art = artwork(current.artwork_url, "t120x120");
   const isDownloaded = downloadedIds.has(current.id);
@@ -166,6 +178,68 @@ export function PlayerBar() {
         </footer>
       </div>
     </>
+  );
+}
+
+/**
+ * The phone-width player: a launcher for the full-screen view, plus the two
+ * controls worth reaching for without opening it.
+ *
+ * Everything the wide bar carries — seeking, shuffle, repeat, volume, queue,
+ * lyrics, download — lives in `NowPlaying`, which is already a full-screen
+ * layout. Cramming any of it into 360px would mean sub-30px targets, so tapping
+ * the bar opens that instead. Volume is left out entirely: the hardware buttons
+ * do it better, and the OS shows its own slider.
+ */
+function CompactBar({ track, onExpand }: { track: Track; onExpand: () => void }) {
+  const position = usePlayerStore((s) => s.position);
+  const duration = usePlayerStore((s) => s.duration);
+  const art = artwork(track.artwork_url, "t120x120");
+  const progress = duration > 0 ? Math.min(100, (position / duration) * 100) : 0;
+
+  return (
+    <footer className="panel panel-liquid panel-chrome relative w-full rounded-none border-x-0 border-b-0">
+      {/* Progress as a hairline along the top edge rather than a seek bar: a
+          2px target cannot be dragged, but it answers "how far in am I". */}
+      <div className="absolute inset-x-0 top-0 h-0.5 bg-border">
+        <div className="h-full bg-brand" style={{ width: `${progress}%` }} />
+      </div>
+
+      <div className="flex items-center gap-2 px-2 py-2">
+        {/* One big target for the artwork and the titles together — the whole
+            left side of the bar opens the player. */}
+        <button
+          onClick={onExpand}
+          aria-label={t.player.expand}
+          className="flex min-h-12 min-w-0 flex-1 items-center gap-3 rounded-[var(--radius-control)] px-1 text-left"
+        >
+          {art ? (
+            <img
+              src={art}
+              alt=""
+              className="h-11 w-11 shrink-0 rounded-[var(--radius-control)] object-cover"
+            />
+          ) : (
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-secondary">
+              <Music className="h-5 w-5 text-muted-foreground" />
+            </span>
+          )}
+          <span className="flex min-w-0 flex-col">
+            <span className="truncate text-sm font-medium">{track.title}</span>
+            {track.artist && (
+              <span className="truncate text-xs text-muted-foreground">
+                {track.artist}
+              </span>
+            )}
+          </span>
+        </button>
+
+        <div className="flex shrink-0 items-center">
+          <PlayPauseButton />
+          <NextButton />
+        </div>
+      </div>
+    </footer>
   );
 }
 

@@ -3,12 +3,15 @@
 //! Keep commands thin: validate input, delegate to a module (`sc_api`, `auth`,
 //! …), map errors to something serialisable. No SoundCloud URLs here.
 
+#[cfg(not(target_os = "android"))]
 use std::time::{Duration, Instant};
 
 use crate::{auth, sc_api};
 
 /// How long to wait for the user to finish logging in in their browser.
+#[cfg(not(target_os = "android"))]
 const BROWSER_LOGIN_TIMEOUT: Duration = Duration::from_secs(180);
+#[cfg(not(target_os = "android"))]
 const BROWSER_POLL_INTERVAL: Duration = Duration::from_millis(1500);
 
 /// The stored OAuth token, or an error for commands that require a login.
@@ -39,10 +42,20 @@ pub async fn get_client_id(force: Option<bool>) -> Result<String, sc_api::ScApiE
 }
 
 /// Open the embedded SoundCloud login window; resolves once the token is
-/// captured and stored in the keyring.
+/// captured and stored securely.
+#[cfg(desktop)]
 #[tauri::command]
 pub async fn sc_login(app: tauri::AppHandle) -> Result<(), auth::AuthError> {
     auth::login(app).await
+}
+
+/// As above, but Android cannot open a second window — Kotlin shows the sign-in
+/// page in a native `WebView` instead. Same command name, so the frontend does
+/// not care which platform it is on.
+#[cfg(target_os = "android")]
+#[tauri::command]
+pub async fn sc_login() -> Result<(), auth::AuthError> {
+    auth::login_mobile().await
 }
 
 /// Remove the stored token.
@@ -76,17 +89,27 @@ pub async fn sc_get_me() -> Result<sc_api::me::Me, String> {
     }
 }
 
+/// Browser login is not a thing on Android: there is no other browser's cookie
+/// store to read. The command still exists so the frontend can offer the option
+/// and get a real explanation rather than an "unknown command" crash.
+#[cfg(target_os = "android")]
+#[tauri::command]
+pub async fn sc_login_browser() -> Result<sc_api::me::Me, String> {
+    Err("browser sign-in is desktop-only — use the in-app sign-in button".to_string())
+}
+
 /// Browsers whose cookie store this build can read. Chromium-family browsers
 /// encrypt cookie values with a key held in the OS keychain, so they are out.
 #[cfg(target_os = "macos")]
 const SUPPORTED_BROWSERS: &str =
     "Safari (needs Full Disk Access for cloudify), Firefox, Zen, LibreWolf and Waterfox";
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "android")))]
 const SUPPORTED_BROWSERS: &str = "Firefox, Zen and LibreWolf";
 
 /// Browser login: open SoundCloud in the user's real browser and wait until the
 /// `oauth_token` cookie appears in the browser's cookie store, then validate and
 /// store it. Reliable because the anti-bot captcha passes in a real browser.
+#[cfg(not(target_os = "android"))]
 #[tauri::command]
 pub async fn sc_login_browser() -> Result<sc_api::me::Me, String> {
     auth::browser::open_signin().map_err(|e| e.to_string())?;
@@ -448,4 +471,23 @@ pub async fn sc_get_followers(
 #[tauri::command]
 pub fn clear_downloads(app: tauri::AppHandle) -> Result<usize, String> {
     crate::downloads::clear(&app).map_err(|e| e.to_string())
+}
+
+// ─────────────────────────────────────────────────────── media session ────
+
+/// Publish what is playing to the OS. Safe to call on every track change and
+/// play/pause: a no-op on desktop, where the webview's own Media Session API
+/// already covers MPRIS and SMTC.
+///
+/// On Android this is what keeps playback alive with the screen off — see
+/// `crate::media`.
+#[tauri::command]
+pub async fn media_session_update(state: crate::media::NowPlaying) -> Result<(), String> {
+    crate::media::update(state).await
+}
+
+/// Playback has stopped for good; drop the OS session and its notification.
+#[tauri::command]
+pub async fn media_session_stop() -> Result<(), String> {
+    crate::media::stop().await
 }

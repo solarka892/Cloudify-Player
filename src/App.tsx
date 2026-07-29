@@ -2,11 +2,14 @@ import { useCallback, useEffect, useState } from "react";
 import {
   scGetMe,
   scIsLoggedIn,
+  scLogin,
   scLoginBrowser,
   scLogout,
   scSetToken,
   type Me,
 } from "@/lib/tauri";
+import { isAndroid } from "@/lib/platform";
+import { useNativeMediaSession } from "@/hooks/useNativeMediaSession";
 import { AppShell } from "@/components/shell/AppShell";
 import { Toaster } from "@/components/Toaster";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -48,6 +51,11 @@ function App() {
   const requestSearchFocus = useNavStore((s) => s.requestSearchFocus);
   const loadDownloads = useDownloadsStore((s) => s.load);
   const current = usePlayerStore((s) => s.current);
+
+  // On Android this is what keeps audio playing with the screen off; a no-op
+  // everywhere else. Mounted above the auth gate so a session restored on launch
+  // does not need a second render to be announced.
+  useNativeMediaSession();
 
   // The offline library gates the download buttons and the playback source,
   // so it has to be known before the first play.
@@ -119,10 +127,18 @@ function App() {
     return (
       <LoginView
         status={auth}
-        onBrowserLogin={async () => {
+        onLogin={async () => {
           setAuth({ state: "loggingIn" });
           try {
-            setAuth({ state: "loggedIn", me: await scLoginBrowser() });
+            if (isAndroid) {
+              // A native webview inside the app, since there is no second
+              // browser to read a cookie out of — and Rust reports only success,
+              // so who we are is a separate question.
+              await scLogin();
+              setAuth({ state: "loggedIn", me: await scGetMe() });
+            } else {
+              setAuth({ state: "loggedIn", me: await scLoginBrowser() });
+            }
           } catch (e) {
             setAuth({ state: "error", message: String(e) });
           }
@@ -198,11 +214,11 @@ function App() {
 /** Pre-auth screen. Deliberately quiet: one primary path, one fallback. */
 function LoginView({
   status,
-  onBrowserLogin,
+  onLogin,
   onTokenLogin,
 }: {
   status: AuthStatus;
-  onBrowserLogin: () => void;
+  onLogin: () => void;
   onTokenLogin: (token: string) => void;
 }) {
   const [showManual, setShowManual] = useState(false);
@@ -227,11 +243,15 @@ function LoginView({
         </div>
 
         <button
-          onClick={onBrowserLogin}
+          onClick={onLogin}
           disabled={busy}
           className="brand-gradient w-full rounded-[var(--radius-control)] px-5 py-2.5 text-sm font-semibold text-white transition-opacity duration-[var(--motion-fast)] hover:opacity-90 disabled:opacity-50"
         >
-          {busy ? t.auth.loggingIn : t.auth.login}
+          {busy
+            ? isAndroid
+              ? t.auth.loggingInApp
+              : t.auth.loggingIn
+            : t.auth.login}
         </button>
 
         <button

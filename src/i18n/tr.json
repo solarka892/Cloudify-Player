@@ -16,6 +16,7 @@
   "auth": {
     "login": "SoundCloud’a giriş yap",
     "loggingIn": "Girişi tarayıcında tamamla…",
+    "loggingInApp": "Açılan pencerede oturum açmayı tamamlayın…",
     "logout": "Çıkış yap",
     "loggedInAs": "Giriş yapıldı:",
     "loginFailed": "Giriş yapılamadı",

@@ -46,9 +46,23 @@ Grab a build from [Releases](https://github.com/solarka892/Cloudify-Player/relea
 | Linux    | `.AppImage` (portable), `.deb`, `.rpm` |
 | Windows  | `.exe` (installer), `.msi` |
 | macOS    | `.dmg` (universal — Apple Silicon and Intel) |
+| Android  | `.apk` (Android 7+, all ABIs) |
 
 Distributed through GitHub releases only — never through the App Store or Play
 Store.
+
+### Android
+
+The APK is signed but not from Play, so Android will ask you to allow installing
+from wherever you downloaded it.
+
+Sign-in happens in a webview inside the app rather than in your browser, since
+there is no browser profile to read a cookie out of. Playback continues with the
+screen off, with controls on the lock screen. Android 13+ asks for notification
+permission before those controls can appear — playback works either way.
+
+**Consider it beta.** It builds and installs, but it has had far less use than the
+desktop builds. Details and known gaps: [`docs/android.md`](docs/android.md).
 
 ### macOS: the app isn't signed
 

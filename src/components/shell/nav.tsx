@@ -91,6 +91,40 @@ export function NavTop({ view, onNavigate }: NavProps) {
   );
 }
 
+/**
+ * Bottom tab bar, for phone-width windows.
+ *
+ * Not one of the three layout settings — it replaces whichever of them is chosen
+ * when there is no room for it, because a 56px rail plus a 240px sidebar leaves a
+ * phone nothing to read content in. Labels sit under the icons rather than beside
+ * them so five tabs fit across a narrow screen, and the touch targets stay at the
+ * 48px Android asks for even though the labels are small.
+ *
+ * `pb-safe` keeps the tabs clear of the gesture bar; see `styles`.
+ */
+export function NavBottom({ view, onNavigate }: NavProps) {
+  return (
+    <nav className="nav-in-y pb-safe flex shrink-0 items-stretch border-t border-border bg-card/80 backdrop-blur-lg">
+      {NAV_ITEMS.map(({ id, label, Icon }) => (
+        <button
+          key={id}
+          onClick={() => onNavigate(id)}
+          aria-current={view === id ? "page" : undefined}
+          className={cn(
+            "flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-1.5 transition-colors duration-[var(--motion-fast)]",
+            view === id ? "text-foreground" : "text-muted-foreground",
+          )}
+        >
+          <Icon className="h-[22px] w-[22px] shrink-0" />
+          <span className="label w-full truncate text-center text-[10px] leading-tight">
+            {label}
+          </span>
+        </button>
+      ))}
+    </nav>
+  );
+}
+
 /** Wide column with the playlist list inline, closest to Spotify. */
 export function NavSidebar({ view, onNavigate }: NavProps) {
   const playlists = useLibraryStore((s) => s.ownPlaylists);

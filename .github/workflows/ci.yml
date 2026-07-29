@@ -65,3 +65,39 @@ jobs:
       # CLAUDE.md: the Rust core ships with zero clippy warnings.
       - run: cargo clippy --all-targets -- -D warnings
         working-directory: src-tauri
+
+  # The Android-only code (`src/android/`, and the `cfg` branches in `auth` and
+  # `media`) is invisible to the host build, so nothing above compiles a line of
+  # it. This is the cheap half of catching that: type-check for the Android target
+  # without gradle, an SDK, or an APK.
+  android:
+    name: Rust (Android target)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+          targets: aarch64-linux-android
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: android
+
+      # rusqlite bundles SQLite's C source, so even `clippy` needs a cross
+      # compiler to run the build script. The runners ship an NDK already.
+      - name: Point cc and the linker at the NDK
+        run: |
+          toolchain="$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          {
+            echo "CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=$toolchain/aarch64-linux-android24-clang"
+            echo "CC_aarch64_linux_android=$toolchain/aarch64-linux-android24-clang"
+            echo "AR_aarch64_linux_android=$toolchain/llvm-ar"
+          } >> "$GITHUB_ENV"
+
+      # `--lib` only: the integration tests are desktop-shaped and there is no
+      # device here to run anything on regardless.
+      - run: cargo clippy --lib --target aarch64-linux-android -- -D warnings
+        working-directory: src-tauri

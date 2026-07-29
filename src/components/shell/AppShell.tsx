@@ -4,7 +4,8 @@ import { useNavStore } from "@/stores/useNavStore";
 import { setViewScroller, scrollViewToTop } from "@/lib/scroll";
 import { useWheelStep } from "@/hooks/useWheelStep";
 import { Ambient } from "@/components/Ambient";
-import { NavRail, NavSidebar, NavTop, type ViewId } from "./nav";
+import { useCompact } from "@/hooks/useCompact";
+import { NavBottom, NavRail, NavSidebar, NavTop, type ViewId } from "./nav";
 
 /**
  * The application frame.
@@ -26,6 +27,10 @@ export function AppShell({
   player?: React.ReactNode;
 }) {
   const layout = useSettingsStore((s) => s.layout);
+  // A phone-width window has no room for a rail or a sidebar, whichever the
+  // setting asks for, so it gets tabs along the bottom instead. The setting is
+  // left untouched — widening the window restores it.
+  const compact = useCompact();
   // A full-screen 40px blur costs the same whether or not it has an image
   // behind it, so the element simply isn't mounted when it has nothing to do.
   const showBackdrop = useSettingsStore((s) => s.backdrop.mode !== "none");
@@ -51,7 +56,11 @@ export function AppShell({
 
   const main = (
     <main ref={scroller} className="relative z-10 min-h-0 flex-1 overflow-y-auto">
-      <div className="mx-auto w-full max-w-6xl px-6 py-6">{children}</div>
+      {/* 16px of side padding on a phone against 24px elsewhere: at 360px wide
+          the wider gutter costs an eighth of the usable width. */}
+      <div className="mx-auto w-full max-w-6xl px-4 py-4 md:px-6 md:py-6">
+        {children}
+      </div>
     </main>
   );
 
@@ -62,7 +71,9 @@ export function AppShell({
           interface, never over it. */}
       <Ambient className="fixed z-[1]" />
 
-      {layout === "top" ? (
+      {compact ? (
+        main
+      ) : layout === "top" ? (
         <div className="relative z-10 flex min-h-0 flex-1 flex-col">
           <NavTop view={view} onNavigate={onNavigate} />
           {main}
@@ -78,7 +89,14 @@ export function AppShell({
         </div>
       )}
 
+      {/* Player above the tabs: it is the thing being controlled, and burying
+          transport controls under navigation reads as an afterthought. */}
       {player && <div className="relative z-20 shrink-0">{player}</div>}
+      {compact && (
+        <div className="relative z-20">
+          <NavBottom view={view} onNavigate={onNavigate} />
+        </div>
+      )}
     </div>
   );
 }

@@ -16,6 +16,7 @@
   "auth": {
     "login": "Увійти в SoundCloud",
     "loggingIn": "Завершіть вхід у браузері…",
+    "loggingInApp": "Завершіть вхід у вікні, що відкрилося…",
     "logout": "Вийти",
     "loggedInAs": "Ви увійшли як",
     "loginFailed": "Не вдалося увійти",

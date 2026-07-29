@@ -35,15 +35,6 @@ reqwest = { version = "0.12", default-features = false, features = [
 regex = "1"
 thiserror = "2"
 
-# OAuth token storage. Secret Service on Linux (persistent, needs a running
-# provider e.g. gnome-keyring), native stores on macOS/Windows.
-keyring = { version = "3", features = [
-    "apple-native",
-    "windows-native",
-    "sync-secret-service",
-    "crypto-rust",
-] }
-
 # For the login-cookie polling loop (Tauri's async runtime provides the driver).
 tokio = { version = "1", features = ["time"] }
 
@@ -51,12 +42,26 @@ tokio = { version = "1", features = ["time"] }
 # any other player too.
 id3 = "1"
 
+# Index of downloaded tracks. Bundled = no system SQLite dependency; on Android
+# it is cross-compiled by the NDK's clang.
+rusqlite = { version = "0.32", features = ["bundled"] }
+
+# The browser sign-in flow — opening the user's own browser and reading the
+# `oauth_token` cookie back out of its profile — has no meaning on Android:
+# there is no other browser whose cookie store we could reach.
+[target.'cfg(not(target_os = "android"))'.dependencies]
+# OAuth token storage. Secret Service on Linux (persistent, needs a running
+# provider e.g. gnome-keyring), native stores on macOS/Windows. No Android
+# backend exists, which is why `auth::store` bridges to Kotlin there.
+keyring = { version = "3", features = [
+    "apple-native",
+    "windows-native",
+    "sync-secret-service",
+    "crypto-rust",
+] }
+
 # Open a URL in the user's default browser, correctly on all three platforms.
 open = "5"
-
-# Read the oauth_token cookie from a Firefox-family browser's cookies.sqlite
-# (browser login flow). Bundled = no system SQLite dependency.
-rusqlite = { version = "0.32", features = ["bundled"] }
 
 # Reaching the WebKitGTK settings behind the webview, to turn off its own
 # wheel-scroll animation (see `platform`). Pinned to the version wry already

@@ -16,6 +16,7 @@
   "auth": {
     "login": "Iniciar sesión en SoundCloud",
     "loggingIn": "Termina el inicio de sesión en tu navegador…",
+    "loggingInApp": "Completa el inicio de sesión en la ventana que se abrió…",
     "logout": "Cerrar sesión",
     "loggedInAs": "Sesión iniciada como",
     "loginFailed": "No se pudo iniciar sesión",

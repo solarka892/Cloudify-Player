@@ -2,7 +2,19 @@
 <html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      `viewport-fit=cover` is what makes `env(safe-area-inset-*)` report anything
+      on a phone with a cutout; without it the Android build's edge-to-edge layout
+      puts the top row under the status bar.
+
+      Zoom is off because this is an application, not a document: a double-tap on
+      a track row means "play", and pinch-zooming a fixed-position player bar
+      leaves it stranded. Text still scales with the OS font-size setting.
+    -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no"
+    />
     <title>cloudify</title>
   </head>
 

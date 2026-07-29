@@ -86,3 +86,89 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
+
+  # Separate from the matrix above: tauri-action does not build Android, and this
+  # needs a JDK, an SDK, an NDK and four Rust targets that the desktop jobs have
+  # no use for.
+  android:
+    name: Build Android (.apk)
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: android
+
+      - uses: android-actions/setup-android@v3
+
+      # Pinned rather than "latest": the NDK decides the libc the Rust core links
+      # against, and a silent bump is not something to discover in a release.
+      - name: Install NDK and platform
+        run: |
+          sdkmanager --install "ndk;27.1.12297006" "platforms;android-35" "build-tools;35.0.0"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/27.1.12297006" >> "$GITHUB_ENV"
+
+      - run: pnpm install --frozen-lockfile
+
+      # Unsigned APKs cannot be installed, so without these secrets the artifact
+      # would be useless — better to say so than to publish something broken.
+      # Generate with: base64 -w0 cloudify-release.jks
+      - name: Write the signing config
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE" ]; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 is not set — see docs/android.md"
+            exit 1
+          fi
+          printf '%s' "$KEYSTORE" | base64 -d > src-tauri/gen/android/cloudify-release.jks
+          cat > src-tauri/gen/android/keystore.properties <<EOF
+          storeFile=cloudify-release.jks
+          storePassword=$STORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+
+      # One APK carrying all four ABIs. Bigger than a per-ABI split, but it is a
+      # single link on a release page that works on any phone.
+      - run: pnpm tauri android build --apk
+
+      - name: Check the APK is signed
+        run: |
+          apk=$(find src-tauri/gen/android/app/build/outputs/apk -name "*-release*.apk" | head -1)
+          "$ANDROID_HOME"/build-tools/35.0.0/apksigner verify --print-certs "$apk"
+          mv "$apk" "cloudify-${{ github.ref_name }}.apk"
+
+      # Appends to the draft the desktop matrix creates for this tag, or creates
+      # it if Android happens to finish first.
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Cloudify Player ${{ github.ref_name }}
+          draft: true
+          files: cloudify-${{ github.ref_name }}.apk

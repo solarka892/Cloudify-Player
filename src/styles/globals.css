@@ -477,3 +477,23 @@
 .heart-pop {
   animation: heart-pop var(--motion-slow) cubic-bezier(0.22, 0.8, 0.3, 1);
 }
+
+/* ── Display cutouts and gesture bars ─────────────────────────────────────
+ *
+ * The Android build draws edge to edge (`enableEdgeToEdge()` in MainActivity),
+ * so the webview extends under the status bar and the navigation bar. Anything
+ * at those edges needs to be inset out of the way, or it renders under the clock
+ * and is unreachable behind the gesture bar.
+ *
+ * `env(safe-area-inset-*)` is 0 on every desktop and on Android devices with
+ * neither, so these are free to apply unconditionally — which is why the shell
+ * does, rather than asking which platform it is on. They need
+ * `viewport-fit=cover` in the viewport meta to report anything at all.
+ */
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}

@@ -48,4 +48,13 @@ venv/
 CLAUDE.md
 
 # --- Tauri generated schemas ---
-src-tauri/gen/
+src-tauri/gen/schemas/
+
+# The Android project is generated once, by `tauri android init`, and is ours
+# from then on: it carries the Kotlin behind secure token storage, sign-in and
+# background playback (see src-tauri/src/android/). It has to be committed, or a
+# fresh clone — and CI — would build an app missing all three.
+#
+# The build glue Tauri regenerates on every build is excluded by the project's
+# own nested .gitignore files, along with local.properties and the signing
+# keystore config.
