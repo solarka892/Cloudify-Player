@@ -615,3 +615,25 @@
 @utility pb-safe {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+
+/* ── Search ────────────────────────────────────────────────────────────────
+ *
+ * The field is a hole in the page rather than a card on it: at the top of an
+ * otherwise empty view a solid box reads as the heaviest thing on screen, when
+ * it should be the quietest. It takes the same translucency as a list row, so
+ * it tracks the glass setting and the palette instead of pinning its own value.
+ */
+.search-field {
+  background: color-mix(in srgb, var(--card) 45%, transparent);
+}
+:root[data-glass="0"] .search-field {
+  background: var(--card);
+}
+
+/* The suggestions popover is the opposite case: it lies over live results, so
+   it has to be opaque whatever the glass setting says. `--popover` rather than
+   `--card` because that is the token meant for exactly this. */
+.search-popover {
+  background: var(--popover);
+  backdrop-filter: none;
+}

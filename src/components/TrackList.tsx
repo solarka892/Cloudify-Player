@@ -4,7 +4,6 @@ import type { Track } from "@/lib/tauri";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
 import { toast } from "@/stores/useToastStore";
-import { useLibraryStore } from "@/stores/useLibraryStore";
 import { TrackContextMenu, type MenuTarget } from "./TrackContextMenu";
 import { AddToPlaylistDialog } from "./AddToPlaylistDialog";
 import { LikeButton } from "./LikeButton";
@@ -112,7 +111,6 @@ const TrackRow = memo(function TrackRow({
   const isCurrent = usePlayerStore((s) => s.current?.id === track.id);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const isDownloaded = useDownloadsStore((s) => s.ids.has(track.id));
-  const liked = useLibraryStore((s) => s.likedIds.has(track.id));
   const reposted = useRepostStore((s) => s.trackIds.has(track.id));
 
   return (
@@ -180,8 +178,13 @@ const TrackRow = memo(function TrackRow({
               aria-label={t.player.downloaded}
             />
           )}
-          {/* Queue this track right after the current one. Hidden until hover
-              for the same reason the heart is: a long list stays calm. */}
+          {/* The heart leads the group and is always on screen: hiding it until
+              hover meant an unliked track showed nothing at all, so there was
+              no way to tell "not liked" from "no button here" without moving
+              the pointer over every row. Liked is the accent, not-liked is the
+              muted outline — the state is the colour, not the presence. */}
+          <LikeButton track={track} />
+          {/* The rest stay hover-only, which is what keeps a long list calm. */}
           <button
             onClick={(e) => {
               // The whole row is a play button; this must not trigger it.
@@ -195,15 +198,6 @@ const TrackRow = memo(function TrackRow({
           >
             <ListPlus className="h-4 w-4" />
           </button>
-          {/* Dimmed until hover so a long list stays calm; a liked or
-              reposted track keeps its icon at full strength. */}
-          <LikeButton
-            track={track}
-            className={cn(
-              "transition-opacity duration-[var(--motion-fast)] group-hover:opacity-100",
-              liked ? "opacity-100" : "opacity-0",
-            )}
-          />
           <RepostButton
             track={track}
             className={cn(

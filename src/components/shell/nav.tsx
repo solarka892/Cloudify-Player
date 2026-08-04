@@ -275,12 +275,20 @@ function SidebarItem({
   );
 }
 
-/** The wordmark. Clicking it repeatedly is not entirely without consequence. */
+/**
+ * The wordmark. Goes home, the way a logo in the top-left is expected to.
+ *
+ * Clicking it repeatedly is not entirely without consequence.
+ */
 function BrandMark({ compact = false }: { compact?: boolean }) {
   const bump = useEasterEgg();
+  const setView = useNavStore((s) => s.setView);
   return (
     <button
-      onClick={bump}
+      onClick={() => {
+        setView("home");
+        bump();
+      }}
       className={cn(
         "flex h-10 shrink-0 items-center gap-2 text-left",
         // In the rail the mark is centred on the icons' axis, not aligned to

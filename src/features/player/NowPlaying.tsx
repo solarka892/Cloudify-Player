@@ -166,7 +166,7 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
           </div>
 
           {/* Secondary actions */}
-          <div className="flex flex-wrap items-center justify-center gap-2">
+          <div className="flex flex-wrap items-center justify-center gap-3">
             <LikeButton track={current} size="md" />
             <RepostButton track={current} size="md" />
             <ShareButton url={current.permalink_url} size="md" />

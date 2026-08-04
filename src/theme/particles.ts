@@ -28,8 +28,20 @@ export const EFFECT_IDS: EffectId[] = [
   "fireflies",
 ];
 
-/** Frames per second. Ambient motion reads fine well below refresh rate. */
+/**
+ * Frames per second. Ambient motion reads fine well below refresh rate.
+ *
+ * Per effect, because the cap that makes drifting petals look calm makes fast
+ * motion look broken: rain falls at up to 700px/s, so at 30fps each drop jumps
+ * 23px between frames against a streak only 9–20px long. The drops stop being
+ * a line and become a dotted one — which reads as a dropped frame rate rather
+ * than as the deliberate cap it is.
+ */
 const FPS = 30;
+const FAST_FPS = 60;
+
+/** Opacity levels the batched streaks are quantised to. */
+const ALPHA_BUCKETS = 4;
 
 interface Spec {
   /** Particles per million square pixels, before the intensity multiplier. */
@@ -47,6 +59,8 @@ interface Spec {
   /** Fill, as CSS. `brand` resolves against the theme at draw time. */
   colour: string | "brand";
   opacity: [min: number, max: number];
+  /** Overrides the shared frame cap, for effects that move fast enough to need it. */
+  fps?: number;
 }
 
 const SPECS: Record<EffectId, Spec> = {
@@ -79,6 +93,9 @@ const SPECS: Record<EffectId, Spec> = {
     shape: "streak",
     colour: "#cfe4ff",
     opacity: [0.18, 0.42],
+    // Affordable because streaks are batched into a handful of paths rather
+    // than stroked one at a time — see `drawStreaks`.
+    fps: FAST_FPS,
   },
   leaves: {
     density: 18,
@@ -155,6 +172,7 @@ export function runEffect(
   if (!ctx || !spec) return () => {};
 
   const particles: Particle[] = [];
+  const fps = spec.fps ?? FPS;
   let width = 0;
   let height = 0;
   let dpr = 1;
@@ -208,20 +226,47 @@ export function runEffect(
     filled = true;
   }
 
+  /**
+   * Every drop, in `ALPHA_BUCKETS` paths instead of one path each.
+   *
+   * A canvas stroke is a draw call, and on a software-composited desktop
+   * eighty of them a frame is what the rain actually cost — not the physics.
+   * Depth still reads because opacity is quantised rather than dropped: four
+   * levels are indistinguishable from a continuous range at these alphas, and
+   * they collapse the whole field into four calls.
+   */
+  function drawStreaks() {
+    const [min, max] = spec.opacity;
+    const span = max - min || 1;
+    ctx!.strokeStyle = colour;
+    ctx!.lineWidth = 1;
+
+    for (let bucket = 0; bucket < ALPHA_BUCKETS; bucket++) {
+      let opened = false;
+      for (const particle of particles) {
+        const level = Math.min(
+          ALPHA_BUCKETS - 1,
+          Math.floor(((particle.opacity - min) / span) * ALPHA_BUCKETS),
+        );
+        if (level !== bucket) continue;
+        if (!opened) {
+          ctx!.beginPath();
+          opened = true;
+        }
+        ctx!.moveTo(particle.x, particle.y);
+        ctx!.lineTo(particle.x, particle.y + particle.size);
+      }
+      if (!opened) continue;
+      ctx!.globalAlpha = min + (span * (bucket + 0.5)) / ALPHA_BUCKETS;
+      ctx!.stroke();
+    }
+  }
+
   function draw(particle: Particle, x: number) {
     ctx!.globalAlpha = particle.opacity;
     ctx!.fillStyle = colour;
 
     switch (spec.shape) {
-      case "streak":
-        ctx!.strokeStyle = colour;
-        ctx!.lineWidth = 1;
-        ctx!.beginPath();
-        ctx!.moveTo(x, particle.y);
-        ctx!.lineTo(x, particle.y + particle.size);
-        ctx!.stroke();
-        break;
-
       case "petal":
       case "leaf": {
         ctx!.save();
@@ -275,7 +320,7 @@ export function runEffect(
     last = now;
 
     sinceDraw += dt;
-    if (sinceDraw < 1 / FPS) return;
+    if (sinceDraw < 1 / fps) return;
     const step = sinceDraw;
     sinceDraw = 0;
 
@@ -286,6 +331,9 @@ export function runEffect(
     if (document.hidden || width === 0 || height === 0) return;
 
     ctx!.clearRect(0, 0, width, height);
+    // Streaks are drawn as a set once every particle has moved, so stepping
+    // and painting are two passes rather than one.
+    const batched = spec.shape === "streak";
 
     for (const particle of particles) {
       particle.y += particle.fall * step;
@@ -299,7 +347,9 @@ export function runEffect(
             (0.5 + 0.5 * Math.sin(particle.phase * particle.pulse));
       }
 
-      draw(particle, particle.x + Math.sin(particle.phase) * spec.sway);
+      if (!batched) {
+        draw(particle, particle.x + Math.sin(particle.phase) * spec.sway);
+      }
 
       // Off the bottom (or the top, for anything drifting upwards): recycle.
       const margin = particle.size * 5;
@@ -310,6 +360,8 @@ export function runEffect(
         particle.x = Math.random() * width;
       }
     }
+
+    if (batched) drawStreaks();
 
     ctx!.globalAlpha = 1;
   }

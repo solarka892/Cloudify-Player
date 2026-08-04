@@ -26,26 +26,49 @@ import { t } from "@/i18n";
  * with a name and a target instead of disappearing.
  */
 
-function describe(activity: Activity): { Icon: LucideIcon; verb: string } {
-  switch (activity.kind) {
-    case "favoriting":
-    case "like":
-      return { Icon: Heart, verb: t.notifications.liked };
-    case "comment":
-      return { Icon: MessageSquare, verb: t.notifications.commented };
-    case "affiliation":
-    case "follow":
-      return { Icon: UserPlus, verb: t.notifications.followed };
-    case "track-repost":
-      return { Icon: Repeat2, verb: t.notifications.repostedTrack };
-    case "playlist-repost":
-      return { Icon: Repeat2, verb: t.notifications.repostedPlaylist };
-    case "track":
-    case "playlist":
-      return { Icon: Music, verb: t.notifications.uploaded };
-    default:
-      return { Icon: Bell, verb: t.notifications.unknown };
+/**
+ * Turn SoundCloud's `type` into an icon and a verb.
+ *
+ * Matched by substring rather than by equality. The feed carries more type
+ * strings than the handful the docs imply — `like`, `favoriting`,
+ * `track-like`, `playlist-repost`, `affiliation` and others all turn up — and
+ * an exact-match switch sent every one it had not been told about to a
+ * catch-all that read "did something with", followed by nothing, because those
+ * rows have no target either. Substrings cover the family instead of the
+ * instance.
+ *
+ * The remaining unknowns get no invented verb at all: the row degrades to the
+ * name and the timestamp, which is honest, and the raw type goes in the
+ * `title` so an unhandled one can be identified and mapped.
+ */
+function describe(activity: Activity): {
+  Icon: LucideIcon;
+  verb: string | null;
+} {
+  const kind = activity.kind.toLowerCase();
+  const has = (needle: string) => kind.includes(needle);
+
+  if (has("comment")) {
+    return { Icon: MessageSquare, verb: t.notifications.commented };
   }
+  if (has("repost")) {
+    return {
+      Icon: Repeat2,
+      verb: activity.playlist
+        ? t.notifications.repostedPlaylist
+        : t.notifications.repostedTrack,
+    };
+  }
+  if (has("like") || has("favorit")) {
+    return { Icon: Heart, verb: t.notifications.liked };
+  }
+  if (has("follow") || has("affiliation")) {
+    return { Icon: UserPlus, verb: t.notifications.followed };
+  }
+  if (has("track") || has("playlist") || has("upload") || has("post")) {
+    return { Icon: Music, verb: t.notifications.uploaded };
+  }
+  return { Icon: Bell, verb: null };
 }
 
 export function NotificationsView() {
@@ -111,6 +134,8 @@ export function NotificationsView() {
           return (
             <li
               key={`${activity.kind}-${activity.created_at ?? index}-${target?.id ?? index}`}
+              // The raw type, for the rows this app has no wording for yet.
+              title={activity.kind}
               className="flex items-center gap-3 py-2.5"
             >
               <span className="relative shrink-0">
@@ -144,7 +169,9 @@ export function NotificationsView() {
                   >
                     {activity.user?.username ?? "—"}
                   </button>{" "}
-                  <span className="text-muted-foreground">{verb}</span>{" "}
+                  {verb && (
+                    <span className="text-muted-foreground">{verb} </span>
+                  )}
                   {activity.track && (
                     <button
                       onClick={() => openTrack(activity.track!)}

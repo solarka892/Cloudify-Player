@@ -55,6 +55,9 @@ function formatCount(n: number | null | undefined): string {
   return String(n);
 }
 
+/** How much of any one profile tab to fetch. One page of SoundCloud's own. */
+const TAB_LIMIT = 200;
+
 interface Loaded {
   tracks: Track[];
   top: Track[];
@@ -147,22 +150,36 @@ export function ProfileView({
     if (fetched.current.has(tab)) return;
     fetched.current.add(tab);
 
+    // Every one of these is capped at `TAB_LIMIT`.
+    //
+    // The backend walks `next_href` until the collection runs out, and a page
+    // is 200 items — so an untethered "likes" tab on an account with 1.3k of
+    // them was seven sequential round trips before anything appeared. Nobody
+    // scrolls to the bottom of someone else's likes; they look at the top of
+    // the list and move on. The user's own library is the place that still
+    // fetches everything, because it is cached and searched.
     const fetcher: Record<Tab, () => Promise<Partial<Loaded>>> = {
-      tracks: async () => ({ tracks: await scGetUserTracks(userId) }),
-      top: async () => ({ top: await scGetTopTracks(userId) }),
-      albums: async () => ({ albums: await scGetAlbums(userId) }),
-      playlists: async () => ({ playlists: await scGetPlaylists(userId) }),
+      tracks: async () => ({ tracks: await scGetUserTracks(userId, TAB_LIMIT) }),
+      top: async () => ({ top: await scGetTopTracks(userId, TAB_LIMIT) }),
+      albums: async () => ({ albums: await scGetAlbums(userId, TAB_LIMIT) }),
+      playlists: async () => ({
+        playlists: await scGetPlaylists(userId, TAB_LIMIT),
+      }),
       reposts: async () => {
-        const mixed = await scGetReposts(userId);
+        const mixed = await scGetReposts(userId, TAB_LIMIT);
         return {
           repostTracks: mixed.tracks,
           repostPlaylists: mixed.playlists,
         };
       },
-      likes: async () => ({ likes: await scGetLikes(userId) }),
+      likes: async () => ({ likes: await scGetLikes(userId, TAB_LIMIT) }),
       related: async () => ({ related: await scGetRelatedArtists(userId) }),
-      followers: async () => ({ followers: await scGetFollowers(userId) }),
-      following: async () => ({ following: await scGetFollowings(userId) }),
+      followers: async () => ({
+        followers: await scGetFollowers(userId, TAB_LIMIT),
+      }),
+      following: async () => ({
+        following: await scGetFollowings(userId, TAB_LIMIT),
+      }),
     };
 
     setLoading(tab);
@@ -299,39 +316,42 @@ export function ProfileView({
             )}
           </div>
 
+          {/* One row, so the buttons share a baseline and a height. As three
+              separate `self-start` children with their own paddings they sat
+              at three different heights against each other. */}
           {profile && (
-            <ShareButton url={profile.permalink_url} withLabel className="self-start" />
-          )}
+            <div className="flex shrink-0 items-center gap-2 self-start">
+              <ShareButton url={profile.permalink_url} withLabel />
 
-          {profile && (
-            <button
-              onClick={() => void startStation()}
-              disabled={stationBusy}
-              title={t.library.startStation}
-              aria-label={t.library.startStation}
-              className="shrink-0 self-start rounded-[var(--radius-control)] border border-border p-2 text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground disabled:opacity-50"
-            >
-              <Radio className="h-4 w-4" />
-            </button>
-          )}
+              <button
+                onClick={() => void startStation()}
+                disabled={stationBusy}
+                title={t.library.startStation}
+                aria-label={t.library.startStation}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-control)] border border-border text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground disabled:opacity-50"
+              >
+                <Radio className="h-4 w-4" />
+              </button>
 
-          {!isSelf && profile && (
-            <button
-              onClick={() =>
-                openThread({
-                  id: profile.id,
-                  username: profile.username,
-                  avatar_url: profile.avatar_url,
-                  permalink_url: profile.permalink_url,
-                  followers_count: profile.followers_count,
-                  track_count: profile.track_count,
-                })
-              }
-              className="flex shrink-0 items-center gap-1.5 self-start rounded-[var(--radius-control)] border border-border px-3 py-2 text-sm font-medium transition-colors duration-[var(--motion-fast)] hover:bg-accent"
-            >
-              <MessageSquare className="h-4 w-4" />
-              {t.profile.message}
-            </button>
+              {!isSelf && (
+                <button
+                  onClick={() =>
+                    openThread({
+                      id: profile.id,
+                      username: profile.username,
+                      avatar_url: profile.avatar_url,
+                      permalink_url: profile.permalink_url,
+                      followers_count: profile.followers_count,
+                      track_count: profile.track_count,
+                    })
+                  }
+                  className="flex h-9 shrink-0 items-center gap-1.5 rounded-[var(--radius-control)] border border-border px-3 text-sm font-medium transition-colors duration-[var(--motion-fast)] hover:bg-accent"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  {t.profile.message}
+                </button>
+              )}
+            </div>
           )}
 
           {!isSelf && profile && (
@@ -347,7 +367,7 @@ export function ProfileView({
                 }).catch(() => toast(t.profile.followFailed, "error"))
               }
               className={cn(
-                "shrink-0 rounded-[var(--radius-control)] px-4 py-2 text-sm font-semibold transition-[opacity,transform] duration-[var(--motion-fast)] hover:opacity-90 active:scale-95",
+                "h-9 shrink-0 self-start rounded-[var(--radius-control)] px-4 text-sm font-semibold transition-[opacity,transform] duration-[var(--motion-fast)] hover:opacity-90 active:scale-95",
                 following
                   ? "border border-border bg-secondary text-secondary-foreground"
                   : "brand-gradient text-brand-foreground",

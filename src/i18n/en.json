@@ -442,8 +442,7 @@
     "followed": "started following you",
     "repostedTrack": "reposted",
     "repostedPlaylist": "reposted",
-    "uploaded": "posted",
-    "unknown": "did something with"
+    "uploaded": "posted"
   },
   "playlistEdit": {
     "title": "Edit playlist",

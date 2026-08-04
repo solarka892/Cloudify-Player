@@ -36,7 +36,7 @@ regex = "1"
 thiserror = "2"
 
 # For the login-cookie polling loop (Tauri's async runtime provides the driver).
-tokio = { version = "1", features = ["time"] }
+tokio = { version = "1", features = ["time", "rt"] }
 
 # Tag downloaded mp3s (title/artist + embedded cover) so they make sense in
 # any other player too.

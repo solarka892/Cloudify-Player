@@ -35,10 +35,10 @@ export function PlaylistList({ playlists }: { playlists: Playlist[] }) {
                   alt=""
                   loading="lazy"
                   decoding="async"
-                  className="h-10 w-10 shrink-0 rounded object-cover"
+                  className="h-10 w-10 shrink-0 rounded-[var(--radius-control)] object-cover"
                 />
               ) : (
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-secondary">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-secondary">
                   <ListMusic className="h-4 w-4 text-muted-foreground" />
                 </div>
               )}

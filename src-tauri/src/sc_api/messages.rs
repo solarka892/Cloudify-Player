@@ -26,12 +26,11 @@
 //! a name not listed here degrades to `None` instead of failing the whole
 //! request.
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use super::{
     client_id, http_client,
     models::{RawTrack, RawUser, Track, User},
-    paging::collect_all,
     ScApiError, API_V2,
 };
 
@@ -63,51 +62,90 @@ fn urn_id(urn: &str) -> Option<u64> {
     urn.rsplit(':').next()?.parse().ok()
 }
 
-#[derive(Deserialize)]
-struct RawConversation {
-    #[serde(default)]
-    users: Vec<RawUser>,
-    /// Some shapes nest the preview, others flatten it.
-    #[serde(default)]
-    last_message: Option<RawMessage>,
-    #[serde(default)]
-    read: Option<bool>,
-    #[serde(default)]
-    unread_count: Option<u64>,
+/// GET a message route and hand back the rows as raw JSON.
+///
+/// Everything here is read as `Value` first rather than straight into a struct.
+/// The payloads could not be probed without an account, and the first build
+/// that guessed at them failed with "error decoding response body" on a
+/// response that had arrived perfectly well — one unexpected key or a bare
+/// array instead of a `{ collection }` envelope was enough to lose the lot.
+/// Reading loosely and picking fields out by hand cannot fail that way.
+async fn rows(token: &str, url: String, limit: u32) -> Result<Vec<serde_json::Value>, ScApiError> {
+    let cid = client_id::get(false).await?;
+    let client = http_client()?;
+    let limit = limit.to_string();
+
+    let body: serde_json::Value = client
+        .get(url)
+        .query(&[
+            ("client_id", cid.as_str()),
+            ("limit", limit.as_str()),
+            ("linked_partitioning", "1"),
+        ])
+        .header("Authorization", format!("OAuth {token}"))
+        .send()
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
+
+    Ok(match body {
+        // `{ "collection": [...] }`, the usual envelope.
+        serde_json::Value::Object(mut map) => match map.remove("collection") {
+            Some(serde_json::Value::Array(items)) => items,
+            // Some routes answer with the array under a different key, or with
+            // a single object. Neither is worth failing over.
+            _ => map
+                .into_values()
+                .find_map(|v| match v {
+                    serde_json::Value::Array(items) => Some(items),
+                    _ => None,
+                })
+                .unwrap_or_default(),
+        },
+        // A bare array.
+        serde_json::Value::Array(items) => items,
+        _ => Vec::new(),
+    })
 }
 
-#[derive(Deserialize)]
-struct RawMessage {
-    #[serde(default)]
-    id: Option<u64>,
-    #[serde(default, alias = "body", alias = "message")]
-    content: Option<String>,
-    #[serde(default)]
-    created_at: Option<String>,
-    #[serde(default, alias = "sender_urn", alias = "user_urn")]
-    sender: Option<String>,
-    #[serde(default, alias = "sender_id", alias = "user_id")]
-    sender_numeric_id: Option<u64>,
-    #[serde(default)]
-    track: Option<RawTrack>,
+/// First string present under any of `keys`, ignoring blanks.
+fn pick_str(value: &serde_json::Value, keys: &[&str]) -> Option<String> {
+    keys.iter()
+        .find_map(|k| value.get(*k).and_then(|v| v.as_str()))
+        .map(str::to_string)
+        .filter(|s| !s.trim().is_empty())
 }
 
-impl RawMessage {
-    /// Who sent it, whichever way the API chose to say so.
-    fn sender_id(&self) -> Option<u64> {
-        self.sender_numeric_id
-            .or_else(|| self.sender.as_deref().and_then(urn_id))
-    }
+/// A user id written either as a number or as a `soundcloud:users:N` URN.
+fn pick_user_id(value: &serde_json::Value, keys: &[&str]) -> Option<u64> {
+    keys.iter().find_map(|k| {
+        let field = value.get(*k)?;
+        field
+            .as_u64()
+            .or_else(|| field.as_str().and_then(urn_id))
+            .or_else(|| field.get("id").and_then(serde_json::Value::as_u64))
+    })
+}
 
-    fn into_message(self, me: u64) -> Message {
-        let from_me = self.sender_id() == Some(me);
-        Message {
-            id: self.id,
-            content: self.content.unwrap_or_default(),
-            created_at: self.created_at,
-            from_me,
-            track: self.track.map(Track::from),
-        }
+/// Read one message out of a raw row.
+fn read_message(value: &serde_json::Value, me: u64) -> Message {
+    let sender = pick_user_id(
+        value,
+        &["sender_urn", "sender_id", "user_id", "sender", "user"],
+    );
+    Message {
+        id: value.get("id").and_then(serde_json::Value::as_u64),
+        content: pick_str(value, &["content", "body", "message", "text"]).unwrap_or_default(),
+        created_at: pick_str(value, &["created_at", "sent_at", "timestamp"]),
+        // Absent a sender the message reads as theirs: putting someone else's
+        // words on the user's side is the worse of the two mistakes.
+        from_me: sender == Some(me),
+        track: value
+            .get("track")
+            .cloned()
+            .and_then(|t| serde_json::from_value::<RawTrack>(t).ok())
+            .map(Track::from),
     }
 }
 
@@ -117,29 +155,47 @@ pub async fn conversations(
     me: u64,
     max: u32,
 ) -> Result<Vec<Conversation>, ScApiError> {
-    let cid = client_id::get(false).await?;
-    let client = http_client()?;
-
-    let raw: Vec<RawConversation> = collect_all(
-        &client,
-        format!("{API_V2}/users/{me}/conversations"),
-        Some(token),
-        &cid,
-        max as usize,
-    )
-    .await?;
+    let raw = rows(token, format!("{API_V2}/users/{me}/conversations"), max).await?;
 
     Ok(raw
         .into_iter()
-        .filter_map(|c| {
-            let unread = c.unread_count.is_some_and(|n| n > 0) || c.read == Some(false);
-            let (last_message, last_at) = match c.last_message {
-                Some(m) => (m.content, m.created_at),
-                None => (None, None),
-            };
-            // A thread whose other party we cannot identify has nothing to
-            // open — the routes are keyed on their id.
-            let user = c.users.into_iter().find(|u| u.id != me).map(User::from)?;
+        .filter_map(|row| {
+            let unread = row
+                .get("unread_count")
+                .and_then(serde_json::Value::as_u64)
+                .is_some_and(|n| n > 0)
+                || row.get("read").and_then(serde_json::Value::as_bool) == Some(false);
+
+            let last = row
+                .get("last_message")
+                .or_else(|| row.get("latest_message"));
+            let last_message = last
+                .and_then(|m| pick_str(m, &["content", "body", "message", "text"]))
+                .or_else(|| pick_str(&row, &["last_message", "preview"]));
+            let last_at = last
+                .and_then(|m| pick_str(m, &["created_at", "sent_at"]))
+                .or_else(|| pick_str(&row, &["last_message_at", "updated_at", "created_at"]));
+
+            // The other party, however this row chose to name them. A thread we
+            // cannot attribute has nothing to open — every route is keyed on
+            // their id — so it is dropped rather than shown as a dead row.
+            let other = row
+                .get("users")
+                .and_then(serde_json::Value::as_array)
+                .and_then(|users| {
+                    users
+                        .iter()
+                        .find(|u| u.get("id").and_then(serde_json::Value::as_u64) != Some(me))
+                        .cloned()
+                })
+                .or_else(|| row.get("user").cloned())
+                .or_else(|| row.get("other_user").cloned())?;
+
+            let user = User::from(serde_json::from_value::<RawUser>(other).ok()?);
+            if user.id == me {
+                return None;
+            }
+
             Some(Conversation {
                 user,
                 last_message,
@@ -150,18 +206,14 @@ pub async fn conversations(
         .collect())
 }
 
-#[derive(Deserialize)]
-struct UnreadResponse {
-    #[serde(default, alias = "unread_count", alias = "total")]
-    count: u64,
-}
-
 /// How many threads have unread messages — the badge on the inbox.
 pub async fn unread_count(token: &str, me: u64) -> Result<u64, ScApiError> {
     let cid = client_id::get(false).await?;
     let client = http_client()?;
 
-    let resp: UnreadResponse = client
+    // Raw JSON again: this route could as easily answer with a bare number, and
+    // a badge is not worth failing over.
+    let body: serde_json::Value = client
         .get(format!("{API_V2}/users/{me}/conversations/unread"))
         .query(&[("client_id", cid.as_str())])
         .header("Authorization", format!("OAuth {token}"))
@@ -171,7 +223,19 @@ pub async fn unread_count(token: &str, me: u64) -> Result<u64, ScApiError> {
         .json()
         .await?;
 
-    Ok(resp.count)
+    Ok(body
+        .as_u64()
+        .or_else(|| {
+            ["count", "unread_count", "total", "total_results"]
+                .iter()
+                .find_map(|k| body.get(*k).and_then(serde_json::Value::as_u64))
+        })
+        .or_else(|| {
+            body.get("collection")
+                .and_then(serde_json::Value::as_array)
+                .map(|items| items.len() as u64)
+        })
+        .unwrap_or(0))
 }
 
 /// One thread's messages, oldest first (the order a chat reads in).
@@ -181,19 +245,14 @@ pub async fn thread(
     other: u64,
     max: u32,
 ) -> Result<Vec<Message>, ScApiError> {
-    let cid = client_id::get(false).await?;
-    let client = http_client()?;
-
-    let raw: Vec<RawMessage> = collect_all(
-        &client,
+    let raw = rows(
+        token,
         format!("{API_V2}/users/{me}/conversations/{other}/messages"),
-        Some(token),
-        &cid,
-        max as usize,
+        max,
     )
     .await?;
 
-    let mut messages: Vec<Message> = raw.into_iter().map(|m| m.into_message(me)).collect();
+    let mut messages: Vec<Message> = raw.iter().map(|m| read_message(m, me)).collect();
     // SoundCloud pages newest-first; a chat window wants the opposite.
     messages.reverse();
     Ok(messages)

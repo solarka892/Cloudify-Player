@@ -198,20 +198,19 @@ pub async fn stream(token: &str, max: u32) -> Result<Vec<Track>, ScApiError> {
         .collect())
 }
 
-#[derive(Deserialize)]
-struct HistoryItem {
-    #[serde(default)]
-    track: Option<RawTrack>,
-}
-
 /// Recently played, newest first. Requires OAuth.
+///
+/// The route is `/me/play-history/**tracks**` — bare `/me/play-history` is a
+/// `404` (it was, and this shipped broken until 2026-08-04). Entries are read
+/// leniently because the two spellings disagree about the shape: one wraps each
+/// play in `{ "track": {…} }`, the other returns the track itself.
 pub async fn play_history(token: &str, max: u32) -> Result<Vec<Track>, ScApiError> {
     let cid = client_id::get(false).await?;
     let client = http_client()?;
 
-    let items: Vec<HistoryItem> = collect_all(
+    let items: Vec<serde_json::Value> = collect_all(
         &client,
-        format!("{API_V2}/me/play-history"),
+        format!("{API_V2}/me/play-history/tracks"),
         Some(token),
         &cid,
         max as usize,
@@ -221,7 +220,10 @@ pub async fn play_history(token: &str, max: u32) -> Result<Vec<Track>, ScApiErro
     let mut seen = std::collections::HashSet::new();
     Ok(items
         .into_iter()
-        .filter_map(|i| i.track)
+        .filter_map(|item| {
+            let track = item.get("track").cloned().unwrap_or(item);
+            serde_json::from_value::<RawTrack>(track).ok()
+        })
         .map(Track::from)
         // The same track appears once per play; the UI wants a list of tracks.
         .filter(|t| seen.insert(t.id))

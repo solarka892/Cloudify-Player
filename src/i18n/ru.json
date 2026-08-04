@@ -442,8 +442,7 @@
     "followed": "подписался на вас",
     "repostedTrack": "репостнул",
     "repostedPlaylist": "репостнул",
-    "uploaded": "выложил",
-    "unknown": "что-то сделал с"
+    "uploaded": "выложил"
   },
   "playlistEdit": {
     "title": "Редактировать плейлист",

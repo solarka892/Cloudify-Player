@@ -313,7 +313,7 @@ export function SearchView() {
           placeholder={t.search.placeholder}
           spellCheck={false}
           autoComplete="off"
-          className="w-full rounded-md border border-border bg-card py-2 pl-9 pr-9 text-sm text-card-foreground outline-none focus:ring-1 focus:ring-ring"
+          className="search-field w-full rounded-md border border-border py-2 pl-9 pr-9 text-sm text-card-foreground outline-none focus:ring-1 focus:ring-ring"
         />
         {query && (
           <button
@@ -325,9 +325,12 @@ export function SearchView() {
           </button>
         )}
 
-        {/* Suggestions and recents share the dropdown: whichever is relevant. */}
+        {/* Suggestions and recents share the dropdown: whichever is relevant.
+            `search-popover` makes it opaque, unlike the field above it — this
+            lies over live results, and a translucent popover let both layers
+            show through each other into an unreadable overlap. */}
         {dropdownOpen && (
-          <div className="panel panel-raised absolute inset-x-0 top-full z-30 mt-1 flex flex-col overflow-hidden p-1">
+          <div className="panel panel-raised search-popover absolute inset-x-0 top-full z-30 mt-1 flex flex-col overflow-hidden p-1">
             {!query.trim() && recent.length > 0 && (
               <>
                 <div className="flex items-center px-2.5 pb-1 pt-1.5">

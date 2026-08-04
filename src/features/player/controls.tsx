@@ -1,4 +1,4 @@
-import { useContext } from "react";
+import { useContext, useState } from "react";
 import {
   Repeat,
   Repeat1,
@@ -168,6 +168,17 @@ export function SeekBar({ compact = false }: { compact?: boolean }) {
   const duration = usePlayerStore((s) => s.duration);
   const current = usePlayerStore((s) => s.current);
   const seek = usePlayerStore((s) => s.seek);
+  /**
+   * True between pressing and releasing the scrubber.
+   *
+   * `.seek-fill` carries a 220ms width transition so that the once-a-tick
+   * advance during playback does not visibly step. Dragging feeds it a new
+   * width many times a second, and the fill spends the whole drag chasing the
+   * thumb from 220ms behind — the thumb tracks the pointer, the bar trails it
+   * by a third of the track. So the transition is switched off while scrubbing
+   * and restored on release, where it is doing useful work again.
+   */
+  const [scrubbing, setScrubbing] = useState(false);
 
   // Fall back to the metadata duration (ms → s) until the audio reports its own.
   const total = duration || (current ? current.duration / 1000 : 0);
@@ -186,7 +197,10 @@ export function SeekBar({ compact = false }: { compact?: boolean }) {
         <div className="seek-track pointer-events-none absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 overflow-hidden rounded-full bg-secondary">
           <div
             className="seek-fill brand-gradient h-full rounded-full"
-            style={{ width: `${progress}%` }}
+            style={{
+              width: `${progress}%`,
+              transitionDuration: scrubbing ? "0ms" : undefined,
+            }}
           />
         </div>
         <input
@@ -196,6 +210,12 @@ export function SeekBar({ compact = false }: { compact?: boolean }) {
           step={0.5}
           value={Math.min(position, total || 0)}
           onChange={(e) => seek(Number(e.currentTarget.value))}
+          onPointerDown={() => setScrubbing(true)}
+          // `pointercancel` too: a drag that leaves the window never gets an up.
+          onPointerUp={() => setScrubbing(false)}
+          onPointerCancel={() => setScrubbing(false)}
+          onKeyDown={() => setScrubbing(true)}
+          onKeyUp={() => setScrubbing(false)}
           aria-label={t.player.seek}
           className="relative h-4 w-full cursor-pointer appearance-none bg-transparent
             [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3
@@ -223,7 +243,7 @@ export function VolumeControl() {
   const Icon = muted || volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
 
   return (
-    <div className="flex w-32 shrink-0 items-center gap-2">
+    <div className="flex w-36 shrink-0 items-center gap-2 pr-2">
       <button
         onClick={toggleMute}
         aria-label={t.player.mute}

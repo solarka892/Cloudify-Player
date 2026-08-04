@@ -19,6 +19,14 @@ use super::{
 /// own web app batches in 50s; larger batches risk a URL-length rejection.
 const HYDRATE_BATCH: usize = 50;
 
+/// How many of those batches to have in flight at once.
+///
+/// A 477-track playlist is ten batches, and running them one after another was
+/// ten round trips deep — several seconds before the list appeared. Four at a
+/// time cuts that to three waves without turning a playlist open into a burst
+/// SoundCloud might rate-limit.
+const HYDRATE_CONCURRENCY: usize = 4;
+
 /// Fetch the playlists (and albums) `user_id` created.
 pub async fn get_user_playlists(
     token: Option<&str>,
@@ -73,21 +81,51 @@ pub async fn get_playlist_tracks(
         }
     }
 
-    for batch in missing.chunks(HYDRATE_BATCH) {
-        let ids = batch
-            .iter()
-            .map(u64::to_string)
-            .collect::<Vec<_>>()
-            .join(",");
-        let mut req = client
-            .get(format!("{API_V2}/tracks"))
-            .query(&[("ids", ids.as_str()), ("client_id", cid.as_str())]);
-        if let Some(token) = token {
-            req = req.header("Authorization", format!("OAuth {token}"));
+    let batches: Vec<String> = missing
+        .chunks(HYDRATE_BATCH)
+        .map(|batch| {
+            batch
+                .iter()
+                .map(u64::to_string)
+                .collect::<Vec<_>>()
+                .join(",")
+        })
+        .collect();
+
+    for wave in batches.chunks(HYDRATE_CONCURRENCY) {
+        let mut handles = Vec::with_capacity(wave.len());
+        for ids in wave {
+            // Owned clones so each request can move onto its own task; a
+            // `reqwest::Client` clone shares the underlying connection pool,
+            // so this is a handle copy rather than a new client.
+            let client = client.clone();
+            let cid = cid.clone();
+            let token = token.map(str::to_string);
+            let ids = ids.clone();
+
+            handles.push(tokio::spawn(async move {
+                let mut req = client
+                    .get(format!("{API_V2}/tracks"))
+                    .query(&[("ids", ids.as_str()), ("client_id", cid.as_str())]);
+                if let Some(token) = token {
+                    req = req.header("Authorization", format!("OAuth {token}"));
+                }
+                req.send()
+                    .await?
+                    .error_for_status()?
+                    .json::<Vec<RawTrack>>()
+                    .await
+            }));
         }
-        let fetched: Vec<RawTrack> = req.send().await?.error_for_status()?.json().await?;
-        for track in fetched {
-            by_id.insert(track.id, Track::from(track));
+
+        for handle in handles {
+            // A panicked task is not a reason to lose the playlist: the batch
+            // it owned simply stays unhydrated, and those tracks drop out the
+            // same way a deleted one does.
+            let Ok(result) = handle.await else { continue };
+            for track in result? {
+                by_id.insert(track.id, Track::from(track));
+            }
         }
     }
 

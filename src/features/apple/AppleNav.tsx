@@ -52,6 +52,22 @@ const GLYPHS: Record<ViewId, Glyph> = {
   settings: AppleGear,
 };
 
+/** The wordmark, which goes home like a logo in the corner should. */
+function HomeMark({
+  className,
+  children,
+}: {
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const setView = useNavStore((s) => s.setView);
+  return (
+    <button onClick={() => setView("home")} aria-label="cloudify" className={className}>
+      {children}
+    </button>
+  );
+}
+
 /** Unread count for a section; 0 for the ones that never carry one. */
 function useBadge(id: ViewId): number {
   const messages = useMessagesStore((s) => s.unread);
@@ -104,9 +120,9 @@ function AppleBadge({ count, className }: { count: number; className?: string })
 export function AppleRail({ view, onNavigate }: NavProps) {
   return (
     <Glass className="group/rail nav-in-x flex w-[4.25rem] shrink-0 flex-col gap-1 overflow-hidden p-2.5 transition-[width] duration-[var(--motion-slow)] hover:w-[13.5rem]">
-      <div className="mb-2 flex h-10 w-12 shrink-0 items-center justify-center">
+      <HomeMark className="mb-2 flex h-10 w-12 shrink-0 items-center justify-center">
         <Logo compact />
-      </div>
+      </HomeMark>
 
       {NAV_ITEMS.map((item) => (
         <AppleRailItem
@@ -166,9 +182,9 @@ export function AppleTopBar({ view, onNavigate }: NavProps) {
       capsule
       className="nav-in-y flex h-14 shrink-0 items-center gap-1 px-3"
     >
-      <div className="mr-2 shrink-0 px-1">
+      <HomeMark className="mr-2 shrink-0 px-1">
         <Logo />
-      </div>
+      </HomeMark>
 
       {NAV_ITEMS.filter((i) => i.id !== "settings").map((item) => (
         <AppleTopItem
@@ -226,9 +242,9 @@ export function AppleSidebar({ view, onNavigate }: NavProps) {
 
   return (
     <Glass className="nav-in-x flex w-[15rem] shrink-0 flex-col gap-0.5 p-3">
-      <div className="mb-2 px-2">
+      <HomeMark className="mb-2 px-2">
         <Logo />
-      </div>
+      </HomeMark>
 
       {NAV_ITEMS.map((item) => (
         <AppleSidebarItem

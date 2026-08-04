@@ -82,8 +82,13 @@ export function PlayerBar() {
         )}
 
         <footer className="panel panel-liquid panel-chrome flex h-20 w-full items-center gap-4 rounded-none border-x-0 border-b-0 px-4">
-          {/* Track */}
-          <div className="flex w-64 min-w-0 items-center gap-3">
+          {/* Track.
+              Wider than it looks like it needs to be, and wider still on a big
+              window: the four action buttons live in here, and at 16rem they
+              left the title about 60px — every track rendered as "Ale…". The
+              actions drop out below `lg`, where that space is genuinely scarce
+              and the full-screen player is a click away. */}
+          <div className="flex w-52 min-w-0 items-center gap-3 lg:w-72 xl:w-96">
             <button
               onClick={() => setExpanded(true)}
               aria-label={t.player.expand}
@@ -105,7 +110,7 @@ export function PlayerBar() {
               </span>
             </button>
 
-            <div className="flex min-w-0 flex-col">
+            <div className="flex min-w-0 flex-1 flex-col">
               <span className="truncate text-sm font-medium">{current.title}</span>
               {current.artist && (
                 <span className="truncate text-xs text-muted-foreground">
@@ -114,36 +119,38 @@ export function PlayerBar() {
               )}
             </div>
 
-            <LikeButton track={current} />
-            <RepostButton track={current} />
-            <ShareButton url={current.permalink_url} />
+            <div className="hidden shrink-0 items-center lg:flex">
+              <LikeButton track={current} />
+              <RepostButton track={current} />
+              <ShareButton url={current.permalink_url} />
 
-            <button
-              onClick={() => void startDownload(current)}
-              disabled={isDownloaded || !!downloading}
-              aria-label={t.player.download}
-              title={
-                isDownloaded
-                  ? t.player.downloaded
-                  : progress != null
-                    ? `${Math.round(progress)}%`
-                    : t.player.download
-              }
-              className={cn(
-                "relative shrink-0 rounded-[var(--radius-control)] p-1.5 transition-colors duration-[var(--motion-fast)] hover:bg-accent",
-                isDownloaded
-                  ? "text-brand"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Download className="h-4 w-4" />
-              {progress != null && (
-                <span
-                  className="absolute inset-x-1 bottom-0.5 h-0.5 rounded-full bg-brand"
-                  style={{ width: `${Math.max(4, progress)}%` }}
-                />
-              )}
-            </button>
+              <button
+                onClick={() => void startDownload(current)}
+                disabled={isDownloaded || !!downloading}
+                aria-label={t.player.download}
+                title={
+                  isDownloaded
+                    ? t.player.downloaded
+                    : progress != null
+                      ? `${Math.round(progress)}%`
+                      : t.player.download
+                }
+                className={cn(
+                  "relative shrink-0 rounded-[var(--radius-control)] p-1.5 transition-colors duration-[var(--motion-fast)] hover:bg-accent",
+                  isDownloaded
+                    ? "text-brand"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Download className="h-4 w-4" />
+                {progress != null && (
+                  <span
+                    className="absolute inset-x-1 bottom-0.5 h-0.5 rounded-full bg-brand"
+                    style={{ width: `${Math.max(4, progress)}%` }}
+                  />
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Transport */}

@@ -90,6 +90,13 @@ export function buildVars(input: ThemeInput): ThemeVars {
   if (!glass) {
     vars["--blur"] = "0px";
     vars["--surface-alpha"] = "100%";
+  } else if (!input.apple) {
+    // Skins ship the opaque pair and describe their frost separately, so the
+    // setting has something to change on every one of them — Editorial and
+    // Studio previously baked opacity into the skin itself, which left the
+    // toggle switched on and visibly doing nothing.
+    vars["--blur"] = skin.glass.blur;
+    vars["--surface-alpha"] = skin.glass.alpha;
   }
 
   // An accent preset overrides only the two brand colours, so it composes with
