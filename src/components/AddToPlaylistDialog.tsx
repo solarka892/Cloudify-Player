@@ -141,7 +141,7 @@ export function AddToPlaylistDialog({
           <button
             type="submit"
             disabled={!title.trim() || busy !== null}
-            className="brand-gradient flex shrink-0 items-center gap-1.5 rounded-[var(--radius-control)] px-3 py-1.5 text-sm font-semibold text-white transition-opacity duration-[var(--motion-fast)] hover:opacity-90 disabled:opacity-40"
+            className="brand-gradient flex shrink-0 items-center gap-1.5 rounded-[var(--radius-control)] px-3 py-1.5 text-sm font-semibold text-brand-foreground transition-opacity duration-[var(--motion-fast)] hover:opacity-90 disabled:opacity-40"
           >
             <Plus className="h-4 w-4" />
             {t.track.create}

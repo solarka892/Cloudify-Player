@@ -202,7 +202,7 @@ function CompactBar({ track, onExpand }: { track: Track; onExpand: () => void })
       {/* Progress as a hairline along the top edge rather than a seek bar: a
           2px target cannot be dragged, but it answers "how far in am I". */}
       <div className="absolute inset-x-0 top-0 h-0.5 bg-border">
-        <div className="h-full bg-brand" style={{ width: `${progress}%` }} />
+        <div className="progress-fill h-full bg-brand" style={{ width: `${progress}%` }} />
       </div>
 
       <div className="flex items-center gap-2 px-2 py-2">

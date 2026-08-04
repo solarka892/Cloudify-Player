@@ -11,6 +11,8 @@ import {
 import { isAndroid } from "@/lib/platform";
 import { useNativeMediaSession } from "@/hooks/useNativeMediaSession";
 import { AppShell } from "@/components/shell/AppShell";
+import { AppleShell } from "@/features/apple/AppleShell";
+import { ApplePlayerBar } from "@/features/apple/ApplePlayerBar";
 import { Toaster } from "@/components/Toaster";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LogoMark } from "@/components/Logo";
@@ -90,6 +92,10 @@ function App() {
   const currentArt = usePlayerStore((s) => s.current?.artwork_url ?? null);
   const setArtwork = useSettingsStore((s) => s.setArtwork);
   const locale = useSettingsStore((s) => s.locale);
+  // Apple mode replaces the frame and the player outright, not just their
+  // styling: floating chrome with the content behind it is a different tree,
+  // not a restyled one. Everything inside `children` is shared.
+  const apple = useSettingsStore((s) => s.theme.apple);
   useEffect(() => {
     // 500px, not a thumbnail: this is stretched across the whole window, and
     // the blur is a user setting — turn it down and a 120px source is a mess of
@@ -156,19 +162,20 @@ function App() {
   }
 
   const { me } = auth;
+  const Shell = apple ? AppleShell : AppShell;
 
   return (
     // Keyed on the language: `t` is a live binding, but memoised subtrees would
     // otherwise keep strings they rendered before the switch. Keying here and
     // not higher up means the session survives a language change.
-    <AppShell
+    <Shell
       key={locale}
       view={view}
       onNavigate={(next) => {
         closeDetail(); // leaving a tab abandons whatever was drilled into
         setView(next);
       }}
-      player={<PlayerBar />}
+      player={apple ? <ApplePlayerBar /> : <PlayerBar />}
     >
       <Toaster />
       {showHelp && <HotkeyHelp onClose={() => setShowHelp(false)} />}
@@ -207,7 +214,7 @@ function App() {
       )}
       </ErrorBoundary>
       </div>
-    </AppShell>
+    </Shell>
   );
 }
 
@@ -245,7 +252,7 @@ function LoginView({
         <button
           onClick={onLogin}
           disabled={busy}
-          className="brand-gradient w-full rounded-[var(--radius-control)] px-5 py-2.5 text-sm font-semibold text-white transition-opacity duration-[var(--motion-fast)] hover:opacity-90 disabled:opacity-50"
+          className="brand-gradient w-full rounded-[var(--radius-control)] px-5 py-2.5 text-sm font-semibold text-brand-foreground transition-opacity duration-[var(--motion-fast)] hover:opacity-90 disabled:opacity-50"
         >
           {busy
             ? isAndroid

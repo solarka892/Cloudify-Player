@@ -1,3 +1,4 @@
+import { APPLE_DARK, APPLE_LIGHT } from "./apple";
 import type { Shade } from "./tokens";
 
 /**
@@ -10,6 +11,7 @@ import type { Shade } from "./tokens";
  */
 
 export type PaletteId =
+  | "apple"
   | "vapor"
   | "midnight"
   | "paper"
@@ -34,6 +36,25 @@ export interface Palette {
 }
 
 export const PALETTES: Record<PaletteId, Palette> = {
+  /**
+   * The iOS system palette, as an ordinary palette.
+   *
+   * It lives here rather than only inside Apple mode so the picker keeps
+   * working while that mode is on: the mode owns the *form* and the shell, and
+   * switches to this on the way in, but colour stays the user's to change. It
+   * is also perfectly usable under the other skins, which is the argument for
+   * it being a palette in the first place.
+   *
+   * Not oklch like the rest — these are Apple's published sRGB values, and
+   * converting them would move them.
+   */
+  apple: {
+    id: "apple",
+    name: "Apple",
+    dark: APPLE_DARK,
+    light: APPLE_LIGHT,
+  },
+
   /** Not in the picker. Ten keystrokes away. */
   vapor: {
     id: "vapor",
@@ -387,6 +408,21 @@ export const HIDDEN_PALETTE_IDS = (Object.keys(PALETTES) as PaletteId[]).filter(
 
 /** Quick accent overrides, applied on top of whatever palette is active. */
 export const ACCENTS: Record<string, { brand: string; brand2: string }> = {
+  /**
+   * Neutral accents.
+   *
+   * ⚠️ `white` and `black` each have no contrast against one of the two
+   * appearances: on a light palette a white accented label is near-invisible,
+   * and a black one is on a dark palette. They are offered because a monochrome
+   * accent is a look people want, not because either is safe everywhere — each
+   * pair is a hair off pure so at least the gradient reads.
+   */
+  white: { brand: "oklch(1 0 0)", brand2: "oklch(0.9 0 0)" },
+  /** The mirror of it, and mirror-image caveat: invisible on a dark palette. */
+  black: { brand: "oklch(0 0 0)", brand2: "oklch(0.28 0 0)" },
+  /** systemGray / systemGray2, which is what Apple's own neutral tint is. */
+  grey: { brand: "oklch(0.68 0.01 260)", brand2: "oklch(0.55 0.01 260)" },
+
   orange: { brand: "oklch(0.75 0.17 55)", brand2: "oklch(0.68 0.22 12)" },
   pink: { brand: "oklch(0.72 0.22 350)", brand2: "oklch(0.66 0.24 320)" },
   violet: { brand: "oklch(0.68 0.21 295)", brand2: "oklch(0.62 0.2 270)" },

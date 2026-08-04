@@ -93,9 +93,16 @@ export function LyricsPanel({
   track,
   /** Smaller type, for the narrow popup over the player bar. */
   compact = false,
+  /**
+   * Full-screen karaoke: large, bold, left-aligned. What Music does when lyrics
+   * take over the view — the size is what makes a line readable from across a
+   * room, and left-aligning it is what makes a wrapped line scannable.
+   */
+  large = false,
 }: {
   track: Track;
   compact?: boolean;
+  large?: boolean;
 }) {
   const [state, setState] = useState<State>({ status: "idle" });
   const position = useLivePosition();
@@ -157,18 +164,54 @@ export function LyricsPanel({
   // Synced: a scrolling, clickable transcript.
   if (lines.length > 0) {
     return (
-      <div className="flex flex-col gap-1 py-[35vh] text-center">
+      /*
+        Padding on the bottom only.
+
+        The tail is what lets the final line reach the middle of the box; a
+        matching pad on top only bought empty space, because `scrollIntoView`
+        cannot scroll above zero — so at the start of a track the first line sat
+        a third of the way down with nothing over it. Without it the lyrics begin
+        at the top and slide into centring as the song moves, which is what Music
+        does.
+      */
+      <div
+        className={cn(
+          "flex flex-col pb-[38vh] pt-6",
+          large ? "gap-5" : "gap-1",
+        )}
+      >
         {lines.map((line, i) => (
           <button
             key={`${line.time}-${i}`}
             ref={i === activeIndex ? activeRef : undefined}
             onClick={() => seek(line.time)}
             className={cn(
-              "mx-auto max-w-2xl rounded-[var(--radius-control)] px-4 py-1.5 text-balance font-semibold leading-snug transition-all duration-[var(--motion-slow)]",
-              compact ? "text-base" : "text-xl",
+              "rounded-[var(--radius-control)] text-balance transition-all duration-[var(--motion-slow)]",
+              // No width cap in karaoke mode. `max-w-2xl` is right for a narrow
+              // popover, but given a whole half of the window it left every line
+              // wrapping at 42rem with a wide void beside it — the text has the
+              // space, so it should use it.
+              !large && "max-w-2xl",
+              // `text-left`/`text-center` go on the button, not the container: a
+              // button carries `text-align: center` from the UA stylesheet, and a
+              // declaration *on* the element beats one inherited from its parent.
+              // Setting alignment on the column silently did nothing, which is
+              // why karaoke mode stayed centred however wide it got.
+              // 36px, not 28. At 28 a line of Russian lyrics fitted on one row
+              // in half a 1080p window, so the block ended well short of the
+              // width it had and read as shoved against the left edge. At this
+              // size the lines wrap and fill the column, which is what makes the
+              // reference look the way it does.
+              large
+                ? "px-10 text-left text-[2.25rem] font-bold leading-[1.2] tracking-[-0.022em]"
+                : "mx-auto px-4 py-1.5 text-center font-semibold leading-snug",
+              !large && (compact ? "text-base" : "text-xl"),
               i === activeIndex
-                ? "scale-[1.02] text-foreground"
+                ? "text-foreground"
                 : "text-muted-foreground/50 hover:text-muted-foreground",
+              // The grow-on-active is a small-type affectation; at karaoke size
+              // it shoves the whole column sideways on every line change.
+              i === activeIndex && !large && "scale-[1.02]",
             )}
           >
             {line.text || "♪"}
@@ -182,8 +225,12 @@ export function LyricsPanel({
   return (
     <div
       className={cn(
-        "mx-auto max-w-2xl whitespace-pre-wrap px-4 py-8 text-center leading-relaxed text-muted-foreground",
-        compact ? "text-sm" : "text-lg",
+        "whitespace-pre-wrap leading-relaxed text-muted-foreground",
+        !large && "max-w-2xl",
+        large
+          ? "px-10 py-8 text-left text-[1.75rem] leading-snug"
+          : "mx-auto px-4 py-8 text-center",
+        !large && (compact ? "text-sm" : "text-lg"),
       )}
     >
       {state.data.plain}

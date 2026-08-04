@@ -1,63 +1,83 @@
+import { useContext } from "react";
 import {
-  Pause,
-  Play,
   Repeat,
   Repeat1,
   Shuffle,
-  SkipBack,
-  SkipForward,
   Volume1,
   Volume2,
   VolumeX,
 } from "lucide-react";
 import { usePlayerStore } from "@/stores/usePlayerStore";
+import { TransportIcons } from "./transport-icons";
 import { formatTime } from "./time";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 
-/** Transport pieces shared by the player bar and the full-screen view. */
+/**
+ * Transport pieces shared by the player bar and the full-screen view.
+ *
+ * Each button carries `data-transport`, naming what it does. Nothing reads it
+ * at runtime; it is a styling hook, because a transport that has to be
+ * restyled as a set (Apple mode strips the fill off the play button and fills
+ * the glyphs instead) cannot be reached through the class each button happens
+ * to have.
+ *
+ * The four transport glyphs come from `transport-icons`, so a skin can supply
+ * its own drawing of them without a second copy of the transport's behaviour —
+ * which is what Apple mode does, to trade lucide's play triangle for SF's.
+ */
 
 export function PlayPauseButton({ size = "md" }: { size?: "md" | "lg" }) {
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const isLoading = usePlayerStore((s) => s.isLoading);
   const togglePlay = usePlayerStore((s) => s.togglePlay);
+  const { Play: PlayGlyph, Pause: PauseGlyph } = useContext(TransportIcons);
 
   return (
     <button
       onClick={togglePlay}
       disabled={isLoading}
+      data-transport="play"
       aria-label={isPlaying ? t.player.pause : t.player.play}
       className={cn(
         "flex shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-[opacity,transform] duration-[var(--motion-fast)] hover:scale-105 hover:opacity-90 disabled:opacity-50",
         size === "lg" ? "h-14 w-14" : "h-10 w-10",
       )}
     >
-      {isPlaying ? (
-        <Pause className={size === "lg" ? "h-6 w-6" : "h-5 w-5"} />
-      ) : (
-        <Play
-          className={cn(
-            "translate-x-[1px]",
-            size === "lg" ? "h-6 w-6" : "h-5 w-5",
-          )}
-        />
-      )}
+      {/* Keyed on the state, so React replaces the glyph rather than swapping
+          its `d` attribute — a remount is what lets the new one animate in.
+          Without it the most-pressed control in the app is the only one that
+          changes without moving. */}
+      <span key={isPlaying ? "pause" : "play"} className="pop-in flex">
+        {isPlaying ? (
+          <PauseGlyph className={size === "lg" ? "h-6 w-6" : "h-5 w-5"} />
+        ) : (
+          <PlayGlyph
+            className={cn(
+              "translate-x-[1px]",
+              size === "lg" ? "h-6 w-6" : "h-5 w-5",
+            )}
+          />
+        )}
+      </span>
     </button>
   );
 }
 
 export function PrevButton({ size = "md" }: { size?: "md" | "lg" }) {
   const prev = usePlayerStore((s) => s.prev);
+  const { Prev: PrevGlyph } = useContext(TransportIcons);
   return (
     <button
       onClick={prev}
+      data-transport="prev"
       aria-label={t.player.prev}
       className={cn(
         "flex shrink-0 items-center justify-center rounded-full text-muted-foreground transition-[color,background-color,transform] duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground active:scale-90",
         size === "lg" ? "h-10 w-10" : "h-8 w-8",
       )}
     >
-      <SkipBack className={size === "lg" ? "h-5 w-5" : "h-4 w-4"} />
+      <PrevGlyph className={size === "lg" ? "h-5 w-5" : "h-4 w-4"} />
     </button>
   );
 }
@@ -68,6 +88,7 @@ export function NextButton({ size = "md" }: { size?: "md" | "lg" }) {
   const total = usePlayerStore((s) => s.order.length);
   const repeat = usePlayerStore((s) => s.repeat);
   const radio = usePlayerStore((s) => s.radioLoading);
+  const { Next: NextGlyph } = useContext(TransportIcons);
 
   // "Next" stays live when the queue loops or radio can extend it.
   const hasNext = pos >= 0 && (pos + 1 < total || repeat === "all" || radio);
@@ -76,13 +97,14 @@ export function NextButton({ size = "md" }: { size?: "md" | "lg" }) {
     <button
       onClick={next}
       disabled={!hasNext}
+      data-transport="next"
       aria-label={t.player.next}
       className={cn(
         "flex shrink-0 items-center justify-center rounded-full text-muted-foreground transition-[color,background-color,transform] duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground active:scale-90 disabled:opacity-30 disabled:hover:bg-transparent",
         size === "lg" ? "h-10 w-10" : "h-8 w-8",
       )}
     >
-      <SkipForward className={size === "lg" ? "h-5 w-5" : "h-4 w-4"} />
+      <NextGlyph className={size === "lg" ? "h-5 w-5" : "h-4 w-4"} />
     </button>
   );
 }
@@ -94,6 +116,7 @@ export function ShuffleButton() {
   return (
     <button
       onClick={toggleShuffle}
+      data-transport="shuffle"
       aria-label={t.player.shuffle}
       title={t.player.shuffle}
       className={cn(
@@ -120,6 +143,7 @@ export function RepeatButton() {
   return (
     <button
       onClick={cycleRepeat}
+      data-transport="repeat"
       aria-label={label}
       title={label}
       className={cn(
@@ -155,10 +179,13 @@ export function SeekBar({ compact = false }: { compact?: boolean }) {
         {formatTime(position)}
       </span>
       <div className="group/seek relative flex-1">
-        {/* Painted track: the native range is kept for interaction only. */}
-        <div className="pointer-events-none absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 overflow-hidden rounded-full bg-secondary">
+        {/* Painted track: the native range is kept for interaction only. The
+            two class names are styling hooks — Apple mode thickens the track
+            on hover and repaints the fill, neither of which it could reach
+            through the utilities. */}
+        <div className="seek-track pointer-events-none absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 overflow-hidden rounded-full bg-secondary">
           <div
-            className="brand-gradient h-full rounded-full"
+            className="seek-fill brand-gradient h-full rounded-full"
             style={{ width: `${progress}%` }}
           />
         </div>

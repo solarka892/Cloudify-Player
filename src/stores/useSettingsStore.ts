@@ -65,6 +65,13 @@ export interface ThemeState {
   uiScale: number;
   /** Liquid-glass surfaces. Costly to render; the toggle is the perf escape. */
   glass: boolean;
+  /**
+   * Apple mode. Not a skin — it replaces the palette, the skin, the shell and
+   * the player with an iOS interface. See `theme/apple.ts`.
+   */
+  apple: boolean;
+  /** Apple mode's own glass switch; iOS calls the inverse Reduce Transparency. */
+  appleTransparency: boolean;
   /** Hand-edited CSS custom properties; win over everything else. */
   overrides: ThemeVars;
 }
@@ -103,6 +110,8 @@ const DEFAULT_THEME: ThemeState = {
   // Off by default: `backdrop-filter` on every surface is the biggest
   // rendering cost on a software-composited desktop. Opt in, don't opt out.
   glass: false,
+  apple: false,
+  appleTransparency: true,
   overrides: {},
 };
 
@@ -200,6 +209,8 @@ export const useSettingsStore = create<SettingsState>()(
           density: theme.density,
           uiScale: theme.uiScale,
           glass: theme.glass,
+          apple: theme.apple,
+          appleTransparency: theme.appleTransparency,
           // Artwork accent sits under the user's own edits, above the palette.
           overrides: {
             ...(theme.accentFromArtwork && artworkAccent
@@ -255,8 +266,19 @@ export const useSettingsStore = create<SettingsState>()(
         },
 
         setTheme(patch) {
-          set({ theme: { ...get().theme, ...patch } });
+          const before = get().theme;
+          set({ theme: { ...before, ...patch } });
           sync();
+
+          // Turning the artwork accent on has to sample the cover that is
+          // *already* playing. `setArtwork` returns early while the setting is
+          // off — deliberately, so a sampler doesn't run for nothing — which
+          // means `artworkAccent` is still null at this point and `sync()` above
+          // had nothing to apply. Without this the switch appears to do nothing
+          // until the next track change.
+          if (patch.accentFromArtwork && !before.accentFromArtwork) {
+            void get().setArtwork(get().artworkUrl);
+          }
         },
 
         setOverride(name, value) {
@@ -414,9 +436,17 @@ export const useSettingsStore = create<SettingsState>()(
         // model to salvage, so those users start clean.
         if (from < 2) return {} as never;
 
-        // v3 removed Apple mode. Anyone left on its skin or palette would be
-        // holding an id that no longer resolves, so move them to the defaults
-        // and drop the settings that went with it.
+        // v3 removed the *first* Apple mode, which was a skin and a palette.
+        // Both ids are retired here and both retirements still stand, for
+        // different reasons: `skin: "apple"` resolves to nothing at all, while
+        // `palette: "apple"` resolves again — but to the current mode's iOS
+        // palette, which is not the colours that id used to mean. Landing on a
+        // default is the honest outcome either way.
+        //
+        // The `apple` flag this deletes is that old one, whose value said
+        // nothing about the mode that replaced it — the current one is a
+        // different feature that happens to reuse the name. It is added back
+        // by `fillDefaults`, off, which is the right place to start.
         const state = persisted as {
           theme?: Record<string, unknown>;
           presets?: { theme?: Record<string, unknown> }[];
@@ -458,6 +488,8 @@ export const useSettingsStore = create<SettingsState>()(
     density: s.theme.density,
     uiScale: s.theme.uiScale,
     glass: s.theme.glass,
+    apple: s.theme.apple,
+    appleTransparency: s.theme.appleTransparency,
     overrides: s.theme.overrides,
   });
   applyBackdrop({

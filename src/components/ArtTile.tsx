@@ -20,6 +20,7 @@ function Shell({
   active,
   playing,
   Fallback,
+  index,
 }: {
   art: string | null;
   title: string;
@@ -29,11 +30,27 @@ function Shell({
   active: boolean;
   playing: boolean;
   Fallback: typeof Music;
+  /**
+   * Position in its row or grid, for the entry stagger. Omitted means no
+   * stagger — a tile that appears on its own has nothing to be staggered
+   * against.
+   */
+  index?: number;
 }) {
   return (
     <button
       onClick={onClick}
-      className="group/tile flex w-full flex-col gap-2 rounded-[var(--radius)] p-2 text-left transition-[background-color,transform] duration-[var(--motion-fast)] hover:-translate-y-0.5 hover:bg-accent/60 active:scale-[0.98]"
+      // Capped: past a dozen items the delay is longer than anyone waits to see
+      // a grid appear.
+      style={
+        index === undefined
+          ? undefined
+          : ({ "--i": Math.min(index, 12) } as React.CSSProperties)
+      }
+      className={cn(
+        "group/tile flex w-full flex-col gap-2 rounded-[var(--radius)] p-2 text-left transition-[background-color,translate,scale] duration-[var(--motion-fast)] hover:-translate-y-0.5 hover:bg-accent/60 active:scale-[0.98]",
+        index !== undefined && "rise-in",
+      )}
     >
       <div className="relative aspect-square w-full">
         {art ? (
@@ -63,7 +80,7 @@ function Shell({
 
         <span
           className={cn(
-            "brand-gradient absolute bottom-2 right-2 flex h-10 w-10 translate-y-1 items-center justify-center rounded-full text-white opacity-0 shadow-[var(--shadow-2)] transition-all duration-[var(--motion-fast)] group-hover/tile:translate-y-0 group-hover/tile:opacity-100",
+            "brand-gradient absolute bottom-2 right-2 flex h-10 w-10 translate-y-1 items-center justify-center rounded-full text-brand-foreground opacity-0 shadow-[var(--shadow-2)] transition-all duration-[var(--motion-fast)] group-hover/tile:translate-y-0 group-hover/tile:opacity-100",
             active && "translate-y-0 opacity-100",
           )}
         >
@@ -95,9 +112,12 @@ function Shell({
 export function TrackTile({
   track,
   queue,
+  index,
 }: {
   track: Track;
   queue?: Track[];
+  /** Position in the grid, for the entry stagger. */
+  index?: number;
 }) {
   const playTrack = usePlayerStore((s) => s.playTrack);
   const active = usePlayerStore((s) => s.current?.id === track.id);
@@ -112,12 +132,20 @@ export function TrackTile({
       active={active}
       playing={playing}
       Fallback={Music}
+      index={index}
       onClick={() => void playTrack(track, queue)}
     />
   );
 }
 
-export function PlaylistTile({ playlist }: { playlist: Playlist }) {
+export function PlaylistTile({
+  playlist,
+  index,
+}: {
+  playlist: Playlist;
+  /** Position in the grid, for the entry stagger. */
+  index?: number;
+}) {
   const openPlaylist = useNavStore((s) => s.openPlaylist);
 
   return (
@@ -129,6 +157,7 @@ export function PlaylistTile({ playlist }: { playlist: Playlist }) {
       active={false}
       playing={false}
       Fallback={ListMusic}
+      index={index}
       onClick={() => openPlaylist(playlist)}
     />
   );

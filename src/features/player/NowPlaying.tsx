@@ -26,6 +26,7 @@ import { ShareButton } from "@/components/ShareButton";
 import { Ambient } from "@/components/Ambient";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { AudioLines } from "lucide-react";
+import { useDismiss } from "@/hooks/useDismiss";
 import { t } from "@/i18n";
 import { artwork, cn } from "@/lib/utils";
 
@@ -39,6 +40,7 @@ const RATES = [0.75, 1, 1.25, 1.5, 2];
  * lyrics or the queue.
  */
 export function NowPlaying({ onClose }: { onClose: () => void }) {
+  const { leaving, dismiss } = useDismiss(onClose);
   const current = usePlayerStore((s) => s.current);
   const rate = usePlayerStore((s) => s.rate);
   const setRate = usePlayerStore((s) => s.setRate);
@@ -63,7 +65,12 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
   const downloading = active[current.id];
 
   return (
-    <div className="view-enter fixed inset-0 z-50 flex flex-col bg-background">
+    <div
+      className={cn(
+        "fixed inset-0 z-50 flex flex-col bg-background",
+        leaving ? "view-exit" : "view-enter",
+      )}
+    >
       {/* The cover, blown up and blurred, is the room's lighting. */}
       {art && (
         <div
@@ -76,7 +83,7 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
 
       <header className="relative z-10 flex items-center gap-2 p-4">
         <button
-          onClick={onClose}
+          onClick={dismiss}
           aria-label={t.player.collapse}
           className="rounded-[var(--radius-control)] p-2 text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground"
         >

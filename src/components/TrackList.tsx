@@ -57,7 +57,7 @@ export function TrackList({ tracks }: { tracks: Track[] }) {
     <>
       <div
         ref={ref}
-        className="relative overflow-hidden rounded-[var(--radius)] border border-border"
+        className="list-card relative"
         // The full height is reserved up front so the scrollbar is honest.
         style={{ height: tracks.length * rowHeight }}
       >
@@ -121,8 +121,12 @@ const TrackRow = memo(function TrackRow({
       <button
         onClick={() => void playTrack(track, queue)}
         className={cn(
-          "group flex h-full w-full items-center gap-3 border-b border-border px-3 text-left transition-[background-color] duration-[var(--motion-fast)] hover:bg-accent",
-          isCurrent ? "bg-accent" : "bg-row",
+          // `bg-row` stays on regardless: the current row's `bg-accent` only
+          // sets a background *colour*, so it wins over the row fill without
+          // taking the class — and the class is what a stylesheet has to grab
+          // hold of to restyle rows as a set.
+          "group bg-row flex h-full w-full items-center gap-3 border-b border-border px-3 text-left transition-[background-color] duration-[var(--motion-fast)] hover:bg-accent",
+          isCurrent && "bg-accent",
         )}
       >
         <div className="relative h-10 w-10 shrink-0">

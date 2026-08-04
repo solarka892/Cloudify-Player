@@ -516,6 +516,7 @@ function DownloadsSection() {
                   <div
                     className={cn(
                       "h-full rounded-full transition-[width] duration-[var(--motion-fast)]",
+                      "progress-fill",
                       job.error ? "bg-destructive" : "brand-gradient",
                     )}
                     style={{ width: `${percent ?? 5}%` }}

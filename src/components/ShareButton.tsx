@@ -16,11 +16,18 @@ export function ShareButton({
   className,
   /** Show the word next to the icon, for headers with room for it. */
   withLabel = false,
+  /**
+   * The glyph to draw. Overridable because lucide's `Share2` is a node graph,
+   * which on an Apple platform reads as nothing at all — sharing there is a box
+   * with something leaving it, and Apple mode passes that instead.
+   */
+  Icon = Share2,
 }: {
   url: string | null;
   size?: "sm" | "md";
   className?: string;
   withLabel?: boolean;
+  Icon?: React.ComponentType<{ className?: string }>;
 }) {
   if (!url) return null;
 
@@ -43,7 +50,7 @@ export function ShareButton({
         className,
       )}
     >
-      <Share2 className={icon} />
+      <Icon className={icon} />
       {withLabel && t.track.share}
     </button>
   );

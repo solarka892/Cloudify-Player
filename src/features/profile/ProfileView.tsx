@@ -254,7 +254,7 @@ export function ProfileView({
                 "shrink-0 rounded-[var(--radius-control)] px-4 py-2 text-sm font-semibold transition-[opacity,transform] duration-[var(--motion-fast)] hover:opacity-90 active:scale-95",
                 following
                   ? "border border-border bg-secondary text-secondary-foreground"
-                  : "brand-gradient text-white",
+                  : "brand-gradient text-brand-foreground",
               )}
             >
               {following ? t.profile.unfollow : t.profile.follow}

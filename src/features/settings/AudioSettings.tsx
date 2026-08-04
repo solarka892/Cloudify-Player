@@ -48,7 +48,7 @@ export function AudioSettings() {
   return (
     <section className="flex flex-col gap-2">
       <div>
-        <h2 className="label text-lg font-semibold">{t.audio.title}</h2>
+        <h2 className="group-title">{t.audio.title}</h2>
         <p className="text-xs text-muted-foreground">{t.audio.hint}</p>
       </div>
 

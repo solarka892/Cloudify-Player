@@ -1,4 +1,8 @@
 @import "tailwindcss";
+/* Apple mode's stylesheet. Inert until `theme/apply.ts` sets `data-apple` on
+   <html>, and deliberately unlayered so it can restyle components that colour
+   themselves with utilities — see the header there. */
+@import "./apple.css";
 
 /* Enable class-based dark mode (the <html> element carries `.dark`). */
 @custom-variant dark (&:is(.dark *));
@@ -36,6 +40,9 @@
   --ring: oklch(0.708 0 0);
   --brand: oklch(0.75 0.17 55);
   --brand-2: oklch(0.68 0.22 12);
+  /* Text and glyphs on a surface filled with `--brand`. Derived from the
+     accent's lightness at runtime — see `theme/contrast.ts`. */
+  --brand-foreground: rgb(255 255 255);
 
   /* form — skin layer */
   --radius: 1rem;
@@ -115,6 +122,7 @@
   --color-ring: var(--ring);
   --color-brand: var(--brand);
   --color-brand-2: var(--brand-2);
+  --color-brand-foreground: var(--brand-foreground);
 
   --radius-sm: var(--radius-control);
   --radius-md: var(--radius);
@@ -275,8 +283,30 @@
     );
   }
 
+  /* The settings section list, pinned while the page scrolls under it.
+     `top` is not zero on purpose: it has to equal the scroller's own top
+     padding, or the list drifts up by exactly that much before it catches —
+     which reads as "the panel scrolls away" rather than as sticky. Apple mode
+     pads its content pane differently and overrides this. */
+  .settings-nav {
+    position: sticky;
+    top: 1.5rem;
+  }
+
   /* Section headings; uppercase and tracked out in skins that ask for it. */
   .label {
+    text-transform: var(--label-transform);
+    letter-spacing: var(--label-spacing);
+  }
+
+  /* The heading over a settings group. A class rather than the three utilities
+     it replaces, because a theme has to be able to reach these headings —
+     Apple mode inverts their weight against the rows below — without also
+     reaching every other `h2` in the app. */
+  .group-title {
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+    font-weight: 600;
     text-transform: var(--label-transform);
     letter-spacing: var(--label-spacing);
   }
@@ -293,10 +323,27 @@
     gap: calc(1.5rem * var(--density));
   }
 
+  /* The container the track, playlist and user lists share: an outlined card
+     that clips its rows' corners. Also the hook Apple mode needs to take that
+     outline away, since a grouped table view has none. */
+  .list-card {
+    overflow: hidden;
+    border: var(--border-width) solid var(--border);
+    border-radius: var(--radius);
+  }
+
   /* A list row: the card colour, thinned so the backdrop shows through. */
   .bg-row {
     background: var(--card);
     background: color-mix(in srgb, var(--card) var(--row-alpha), transparent);
+  }
+
+  /* Progress fills advance in ticks, not continuously, so without this every
+     bar in the app visibly steps. Linear, because a bar that eases into each
+     tick reads as lag. */
+  .seek-fill,
+  .progress-fill {
+    transition: width 220ms linear;
   }
 
   .brand-gradient {
@@ -394,8 +441,47 @@
     transform: none;
   }
 }
+/*
+ * Rows and tiles stagger in behind the view.
+ *
+ * `--i` is the item's index, set inline by the list. The multiplier is small and
+ * the index is capped by the caller: a stagger long enough to notice on item
+ * forty is a list that takes a second to appear, which is a worse problem than
+ * the one the stagger solves.
+ */
 .rise-in {
   animation: rise-in var(--motion-slow) cubic-bezier(0.22, 0.8, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 26ms);
+}
+
+/* Leaving. Overlays kept themselves mounted for this; see `useDismiss`. */
+@keyframes view-exit {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+  }
+}
+.view-exit {
+  animation: view-exit var(--motion-fast) cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+/* A popover folding back into the control that opened it. */
+@keyframes pop-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(4px) scale(0.985);
+  }
+}
+.pop-out {
+  animation: pop-out var(--motion-fast) cubic-bezier(0.4, 0, 1, 1) both;
 }
 
 /* Panels that appear over the app (queue, lyrics, menus, dialogs). */
@@ -435,7 +521,39 @@
       border-color var(--motion-fast) ease,
       color var(--motion-fast) ease,
       opacity var(--motion-fast) ease,
+      box-shadow var(--motion-fast) ease,
+      outline-color var(--motion-fast) ease,
+      /* Tailwind 4 writes `translate` and `scale` as their own properties, so
+         transitioning `transform` alone leaves both snapping. */
+      translate var(--motion-fast) cubic-bezier(0.22, 0.8, 0.3, 1),
+      scale var(--motion-fast) cubic-bezier(0.22, 0.8, 0.3, 1),
       transform var(--motion-fast) cubic-bezier(0.22, 0.8, 0.3, 1);
+  }
+
+  /* Surfaces animate their state too, not just the controls on them. A row that
+     lights up under the pointer while the card behind it snaps is the kind of
+     inconsistency that reads as cheap without being nameable. Deliberately not
+     `filter` or `backdrop-filter`: those re-snapshot the backdrop every frame,
+     and this app has a lot of glass. */
+  .panel,
+  .list-card,
+  .bg-row,
+  [data-slot="switch"],
+  [data-slot="switch-thumb"] {
+    transition:
+      background-color var(--motion-fast) ease,
+      border-color var(--motion-fast) ease,
+      box-shadow var(--motion-fast) ease,
+      translate var(--motion-fast) cubic-bezier(0.22, 0.8, 0.3, 1),
+      scale var(--motion-fast) cubic-bezier(0.22, 0.8, 0.3, 1);
+  }
+
+  /* Anything that changes size as a matter of state — a rail widening, a
+     scrubber thickening — rather than each site remembering to say so. */
+  svg {
+    transition:
+      fill var(--motion-fast) ease,
+      stroke var(--motion-fast) ease;
   }
 
   /* Tactile press, everywhere. Disabled controls stay put. */

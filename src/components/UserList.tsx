@@ -19,15 +19,16 @@ export function UserList({ users }: { users: User[] }) {
   const { visible, sentinel, hasMore } = useIncremental(users, 40);
 
   return (
-    <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-[var(--radius)] border border-border">
-      {visible.map((user) => {
+    <ul className="list-card flex flex-col divide-y divide-border">
+      {visible.map((user, index) => {
         const avatar = artwork(user.avatar_url);
         // The row and the share action are siblings, not nested buttons —
         // which would be invalid, and unclickable.
         return (
           <li
             key={user.id}
-            className="group/row flex items-center bg-row pr-2 transition-[background-color] duration-[var(--motion-fast)] hover:bg-accent"
+            style={{ "--i": Math.min(index, 14) } as React.CSSProperties}
+            className="rise-in group/row flex items-center bg-row pr-2 transition-[background-color] duration-[var(--motion-fast)] hover:bg-accent"
           >
             <button
               onClick={() => openUser(user)}

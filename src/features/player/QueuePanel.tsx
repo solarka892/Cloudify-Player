@@ -23,7 +23,15 @@ export function QueuePanel({ onClose }: { onClose?: () => void }) {
   const [dragOver, setDragOver] = useState<number | null>(null);
 
   return (
-    <div className="flex h-full flex-col">
+    // `data-queue` is a styling hook: Apple mode sizes these rows for a
+    // full-height side panel rather than for the narrow popover the defaults
+    // are tuned to. See `styles/apple.css`.
+    // `min-h-0 flex-1` alongside `h-full`, because the two cover different
+    // parents. `h-full` only resolves when the parent has a definite height; in a
+    // flex column capped by `max-height` it resolves to auto, the list grew to
+    // fit all 1200 rows, and `overflow-y-auto` therefore never had anything to
+    // scroll — the panel just clipped it.
+    <div data-queue className="flex h-full min-h-0 flex-1 flex-col">
       <div className="flex items-center gap-2 border-b border-border px-4 py-3">
         <span className="label text-sm font-semibold">{t.player.queue}</span>
         <span className="text-xs text-muted-foreground">
@@ -57,9 +65,18 @@ export function QueuePanel({ onClose }: { onClose?: () => void }) {
             <li
               key={`${queueIndex}-${orderPos}`}
               draggable
-              onDragStart={() => setDragFrom(orderPos)}
+              onDragStart={(e) => {
+                setDragFrom(orderPos);
+                // WebKit will not start a drag — and therefore never fires
+                // `drop` — unless dragstart puts something on the transfer.
+                // The payload is unused; the index is tracked in state, because
+                // reading `dataTransfer` during dragover is not allowed.
+                e.dataTransfer.setData("text/plain", String(orderPos));
+                e.dataTransfer.effectAllowed = "move";
+              }}
               onDragOver={(e) => {
                 e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
                 setDragOver(orderPos);
               }}
               onDragEnd={() => {

@@ -110,7 +110,7 @@ export function HomeView({
             <button
               onClick={() => playAll(false)}
               disabled={tracks.length === 0}
-              className="brand-gradient flex items-center gap-2 rounded-[var(--radius-control)] px-4 py-2 text-sm font-semibold text-white transition-opacity duration-[var(--motion-fast)] hover:opacity-90 disabled:opacity-40"
+              className="brand-gradient flex items-center gap-2 rounded-[var(--radius-control)] px-4 py-2 text-sm font-semibold text-brand-foreground transition-opacity duration-[var(--motion-fast)] hover:opacity-90 disabled:opacity-40"
             >
               <Play className="h-4 w-4 translate-x-[1px]" />
               {t.home.playLikes}
@@ -164,8 +164,8 @@ export function HomeView({
             action={{ label: t.home.seeAll, onClick: () => onNavigate("library") }}
           />
           <TileGrid>
-            {own.items.slice(0, ROW).map((playlist) => (
-              <PlaylistTile key={playlist.id} playlist={playlist} />
+            {own.items.slice(0, ROW).map((playlist, i) => (
+              <PlaylistTile key={playlist.id} playlist={playlist} index={i} />
             ))}
           </TileGrid>
         </section>
@@ -176,8 +176,8 @@ export function HomeView({
         <section key={selection.id} className="stack">
           <SectionHeader title={selection.title} />
           <TileGrid>
-            {selection.playlists.slice(0, ROW).map((playlist) => (
-              <PlaylistTile key={playlist.id} playlist={playlist} />
+            {selection.playlists.slice(0, ROW).map((playlist, i) => (
+              <PlaylistTile key={playlist.id} playlist={playlist} index={i} />
             ))}
           </TileGrid>
         </section>
@@ -204,8 +204,8 @@ function Row({
         action={onSeeAll ? { label: t.home.seeAll, onClick: onSeeAll } : undefined}
       />
       <TileGrid>
-        {tracks.map((track) => (
-          <TrackTile key={track.id} track={track} queue={queue} />
+        {tracks.map((track, i) => (
+          <TrackTile key={track.id} track={track} queue={queue} index={i} />
         ))}
       </TileGrid>
     </section>

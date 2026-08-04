@@ -1,25 +1,40 @@
 import { useEffect } from "react";
 
 /**
- * Shorten the distance one wheel notch scrolls.
+ * Shorten the distance one wheel notch scrolls, and ease it rather than jump.
  *
  * WebKitGTK's own wheel animation is off (see `platform::tame_wheel_scrolling`),
  * which fixed the crawl-then-lurch curve but left each notch covering a lot of
- * ground. This scales the step down — and *only* the step:
+ * ground in a single hard jump. This scales the step down and glides it:
  *
- *   - one `scrollTop` write per input event, never per frame. The earlier
- *     inertia hook chased a target with `requestAnimationFrame`, and a scroll
- *     write inside every frame is a repaint inside every frame, which is what
- *     made scrolling expensive. Nothing here animates.
+ *   - **bounded** animation, not inertia. The earlier inertia hook chased a
+ *     moving target for as long as momentum lasted, so a fast scroll meant a
+ *     scroll write — and therefore a repaint — in every frame for a second or
+ *     more. This eases toward a fixed target and stops: a handful of frames per
+ *     notch, and idle in between. That distinction is what makes it affordable
+ *     with blurred surfaces on screen, where every scrolled frame re-snapshots
+ *     each backdrop.
+ *   - **additive** targets. A second notch during the glide extends the
+ *     existing target instead of restarting from the current offset, so
+ *     spinning the wheel accelerates smoothly rather than stuttering.
  *   - precise devices are left completely alone. A touchpad already sends a
- *     stream of small deltas with its own momentum, and scaling those would
- *     make two-finger scrolling feel sluggish rather than controlled.
+ *     stream of small deltas with its own momentum, and animating those would
+ *     fight it.
  */
 
 /** Fraction of the platform's step to actually travel. */
 const STEP = 0.65;
 /** Below this, a delta is a momentum stream rather than a discrete notch. */
 const NOTCH_THRESHOLD = 30;
+/**
+ * Share of the remaining distance to cover each frame. 0.65 lands a notch in
+ * two or three frames — around 40ms, which is enough to soften the edge of the
+ * jump and not enough to read as travel. Lower values glide, and gliding is what
+ * this was tuned away from.
+ */
+const EASE = 0.65;
+/** Closer than this and the remaining distance is not worth another frame. */
+const SETTLED = 1;
 
 /**
  * Whether something between `target` and `root` is itself scrollable and can
@@ -58,6 +73,23 @@ export function useWheelStep(el: HTMLElement | null): void {
     if (!el) return;
     const scroller = el;
 
+    /** Where the glide is heading; null when it is not running. */
+    let target: number | null = null;
+    let frame = 0;
+
+    function tick() {
+      if (target === null) return;
+      const distance = target - scroller.scrollTop;
+      if (Math.abs(distance) < SETTLED) {
+        scroller.scrollTop = target;
+        target = null;
+        frame = 0;
+        return;
+      }
+      scroller.scrollTop += distance * EASE;
+      frame = requestAnimationFrame(tick);
+    }
+
     function onWheel(e: WheelEvent) {
       if (e.ctrlKey) return; // zoom gesture, not a scroll
       if (Math.abs(e.deltaY) < NOTCH_THRESHOLD) return; // has its own momentum
@@ -72,19 +104,24 @@ export function useWheelStep(el: HTMLElement | null): void {
             : e.deltaY;
 
       const limit = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
-      const next = Math.min(
-        limit,
-        Math.max(0, scroller.scrollTop + pixels * STEP),
-      );
+      // Extend the glide in flight rather than restarting from where it happens
+      // to be — otherwise a second notch mid-glide loses the distance the first
+      // one had not travelled yet.
+      const from = target ?? scroller.scrollTop;
+      const next = Math.min(limit, Math.max(0, from + pixels * STEP));
       // Nothing to do at either end — leaving the event alone lets the platform
       // show its overscroll feedback.
-      if (next === scroller.scrollTop) return;
+      if (next === scroller.scrollTop && target === null) return;
 
       e.preventDefault();
-      scroller.scrollTop = next;
+      target = next;
+      if (!frame) frame = requestAnimationFrame(tick);
     }
 
     scroller.addEventListener("wheel", onWheel, { passive: false });
-    return () => scroller.removeEventListener("wheel", onWheel);
+    return () => {
+      scroller.removeEventListener("wheel", onWheel);
+      if (frame) cancelAnimationFrame(frame);
+    };
   }, [el]);
 }

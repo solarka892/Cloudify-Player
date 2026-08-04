@@ -1,0 +1,882 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Apple mode — iOS 26 / iPadOS 26 / macOS 26 Tahoe.
+
+   Every rule here is scoped to `:root[data-apple="1"]`, which `theme/apply.ts`
+   writes on <html>, or to the `.lg*` classes only Apple mode's own components
+   use. Turning the mode off removes the attribute, unmounts those components,
+   and the whole file stops matching — there is nothing to unwind.
+
+   The values come from `theme/apple.ts`. This file only arranges them, so a
+   colour, radius or blur must never be written literally below — reach for a
+   token or add one there. Geometry (a hairline, a ring width, a slider height)
+   is fair game.
+
+   Three parts:
+     1. Liquid Glass  — the material, `.lg`
+     2. The shell     — floating chrome, from `features/apple/`
+     3. The app       — lists, controls and type shared with the other skins
+
+   ── Why this file is not in a `@layer` ─────────────────────────────────────
+
+   Deliberately unlayered. Tailwind's utilities live in `@layer utilities`, and
+   an unlayered declaration beats *any* layered one regardless of specificity —
+   which is the only way a stylesheet can restyle components that colour
+   themselves with `bg-primary` or `text-muted-foreground` without editing all
+   of them. It also means these rules win by position among themselves, so
+   order matters: the narrower hook goes after the broader one.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Motion ────────────────────────────────────────────────────────────────
+ *
+ * A sampled spring, not a bezier. UIKit and SwiftUI animate with a damped
+ * oscillator, and the tell is the overshoot: it passes the target by about a
+ * percent and settles back. No cubic-bezier can do that — it is monotonic by
+ * construction — so the curve below is SwiftUI's default spring (response
+ * 0.55, damping fraction 0.825) sampled at 23 points.
+ *
+ * The bezier comes first as the fallback for a WebKit without `linear()`
+ * (< 17.4). It has to be a second declaration of the property rather than a
+ * `var()` fallback: a custom property holding an unsupported `linear()` still
+ * parses, so `var()` would substitute a value that fails at computed-value
+ * time and resolve to `unset` instead of falling back to the bezier.
+ */
+:root[data-apple="1"] {
+  --ios-spring: cubic-bezier(0.32, 0.72, 0, 1);
+}
+@supports (transition-timing-function: linear(0, 1)) {
+  :root[data-apple="1"] {
+    --ios-spring: linear(
+      0,
+      0.0623,
+      0.2004,
+      0.3624,
+      0.5188,
+      0.6546,
+      0.7644,
+      0.8482,
+      0.9091,
+      0.9511,
+      0.9786,
+      0.9953,
+      1.0046,
+      1.0089,
+      1.0102,
+      1.0097,
+      1.0083,
+      1.0067,
+      1.0051,
+      1.0037,
+      1.0025,
+      1.0016,
+      1
+    );
+  }
+}
+
+:root[data-apple="1"] button,
+:root[data-apple="1"] a,
+:root[data-apple="1"] input,
+:root[data-apple="1"] select,
+:root[data-apple="1"] summary,
+:root[data-apple="1"] [role="button"],
+:root[data-apple="1"] [role="menuitem"],
+:root[data-apple="1"] [role="tab"] {
+  transition-timing-function: var(--ios-spring);
+}
+
+:root[data-apple="1"] .view-enter,
+:root[data-apple="1"] .pop-in,
+:root[data-apple="1"] .rise-in,
+:root[data-apple="1"] .nav-in-x,
+:root[data-apple="1"] .nav-in-y,
+:root[data-apple="1"] .heart-pop {
+  animation-timing-function: var(--ios-spring);
+}
+
+/* Leaving is not a spring. An overshoot on the way out reads as the panel
+   bouncing before it goes, and iOS dismisses on a plain ease-out. */
+:root[data-apple="1"] .view-exit,
+:root[data-apple="1"] .pop-out {
+  animation-timing-function: cubic-bezier(0.4, 0, 1, 1);
+}
+
+/* iOS dims a control under the finger; it does not shrink it. The scale press
+ * from `globals.css` is the wrong gesture here, so it is replaced rather than
+ * tuned. The dim lands immediately and the release rides the spring back.
+ *
+ * Both `transform` and `scale` have to be cleared: the base rule presses with
+ * `transform: scale()`, while Tailwind's `active:scale-90` sets the separate
+ * `scale` property, and one does not override the other — they compose. */
+:root[data-apple="1"] button:not(:disabled):active,
+:root[data-apple="1"] [role="button"]:not([aria-disabled="true"]):active {
+  transform: none;
+  scale: 1;
+  opacity: 0.42;
+  transition-duration: 60ms;
+}
+
+/* A list row is the exception: it takes a fill, the way a table view cell
+   does, and everything inside it stays at full strength. */
+:root[data-apple="1"] .bg-row:active {
+  opacity: 1;
+  background-color: var(--ios-fill-3);
+}
+
+/* ═══ 1. Liquid Glass ══════════════════════════════════════════════════════
+ *
+ * `.lg` is the material. It is a lens, and it is built in four passes because
+ * that is what the eye is actually reading when it decides something is glass:
+ *
+ *   backdrop  blur + saturate + brighten — what shows through
+ *   rim       an even hairline, plus a band of gathered light just inside it,
+ *             which is what gives the surface thickness
+ *   specular  a highlight where the light is, and a glint opposite it
+ *   dispersion a trace of split colour along a bar's lower edge
+ *
+ * The blur is the least important of the four and the only one most
+ * imitations have, which is why they look like a fogged window rather than
+ * like something with a shape.
+ *
+ * Painted with pseudo-elements, so `.lg` can be dropped on any element without
+ * a wrapper, and stacked behind the content rather than over it — see the note
+ * on `isolation` below.
+ */
+/* The one declaration in this file that is deliberately *layered*.
+ *
+ * `.lg` needs a containing block for its pseudo-elements, but unlayered
+ * `position: relative` beats Tailwind's `absolute` — so a glass panel could not
+ * be positioned by its caller, and `absolute inset-y-0` silently did nothing.
+ * That is what left the rail content-sized instead of full height. In the
+ * components layer it still applies by default and still yields to a utility;
+ * `absolute` and `fixed` establish a containing block just as well. */
+@layer components {
+  .lg {
+    position: relative;
+  }
+}
+
+.lg {
+  /* A stacking context, so the three layers below can sit at `z-index: -1`.
+     That is what puts them above the tint but *behind* the content: a
+     positioned pseudo-element with `auto` would paint over the labels, and a
+     55% specular highlight over a label is a washed-out label. Negative
+     z-index children escape to the nearest stacking context, so isolating is
+     what keeps them inside this element instead of behind the window. */
+  isolation: isolate;
+  background-color: var(--ios-glass-tint);
+  border-radius: var(--radius-hero);
+  box-shadow:
+    /* Grounding shadow, outside. */
+    var(--ios-glass-shadow),
+    /* The edge, as one even hairline — see the token for why it must not carry
+       an offset. */
+    inset 0 0 0 0.5px var(--ios-glass-rim),
+    /* The band of gathered light inside the rim. Negative spread keeps it a
+       band rather than a glow across the whole surface. */
+    inset 0 0 14px -6px var(--ios-glass-rim-inner);
+}
+
+:root[data-glass="1"] .lg {
+  backdrop-filter: blur(var(--ios-blur-panel))
+    saturate(var(--ios-glass-saturate)) brightness(var(--ios-glass-brightness))
+    contrast(var(--ios-glass-contrast));
+}
+
+/* Specular. Two radial highlights: the main one at the top-left corner where
+   Apple's light always comes from, and a weaker glint at the opposite corner
+   where the far edge of a lens catches it again. */
+.lg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      125% 85% at 6% -8%,
+      var(--ios-glass-sheen) 0%,
+      transparent 48%
+    ),
+    radial-gradient(
+      90% 65% at 104% 108%,
+      var(--ios-glass-glint) 0%,
+      transparent 44%
+    );
+}
+
+/* Dispersion. White leaving glass at an angle splits, warm one way and cool
+ * the other; on a panel that shows up as a hairline of colour along the bottom
+ * edge. Two thin stops in a 2px strip — any more and it stops being physics and
+ * starts being a rainbow.
+ *
+ * Chrome only, and strictly inside the shape. On a wide bar the strip is a
+ * hairline; on something narrow — the rail is 68px — a 2px box inheriting a 28px
+ * radius is a degenerate shape, and hanging it half a pixel below the edge with
+ * a 1px blur turned it into a visible lump under the panel. Its own pill radius
+ * and `bottom: 1px` keep it a hairline at every width.
+ */
+.lg-chrome::after {
+  content: "";
+  position: absolute;
+  inset: auto 14% 1px 14%;
+  z-index: -1;
+  height: 2px;
+  border-radius: 999px;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--ios-glass-spectrum-warm) 22%,
+    transparent 44%,
+    transparent 56%,
+    var(--ios-glass-spectrum-cool) 78%,
+    transparent 100%
+  );
+  filter: blur(1px);
+}
+
+/* Chrome — a floating bar that carries controls over content that moves under
+   it. More body than a panel, because a transport control has to stay legible
+   while artwork scrolls past behind it. */
+.lg-chrome {
+  background-color: var(--ios-glass-tint-strong);
+}
+:root[data-glass="1"] .lg-chrome {
+  backdrop-filter: blur(var(--ios-blur-nav))
+    saturate(var(--ios-glass-saturate)) brightness(var(--ios-glass-brightness))
+    contrast(var(--ios-glass-contrast));
+}
+
+/* Capsule geometry, for a dock or a pill button. */
+.lg-capsule {
+  border-radius: 999px;
+}
+
+/* Reduce Transparency: no lens, no rim, no highlight — an opaque card. iOS
+   turns the material off rather than thinning it, and so does this. */
+:root[data-glass="0"] .lg {
+  background-color: var(--ios-glass-solid);
+  box-shadow: var(--ios-glass-shadow);
+}
+:root[data-glass="0"] .lg::before,
+:root[data-glass="0"] .lg-chrome::after {
+  display: none;
+}
+
+/* ── Real refraction, where the engine can do it ────────────────────────────
+ *
+ * Everything above approximates the rim with light. This does it properly: a
+ * ring, masked out of the middle, that re-filters the backdrop through its own
+ * blur and a hard saturation push — the same content, compressed, exactly as a
+ * lens edge shows it. It needs `mask-composite`, so it is behind `@supports`
+ * and the gradient rim above stands in when that is missing. Nothing below is
+ * load-bearing; it is the last few percent.
+ */
+.lg-lens {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+}
+@supports (mask-composite: exclude) {
+  :root[data-glass="1"] .lg > .lg-lens {
+    padding: var(--ios-lens-width);
+    backdrop-filter: blur(1px) brightness(var(--ios-lens-brightness))
+      saturate(var(--ios-lens-saturate));
+    /* Keep the border box, drop the content box: what is left is the ring. */
+    mask:
+      linear-gradient(#000 0 0) content-box exclude,
+      linear-gradient(#000 0 0);
+  }
+}
+
+/* ═══ 2. The shell ═════════════════════════════════════════════════════════ */
+
+/* The window's own surface.
+ *
+ * Glass is a lens, and a lens over a flat fill shows a flat fill — which is
+ * why the mode looked like plain unblurred panels with the wallpaper set to
+ * none, and why it looked worst in light mode, where a pale tint over a pale
+ * page has nothing to be paler than. So the mode lays down a wallpaper of its
+ * own: four wide system-coloured pools, at alphas high enough to survive being
+ * blurred, saturated and tinted on the way through the glass.
+ *
+ * Built from the palette's own colours rather than fixed ones, so a chosen
+ * accent travels into the canvas too. `fixed` so it does not slide with a
+ * scroll. A real wallpaper, when there is one, paints over this. */
+:root[data-apple="1"] body {
+  background-image:
+    radial-gradient(
+      140% 100% at 6% -8%,
+      color-mix(in srgb, var(--brand) 45%, transparent) 0%,
+      transparent 62%
+    ),
+    radial-gradient(
+      125% 95% at 100% 104%,
+      color-mix(in srgb, var(--brand-2) 40%, transparent) 0%,
+      transparent 64%
+    ),
+    radial-gradient(
+      100% 80% at 74% 6%,
+      color-mix(in srgb, var(--ios-pink) 26%, transparent) 0%,
+      transparent 62%
+    ),
+    radial-gradient(
+      110% 90% at 18% 104%,
+      color-mix(in srgb, var(--ios-green) 20%, transparent) 0%,
+      transparent 60%
+    );
+  background-attachment: fixed;
+}
+
+/* ── The wallpaper, in light mode ──────────────────────────────────────────
+ *
+ * The backdrop layer dims the wallpaper with `--background` at the user's
+ * chosen strength. In dark mode that wash is black, and a darkened photo keeps
+ * its structure. In light mode it is near-white, and past about a third the
+ * photo is gone — which is the actual reason light mode read as flat panels
+ * with no material: a lens over a blank plate shows a blank plate, however well
+ * the lens is built.
+ *
+ * So the mode caps the wash in light mode only. A lower setting is still
+ * honoured — this is a ceiling, not an override — and dark mode is left alone,
+ * where the full range is useful.
+ */
+:root[data-apple="1"]:not(.dark) .app-backdrop::after {
+  opacity: min(var(--backdrop-dim), 0.3);
+}
+
+/* Apple mode's content pane pads by 1.75rem, so its sticky offset has to
+   match — see `.settings-nav` in globals for why it is not zero. */
+:root[data-apple="1"] .settings-nav {
+  top: 1.75rem;
+}
+
+/* A sidebar row. Inactive rows are label-coloured and unfilled; the selected
+   one takes a tint of the accent and the accent's own colour, which is what
+   both iPadOS and Tahoe do — never a grey fill. */
+.lg-nav-item {
+  border-radius: var(--radius-control);
+  color: var(--ios-label-2);
+}
+.lg-nav-item:hover {
+  background-color: var(--ios-fill-3);
+  color: var(--foreground);
+}
+.lg-nav-item[aria-current="page"] {
+  background-color: color-mix(in srgb, var(--brand) 16%, transparent);
+  color: var(--brand);
+}
+
+/* A round glass control: the toolbar buttons in Messages and Podcasts, and
+   every secondary action in the player. iOS 26 puts these on their own glass
+   rather than on a grey fill. */
+/* Deliberately no `backdrop-filter` of its own. A chip only ever sits on glass
+   that is already blurred, so a second pass would re-blur an image that has
+   nothing left to blur — at the cost of one more backdrop snapshot per chip
+   per frame, and there are six of them in the player. The fill and the lit
+   edge are what read as glass at 32px; the blur was never doing the work. */
+.lg-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background-color: var(--ios-fill-3);
+  color: var(--foreground);
+  box-shadow: inset 0 0 0 0.5px var(--ios-glass-rim);
+}
+.lg-chip[data-on="true"] {
+  color: var(--brand);
+}
+
+/* ── Over artwork ──────────────────────────────────────────────────────────
+ *
+ * A subtree laid over a cover this app has never seen — the now-playing view.
+ * It fixes its own palette rather than following the appearance, because there
+ * is no single text colour that is legible over both a black album sleeve and a
+ * white one; a scrim plus a fixed light palette is what makes one correct for
+ * every cover, and it is what Apple does.
+ *
+ * Done by re-pointing the *tokens* rather than by putting `text-white` on
+ * everything. Custom properties inherit, so one declaration block reaches the
+ * glass, the chips, the segmented control and the scrubber alike — and a
+ * `text-white` utility would in any case lose to the unlayered `color` on
+ * `.lg-chip`, which is the trap this avoids.
+ */
+.lg-on-artwork {
+  --foreground: rgb(255 255 255);
+  --border: rgb(255 255 255 / 0.18);
+  --secondary: rgb(255 255 255 / 0.92);
+  --secondary-foreground: rgb(0 0 0);
+
+  --ios-label-2: rgb(255 255 255 / 0.6);
+  --ios-label-3: rgb(255 255 255 / 0.32);
+  --ios-separator: rgb(255 255 255 / 0.18);
+  --ios-fill-1: rgb(255 255 255 / 0.22);
+  --ios-fill-3: rgb(255 255 255 / 0.14);
+  --ios-segment: rgb(255 255 255 / 0.28);
+  --ios-red: rgb(255 69 58);
+
+  /* Glass over a dark scrim has to darken, not lighten — the light-mode tints
+     would put a white panel on a black backdrop under white text. */
+  --ios-glass-tint: rgb(255 255 255 / 0.1);
+  /* Near-opaque, unlike everywhere else this token is used. Chrome elsewhere
+     sits over content that may show through harmlessly; here it is a menu and a
+     lyrics sheet laid directly over the transport, and at 0.66 the seek bar and
+     the times read straight through them, which looks like a rendering fault
+     rather than like glass. */
+  --ios-glass-tint-strong: rgb(28 28 30 / 0.92);
+  --ios-glass-rim: rgb(255 255 255 / 0.22);
+  --ios-glass-rim-inner: rgb(255 255 255 / 0.16);
+  --ios-glass-sheen: rgb(255 255 255 / 0.14);
+  --ios-glass-glint: rgb(255 255 255 / 0.07);
+  --ios-glass-solid: rgb(28 28 30);
+  --ios-glass-brightness: 1.12;
+  --ios-glass-contrast: 1;
+}
+
+/* The content pane, Tahoe-style: its own rounded card beside the sidebar,
+   scrolling inside its own bounds instead of behind the window's edges. */
+.lg-pane {
+  border-radius: var(--radius-hero);
+  background-color: color-mix(in srgb, var(--background) 55%, transparent);
+}
+:root[data-glass="1"] .lg-pane {
+  backdrop-filter: blur(20px) saturate(140%)
+    contrast(var(--ios-glass-contrast));
+}
+:root[data-glass="0"] .lg-pane {
+  background-color: var(--background);
+}
+
+/* ═══ 3. The app ═══════════════════════════════════════════════════════════ */
+
+/* ── Type ──────────────────────────────────────────────────────────────────
+ *
+ * SF is drawn with real weights at every size, so synthesising one is both
+ * unnecessary and visibly wrong — a faux-bold SF has smeared stems. Headings
+ * track tighter than body text because SF's optical sizes do.
+ */
+:root[data-apple="1"] body {
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  /* Inter 4's variable cut carries an `opsz` axis, as SF does. Left `none` the
+     browser holds it at one size and large text keeps body spacing. */
+  font-optical-sizing: auto;
+}
+
+/* Headings take the display cut. `--font-display` is only wired up in two
+   places by hand, so the mode claims the rest here. */
+:root[data-apple="1"] h1,
+:root[data-apple="1"] h2,
+:root[data-apple="1"] h3 {
+  font-family: var(--font-display);
+}
+:root[data-apple="1"] h1 {
+  letter-spacing: -0.022em;
+}
+:root[data-apple="1"] h2,
+:root[data-apple="1"] h3 {
+  letter-spacing: -0.018em;
+}
+
+/* The grouped-list inversion, and the single thing that most decides whether a
+ * settings page reads as iOS.
+ *
+ * iOS does not head a section with a heavy title: the header sits above the
+ * card, 13px, grey, unemphasised — and the rows inside it are *larger* than the
+ * header, because the content is what matters and the header is only a label
+ * for it. Every other design does the opposite. Left the other way round the
+ * page keeps the shape it had before the mode was switched on, whatever the
+ * colours underneath are doing.
+ *
+ * The 1rem of lead-in is the row padding inside the card, so the header lines
+ * up with the labels it heads instead of with the card's edge.
+ */
+:root[data-apple="1"] .group-title {
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+  font-weight: 400;
+  color: var(--ios-label-2);
+  padding-inline-start: 1rem;
+}
+:root[data-apple="1"] .group-title + p {
+  padding-inline-start: 1rem;
+}
+/* And the rows themselves at iOS body size. Scoped to panels so this is the
+   grouped list and the bars, not every 14px label in the app. */
+:root[data-apple="1"] .panel .text-sm {
+  font-size: 0.9375rem;
+}
+
+/* Timings, counts and durations. iOS shows these in SF with tabular figures —
+   it has no monospace anywhere in the system UI — and the figures are what
+   actually stop a running clock from jittering. */
+:root[data-apple="1"] .font-mono {
+  font-family: var(--font-ui);
+  font-variant-numeric: tabular-nums;
+}
+
+:root[data-apple="1"] ::selection {
+  background: color-mix(in srgb, var(--ios-blue) 28%, transparent);
+}
+
+/* Keyboard focus is a blue halo around the control, not a grey ring. */
+:root[data-apple="1"] :focus-visible {
+  outline: 2px solid var(--ios-blue);
+  outline-offset: 2px;
+}
+
+/* systemRed, for the same states the rest of the app calls destructive. Not
+   part of the palette layer, which has no slot for it. */
+:root[data-apple="1"] {
+  --destructive: var(--ios-red);
+}
+
+/* ── Panels ────────────────────────────────────────────────────────────────
+ *
+ * Everything the shared views put on a `.panel` — settings groups, dialogs,
+ * the queue, menus — becomes the same material as the shell, so there is one
+ * glass in the app and not two.
+ */
+:root[data-apple="1"] .panel {
+  background: var(--ios-glass-tint);
+  border-color: var(--ios-separator);
+  border-radius: var(--radius);
+  box-shadow:
+    var(--ios-glass-shadow),
+    inset 0 0 0 0.5px var(--ios-glass-rim),
+    inset 0 0 14px -6px var(--ios-glass-rim-inner);
+}
+:root[data-apple="1"][data-glass="1"] .panel {
+  backdrop-filter: blur(var(--ios-blur-panel))
+    saturate(var(--ios-glass-saturate)) brightness(var(--ios-glass-brightness))
+    contrast(var(--ios-glass-contrast));
+}
+:root[data-apple="1"][data-glass="0"] .panel {
+  background: var(--ios-glass-solid);
+  box-shadow: var(--ios-glass-shadow);
+}
+
+/* The sheen the other skins paint on `.panel-liquid`, replaced with this
+   mode's own specular pair so a panel and the shell catch light alike. */
+:root[data-apple="1"][data-glass="1"] .panel-liquid::before {
+  background:
+    radial-gradient(
+      125% 85% at 6% -8%,
+      var(--ios-glass-sheen) 0%,
+      transparent 48%
+    ),
+    radial-gradient(
+      90% 65% at 104% 108%,
+      var(--ios-glass-glint) 0%,
+      transparent 44%
+    );
+  mix-blend-mode: normal;
+}
+
+/* Sheets and menus: the largest radius, and lifted further off the page. */
+:root[data-apple="1"] .panel-raised {
+  border-radius: var(--radius-hero);
+  box-shadow:
+    inset 0 0 0 0.5px var(--ios-glass-rim),
+    var(--ios-sheet-shadow);
+}
+:root[data-apple="1"][data-glass="1"] .panel-raised {
+  background: var(--ios-glass-tint-strong);
+}
+/* Opaque, a sheet is still a step lighter than the card it covers — that is
+   what the elevated variants of the system backgrounds are for. */
+:root[data-apple="1"][data-glass="0"] .panel-raised {
+  background: var(--ios-elevated);
+}
+
+/* ── Lists ─────────────────────────────────────────────────────────────────
+ *
+ * A grouped table view: no outline around the card, and a hairline between
+ * rows that starts where the text starts rather than at the card's edge. The
+ * inset is the giveaway detail — 4rem is the row's own geometry, 0.75rem of
+ * padding plus 2.5rem of artwork plus a 0.75rem gap, shared by all three
+ * lists.
+ *
+ * Drawn as a background image rather than a border because a border cannot be
+ * inset, and on the row rather than on the container because the virtualised
+ * track list gives every row its own wrapper — there is no `:last-child` to
+ * exempt, so the card's clipped corners are what end the last hairline.
+ */
+:root[data-apple="1"] .list-card {
+  border-width: 0;
+  border-radius: var(--radius);
+}
+:root[data-apple="1"] .bg-row {
+  background-image: linear-gradient(
+    to right,
+    transparent 0 4rem,
+    var(--ios-separator) 4rem
+  );
+  background-repeat: no-repeat;
+  background-position: bottom left;
+  background-size: 100% 0.5px;
+  border-bottom-width: 0;
+}
+:root[data-apple="1"] .bg-row + .bg-row {
+  border-top-width: 0;
+}
+/* Artwork in a row is a small rounded square, not a card. Concentric with
+   nothing — iOS uses a fixed 6pt here at every list size. */
+:root[data-apple="1"] .bg-row img,
+:root[data-apple="1"] .bg-row .bg-secondary {
+  border-radius: 0.375rem;
+}
+
+/* ── The queue ─────────────────────────────────────────────────────────────
+ *
+ * The shared panel is drawn for a narrow popover over the player bar: 12px
+ * titles, 32px artwork, a hairline-ruled header, a list that ends wherever the
+ * box does. As a floating panel in this mode all of that reads as a dense,
+ * hard-edged spreadsheet dropped into a soft interface. Restyled here into an
+ * iOS sheet: a real title, the destructive action as tinted text, the close as a
+ * glass chip, list metrics matching the rest of the app, and the scroll fading
+ * out at both ends rather than being cut by an edge.
+ */
+
+/* Header. */
+:root[data-apple="1"] [data-queue] > div:first-child {
+  border-bottom-width: 0;
+  padding: 1.125rem 1.125rem 0.625rem;
+  gap: 0.5rem;
+}
+/* The title, at sheet size. */
+:root[data-apple="1"] [data-queue] > div:first-child > span:first-child {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.018em;
+}
+:root[data-apple="1"] [data-queue] > div:first-child > span:nth-child(2) {
+  font-size: 0.8125rem;
+  color: var(--ios-label-2);
+}
+/* Clear: a tinted text action, which is what iOS uses for anything that empties
+   something. Not a grey label that looks like part of the title. */
+:root[data-apple="1"] [data-queue] > div:first-child > button:not(:last-child) {
+  font-size: 0.9375rem;
+  color: var(--brand);
+}
+/* Close, as the same glass chip every other dismiss in this mode uses. */
+:root[data-apple="1"] [data-queue] > div:first-child > button:last-child {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border-radius: 999px;
+  background-color: var(--ios-fill-3);
+  box-shadow: inset 0 0 0 0.5px var(--ios-glass-rim);
+}
+
+/* The list, faded at both ends so a row is never sliced by the panel's edge. */
+:root[data-apple="1"] [data-queue] > ul {
+  padding: 0 0.625rem 0.625rem;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 1.25rem,
+    #000 calc(100% - 1.75rem),
+    transparent 100%
+  );
+}
+
+/* Rows. */
+:root[data-apple="1"] [data-queue] li {
+  gap: 0.6875rem;
+  padding: 0.4375rem 0.5rem;
+  border-radius: var(--radius-control);
+}
+:root[data-apple="1"] [data-queue] li img,
+:root[data-apple="1"] [data-queue] li span.bg-secondary {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.375rem;
+}
+:root[data-apple="1"] [data-queue] li .text-xs {
+  font-size: 0.9375rem;
+}
+:root[data-apple="1"] [data-queue] li .text-\[11px\] {
+  font-size: 0.8125rem;
+}
+/* Already-played rows dim; the tracking one takes the accent, not a grey fill —
+   a fill on a translucent panel reads as a rendering seam. */
+:root[data-apple="1"] [data-queue] li.bg-accent {
+  background-color: color-mix(in srgb, var(--brand) 15%, transparent);
+}
+/* The grip is a desktop affordance the row does not need advertised: the whole
+   row is draggable, and a handle that appears on hover next to a play target is
+   one more thing to aim at. */
+:root[data-apple="1"] [data-queue] li > svg:first-child {
+  display: none;
+}
+
+/* ── Transport ─────────────────────────────────────────────────────────────
+ *
+ * iOS Music has no filled circle under its play button: the transport is bare
+ * glyphs at label colour, sized by importance. Filled, because these are SF
+ * Symbols' `.fill` variants — a hollow play triangle is a Web player's idiom,
+ * not Apple's.
+ */
+:root[data-apple="1"] [data-transport] {
+  background: none;
+  color: var(--foreground);
+}
+/* No hover growth either — a bar glyph in iOS does not respond to a pointer
+   until it is pressed. `scale` for the same reason as the press rule above. */
+:root[data-apple="1"] [data-transport]:hover {
+  background: none;
+  transform: none;
+  scale: 1;
+  opacity: 1;
+}
+:root[data-apple="1"] [data-transport="play"] svg,
+:root[data-apple="1"] [data-transport="prev"] svg,
+:root[data-apple="1"] [data-transport="next"] svg {
+  fill: currentColor;
+  stroke-width: 1.25;
+}
+:root[data-apple="1"] [data-transport="play"] svg {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+:root[data-apple="1"] [data-transport="prev"] svg,
+:root[data-apple="1"] [data-transport="next"] svg {
+  width: 1.375rem;
+  height: 1.375rem;
+}
+
+/* The scrubber. iOS Music has no thumb on it at all — the bar itself thickens
+   when you touch it, and hover is the pointer's version of touching. The
+   played portion is label-coloured, not accented: the accent is spent on
+   controls, and a white bar over artwork is what the app actually looks like. */
+:root[data-apple="1"] .seek-track {
+  height: 4px;
+  background: var(--ios-fill-3);
+  transition: height var(--motion-fast) var(--ios-spring);
+}
+:root[data-apple="1"] div:has(> input[type="range"]:hover) > .seek-track,
+:root[data-apple="1"] div:has(> input[type="range"]:active) > .seek-track {
+  height: 7px;
+}
+/* And no knob on it, ever. Scoped to the range that has a painted track beside
+   it, because the volume slider is a native one whose thumb is the only part
+   of it you can grab. */
+:root[data-apple="1"]
+  div:has(> .seek-track)
+  > input[type="range"]::-webkit-slider-thumb {
+  opacity: 0;
+}
+:root[data-apple="1"] .seek-fill {
+  background: var(--foreground);
+}
+
+/* ── Controls ──────────────────────────────────────────────────────────────
+ *
+ * The switch is UISwitch: a capsule track that turns systemGreen, and a white
+ * knob inset two pixels and lifted by a shadow. 46×28 rather than iOS's 51×31
+ * — a phone control at a desktop's reading distance — but at the same
+ * proportions, which is what keeps it recognisable: the knob fills the track
+ * bar a 2px ring, so 28 tall means 24 across, and 46 wide leaves it 18 to
+ * travel.
+ *
+ * The 2px comes from 1px of padding on top of the transparent border the
+ * component already carries; both count, since everything here is border-box.
+ */
+:root[data-apple="1"] [data-slot="switch"] {
+  width: 2.875rem;
+  height: 1.75rem;
+  padding: 1px;
+  background-color: var(--ios-fill-1);
+  border-color: transparent;
+  box-shadow: none;
+}
+:root[data-apple="1"] [data-slot="switch"][data-state="checked"] {
+  background-color: var(--ios-green);
+}
+:root[data-apple="1"] [data-slot="switch-thumb"] {
+  width: 1.5rem;
+  height: 1.5rem;
+  background: var(--ios-knob);
+  box-shadow: var(--ios-knob-shadow);
+}
+/* The `translate` property, not `transform`: that is what Tailwind's
+   `translate-x-*` sets, and the two would compose into twice the travel.
+   100% is the knob's own 24, less the 6 of ring it must not cross. */
+:root[data-apple="1"] [data-slot="switch-thumb"][data-state="checked"] {
+  translate: calc(100% - 6px) 0;
+}
+
+/* UISegmentedControl: one recessed track, the selection a lifted capsule that
+   slides between the segments. 9pt outside, 7pt in — the two radii UIKit
+   uses, which is why the selection looks concentric with the track. */
+:root[data-apple="1"] [data-segmented] {
+  gap: 0;
+  padding: 2px;
+  background: var(--ios-fill-3);
+  border-color: transparent;
+  border-radius: 0.5625rem;
+}
+:root[data-apple="1"] [data-segmented] > button {
+  border-radius: 0.4375rem;
+}
+:root[data-apple="1"] [data-segmented] > button.bg-secondary {
+  background-color: var(--ios-segment);
+  color: var(--foreground);
+  box-shadow: var(--ios-knob-shadow);
+}
+
+/* Text fields and pickers are filled, not outlined. `:not([type])` is not
+   belt-and-braces: every text field in the app is written without a `type`,
+   which is a text field to HTML but not to `input[type="text"]`. */
+:root[data-apple="1"] select,
+:root[data-apple="1"] input:not([type]),
+:root[data-apple="1"] input[type="text"],
+:root[data-apple="1"] input[type="search"] {
+  background-color: var(--ios-fill-3);
+  border-color: transparent;
+  border-radius: var(--radius-control);
+}
+
+/* A prominent action is a filled capsule in systemBlue. The gradient the rest
+   of the app uses is a two-colour brand device; iOS has no such thing.
+   Excluding the scrubber's fill, which is painted with the same class and is
+   not a button — see Transport above for what it gets instead. */
+:root[data-apple="1"] .brand-gradient:not(.seek-fill) {
+  background-image: none;
+  background-color: var(--brand);
+  border-radius: 999px;
+}
+
+/* ── Scrollers ─────────────────────────────────────────────────────────────
+ *
+ * An overlay scroller: a translucent capsule with no track behind it, dark
+ * enough to find and faint enough to ignore.
+ */
+:root[data-apple="1"] ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+:root[data-apple="1"] ::-webkit-scrollbar-thumb {
+  background: var(--ios-label-3);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+:root[data-apple="1"] ::-webkit-scrollbar-thumb:hover {
+  background: var(--ios-label-2);
+  background-clip: content-box;
+}
+
+/* Rows are translucent over the wallpaper by default. With transparency off,
+   nothing in the mode may show through anything else. */
+:root[data-apple="1"][data-glass="0"] {
+  --row-alpha: 100%;
+}

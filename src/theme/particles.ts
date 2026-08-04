@@ -162,6 +162,8 @@ export function runEffect(
   let last = performance.now();
   let sinceDraw = 0;
   let stopped = false;
+  /** Whether the field has ever been populated; see `resize`. */
+  let filled = false;
 
   // Resolved once per resize rather than per frame: reading a custom property
   // forces style resolution, which is not something to do 30 times a second.
@@ -192,9 +194,18 @@ export function runEffect(
     );
     // Grow or shrink to the new target, keeping the particles already in flight.
     while (particles.length > target) particles.pop();
+    // The *first* fill scatters through the frame; anything added later — a
+    // window that grew, a raised intensity — comes in from the top so it joins
+    // what is already falling.
+    //
+    // This used to key off `particles.length > 0`, which meant only the very
+    // first particle was scattered and every other one spawned above the frame:
+    // the whole field arrived as a single wave and the effect looked like it
+    // fell once and stopped, when in fact it had merely synchronised.
     while (particles.length < target) {
-      particles.push(spawn(spec, width, height, particles.length > 0));
+      particles.push(spawn(spec, width, height, filled));
     }
+    filled = true;
   }
 
   function draw(particle: Particle, x: number) {

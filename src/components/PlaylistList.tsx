@@ -12,15 +12,18 @@ export function PlaylistList({ playlists }: { playlists: Playlist[] }) {
   const { visible, sentinel, hasMore } = useIncremental(playlists, 40);
 
   return (
-    <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-[var(--radius)] border border-border">
-      {visible.map((playlist) => {
+    <ul className="list-card flex flex-col divide-y divide-border">
+      {visible.map((playlist, index) => {
         const art = artwork(playlist.artwork_url);
         // The row and the share action are siblings, not nested buttons —
         // which would be invalid, and unclickable.
         return (
           <li
             key={playlist.id}
-            className="group/row flex items-center bg-row pr-2 transition-[background-color] duration-[var(--motion-fast)] hover:bg-accent"
+            // The index drives the stagger; capped, because a delay long enough
+            // to notice on item forty is a list that takes a second to appear.
+            style={{ "--i": Math.min(index, 14) } as React.CSSProperties}
+            className="rise-in group/row flex items-center bg-row pr-2 transition-[background-color] duration-[var(--motion-fast)] hover:bg-accent"
           >
             <button
               onClick={() => openPlaylist(playlist)}
