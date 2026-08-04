@@ -112,10 +112,20 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
         </div>
       </header>
 
-      <div className="relative z-10 flex min-h-0 flex-1 gap-6 px-6 pb-4">
-        {/* Artwork + transport */}
-        <div className="flex min-w-0 flex-1 flex-col items-center justify-center gap-6">
-          <div className="relative w-full max-w-sm">
+      <div className="relative z-10 flex min-h-0 flex-1 justify-center gap-6 px-6 pb-4">
+        {/*
+          The player column, laid out the way Apple mode lays it out — the
+          arrangement and the sizes, not the look. Everything inside is still
+          drawn from the ordinary skin tokens.
+
+          Two things carry over. The column is a fixed 34rem rather than
+          `flex-1`, so the cover does not drift about as the side panel opens
+          and closes; and the cover is capped against the viewport *height*
+          (`44vh`), because a width-capped square in a wide window came out
+          small with dead space above and below it.
+        */}
+        <div className="flex min-h-0 w-full max-w-[34rem] shrink-0 flex-col justify-center gap-6">
+          <div className="mx-auto w-full max-w-[min(30rem,44vh)]">
             {art ? (
               <img
                 src={art}
@@ -127,37 +137,38 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
             )}
           </div>
 
-          <div className="w-full max-w-xl text-center">
-            <h2
-              className="truncate text-2xl font-bold tracking-tight"
-              style={{ fontFamily: "var(--font-display)" }}
-            >
-              {current.title}
-            </h2>
-            {current.artist && (
-              <p className="truncate text-sm text-muted-foreground">
-                {current.artist}
-              </p>
-            )}
+          {/* Title left, the track's own three actions right — a centred title
+              with the actions in the row below left the eye no fixed edge to
+              read down, and the actions sat among controls they have nothing to
+              do with. */}
+          <div className="flex items-start gap-3">
+            <div className="min-w-0 flex-1">
+              <h2
+                className="truncate text-[1.375rem] font-bold leading-tight tracking-[-0.02em]"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                {current.title}
+              </h2>
+              {current.artist && (
+                <p className="truncate text-[1.0625rem] leading-snug text-muted-foreground">
+                  {current.artist}
+                </p>
+              )}
+            </div>
+            <div className="flex shrink-0 items-center gap-1 pt-0.5">
+              <LikeButton track={current} size="md" />
+              <RepostButton track={current} size="md" />
+              <ShareButton url={current.permalink_url} size="md" />
+            </div>
           </div>
 
-          {visualizerOn ? (
-            <Visualizer mode="bars" height={48} className="w-full max-w-xl opacity-80" />
-          ) : (
-            <button
-              onClick={() => setAudio({ visualizer: true })}
-              className="flex items-center gap-2 rounded-[var(--radius-control)] border border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
-            >
-              <AudioLines className="h-3.5 w-3.5" />
-              {t.player.enableVisualizer}
-            </button>
+          {visualizerOn && (
+            <Visualizer mode="bars" height={40} className="w-full opacity-80" />
           )}
 
-          <div className="w-full max-w-xl">
-            <SeekBar />
-          </div>
+          <SeekBar />
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center gap-5">
             <ShuffleButton />
             <PrevButton size="lg" />
             <PlayPauseButton size="lg" />
@@ -165,12 +176,21 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
             <RepeatButton />
           </div>
 
-          {/* Secondary actions */}
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <LikeButton track={current} size="md" />
-            <RepostButton track={current} size="md" />
-            <ShareButton url={current.permalink_url} size="md" />
+          <div className="flex justify-center">
             <VolumeControl />
+          </div>
+
+          {/* Everything else: the long tail, on its own line. */}
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            {!visualizerOn && (
+              <button
+                onClick={() => setAudio({ visualizer: true })}
+                className="flex items-center gap-1.5 rounded-[var(--radius-control)] border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground"
+              >
+                <AudioLines className="h-3.5 w-3.5" />
+                {t.player.enableVisualizer}
+              </button>
+            )}
 
             <button
               onClick={() => void startRadio(current)}
@@ -269,7 +289,11 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
 
         {/* Side panel */}
         {side !== "none" && (
-          <aside className="panel pop-in hidden w-[26rem] shrink-0 overflow-hidden lg:flex lg:flex-col">
+          // `xl`, not `lg`: the player column is a fixed 34rem now, and 34 plus
+          // this panel's 26 does not fit inside a 1024px window without one of
+          // them being squeezed — which would move the cover, the one thing the
+          // eye is anchored to.
+          <aside className="panel pop-in hidden w-[26rem] shrink-0 overflow-hidden xl:flex xl:flex-col">
             {side === "queue" ? (
               <QueuePanel onClose={() => setSide("none")} />
             ) : (
