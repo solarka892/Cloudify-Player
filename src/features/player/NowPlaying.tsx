@@ -22,6 +22,7 @@ import {
   VolumeControl,
 } from "./controls";
 import { LikeButton } from "@/components/LikeButton";
+import { RepostButton } from "@/components/RepostButton";
 import { ShareButton } from "@/components/ShareButton";
 import { Ambient } from "@/components/Ambient";
 import { useSettingsStore } from "@/stores/useSettingsStore";
@@ -167,6 +168,7 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
           {/* Secondary actions */}
           <div className="flex flex-wrap items-center justify-center gap-2">
             <LikeButton track={current} size="md" />
+            <RepostButton track={current} size="md" />
             <ShareButton url={current.permalink_url} size="md" />
             <VolumeControl />
 

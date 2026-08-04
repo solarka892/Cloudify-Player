@@ -126,6 +126,49 @@ pub async fn station_tracks(
     Ok(resp.collection.into_iter().map(Track::from).collect())
 }
 
+/// The newest tracks carrying a tag — SoundCloud's genre/tag pages.
+///
+/// `GET /recent-tracks/{tag}` (verified live 2026-08-04). This is the
+/// replacement for browsing by genre now that `/charts` is a 404.
+pub async fn tag_tracks(tag: &str, limit: u32) -> Result<Vec<Track>, ScApiError> {
+    let tag = tag.trim();
+    if tag.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let cid = client_id::get(false).await?;
+    let client = http_client()?;
+    let limit = limit.to_string();
+
+    let resp: Collection<RawTrack> = client
+        .get(format!("{API_V2}/recent-tracks/{}", urlencoding_lite(tag)))
+        .query(&[("client_id", cid.as_str()), ("limit", limit.as_str())])
+        .send()
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
+
+    Ok(resp.collection.into_iter().map(Track::from).collect())
+}
+
+/// Percent-encode the characters that can appear in a tag and break a path.
+///
+/// A whole URL-encoding crate for this would be a dependency for four
+/// characters; tags are words, spaces and the occasional ampersand.
+fn urlencoding_lite(tag: &str) -> String {
+    tag.chars()
+        .map(|c| match c {
+            ' ' => "%20".to_string(),
+            '/' => "%2F".to_string(),
+            '?' => "%3F".to_string(),
+            '#' => "%23".to_string(),
+            '&' => "%26".to_string(),
+            c => c.to_string(),
+        })
+        .collect()
+}
+
 #[derive(Deserialize)]
 struct StreamItem {
     /// `track`, `track-repost`, `playlist`, `playlist-repost`.

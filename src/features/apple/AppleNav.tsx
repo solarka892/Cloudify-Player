@@ -1,5 +1,7 @@
 import { Glass } from "./Glass";
 import {
+  AppleBell,
+  AppleEnvelope,
   AppleGear,
   AppleHouse,
   AppleMagnifier,
@@ -8,8 +10,14 @@ import {
   type Glyph,
 } from "./icons";
 import { Logo } from "@/components/Logo";
-import { NAV_ITEMS, type ViewId } from "@/components/shell/nav-items";
+import {
+  COMPACT_NAV_ITEMS,
+  NAV_ITEMS,
+  type ViewId,
+} from "@/components/shell/nav-items";
 import { useLibraryStore } from "@/stores/useLibraryStore";
+import { useMessagesStore } from "@/stores/useMessagesStore";
+import { useNotificationsStore } from "@/stores/useNotificationsStore";
 import { useNavStore } from "@/stores/useNavStore";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
@@ -38,9 +46,42 @@ const GLYPHS: Record<ViewId, Glyph> = {
   home: AppleHouse,
   search: AppleMagnifier,
   library: AppleSquareStack,
+  messages: AppleEnvelope,
+  notifications: AppleBell,
   profile: ApplePersonCircle,
   settings: AppleGear,
 };
+
+/** Unread count for a section; 0 for the ones that never carry one. */
+function useBadge(id: ViewId): number {
+  const messages = useMessagesStore((s) => s.unread);
+  const notifications = useNotificationsStore((s) => s.unreadCount());
+  if (id === "messages") return messages;
+  if (id === "notifications") return notifications;
+  return 0;
+}
+
+/**
+ * The red count iOS puts on a tab.
+ *
+ * Deliberately `--ios-red` rather than the accent: on Apple's platforms a
+ * badge is always red, whatever the app's tint, and an orange one reads as a
+ * decoration instead of as a number that wants attention.
+ */
+function AppleBadge({ count, className }: { count: number; className?: string }) {
+  if (count <= 0) return null;
+  return (
+    <span
+      className={cn(
+        "flex h-[17px] min-w-[17px] items-center justify-center rounded-full px-[5px] text-[11px] font-semibold leading-none text-white",
+        className,
+      )}
+      style={{ background: "var(--ios-red)" }}
+    >
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
 
 /**
  * The rail: the sidebar collapsed to its glyphs, widening under the pointer.
@@ -67,26 +108,47 @@ export function AppleRail({ view, onNavigate }: NavProps) {
         <Logo compact />
       </div>
 
-      {NAV_ITEMS.map(({ id, label }) => {
-        const Icon = GLYPHS[id];
-        return (
-          <button
-            key={id}
-            onClick={() => onNavigate(id)}
-            title={label}
-            aria-current={view === id ? "page" : undefined}
-            className="lg-nav-item flex h-11 shrink-0 items-center text-[0.9375rem]"
-          >
-            <span className="flex w-12 shrink-0 items-center justify-center">
-              <Icon className="h-[21px] w-[21px]" />
-            </span>
-            <span className="whitespace-nowrap pr-3 opacity-0 transition-opacity duration-[var(--motion-fast)] group-hover/rail:opacity-100 group-hover/rail:delay-[var(--motion-slow)]">
-              {label}
-            </span>
-          </button>
-        );
-      })}
+      {NAV_ITEMS.map((item) => (
+        <AppleRailItem
+          key={item.id}
+          item={item}
+          active={view === item.id}
+          onNavigate={onNavigate}
+        />
+      ))}
     </Glass>
+  );
+}
+
+function AppleRailItem({
+  item: { id, label },
+  active,
+  onNavigate,
+}: {
+  item: (typeof NAV_ITEMS)[number];
+  active: boolean;
+  onNavigate: (view: ViewId) => void;
+}) {
+  const Icon = GLYPHS[id];
+  const badge = useBadge(id);
+
+  return (
+    <button
+      onClick={() => onNavigate(id)}
+      title={label}
+      aria-current={active ? "page" : undefined}
+      className="lg-nav-item flex h-11 shrink-0 items-center text-[0.9375rem]"
+    >
+      <span className="relative flex w-12 shrink-0 items-center justify-center">
+        <Icon className="h-[21px] w-[21px]" />
+        {/* On the glyph, not at the row's end: the rail widens on hover and a
+            trailing badge would slide across with it. */}
+        <AppleBadge count={badge} className="absolute -right-0.5 -top-1" />
+      </span>
+      <span className="whitespace-nowrap pr-3 opacity-0 transition-opacity duration-[var(--motion-fast)] group-hover/rail:opacity-100 group-hover/rail:delay-[var(--motion-slow)]">
+        {label}
+      </span>
+    </button>
   );
 }
 
@@ -108,20 +170,14 @@ export function AppleTopBar({ view, onNavigate }: NavProps) {
         <Logo />
       </div>
 
-      {NAV_ITEMS.filter((i) => i.id !== "settings").map(({ id, label }) => {
-        const Icon = GLYPHS[id];
-        return (
-          <button
-            key={id}
-            onClick={() => onNavigate(id)}
-            aria-current={view === id ? "page" : undefined}
-            className="lg-nav-item flex shrink-0 items-center gap-2 px-3 py-1.5 text-[0.9375rem]"
-          >
-            <Icon className="h-[18px] w-[18px]" />
-            <span>{label}</span>
-          </button>
-        );
-      })}
+      {NAV_ITEMS.filter((i) => i.id !== "settings").map((item) => (
+        <AppleTopItem
+          key={item.id}
+          item={item}
+          active={view === item.id}
+          onNavigate={onNavigate}
+        />
+      ))}
 
       <button
         onClick={() => onNavigate("settings")}
@@ -133,6 +189,31 @@ export function AppleTopBar({ view, onNavigate }: NavProps) {
         <AppleGear className="h-[18px] w-[18px]" />
       </button>
     </Glass>
+  );
+}
+
+function AppleTopItem({
+  item: { id, label },
+  active,
+  onNavigate,
+}: {
+  item: (typeof NAV_ITEMS)[number];
+  active: boolean;
+  onNavigate: (view: ViewId) => void;
+}) {
+  const Icon = GLYPHS[id];
+  const badge = useBadge(id);
+
+  return (
+    <button
+      onClick={() => onNavigate(id)}
+      aria-current={active ? "page" : undefined}
+      className="lg-nav-item flex shrink-0 items-center gap-2 px-3 py-1.5 text-[0.9375rem]"
+    >
+      <Icon className="h-[18px] w-[18px]" />
+      <span>{label}</span>
+      <AppleBadge count={badge} />
+    </button>
   );
 }
 
@@ -149,20 +230,14 @@ export function AppleSidebar({ view, onNavigate }: NavProps) {
         <Logo />
       </div>
 
-      {NAV_ITEMS.map(({ id, label }) => {
-        const Icon = GLYPHS[id];
-        return (
-          <button
-            key={id}
-            onClick={() => onNavigate(id)}
-            aria-current={view === id ? "page" : undefined}
-            className="lg-nav-item flex h-9 shrink-0 items-center gap-3 px-2.5 text-[0.9375rem]"
-          >
-            <Icon className="h-[19px] w-[19px] shrink-0" />
-            <span className="truncate">{label}</span>
-          </button>
-        );
-      })}
+      {NAV_ITEMS.map((item) => (
+        <AppleSidebarItem
+          key={item.id}
+          item={item}
+          active={view === item.id}
+          onNavigate={onNavigate}
+        />
+      ))}
 
       {all.length > 0 && (
         <>
@@ -189,6 +264,31 @@ export function AppleSidebar({ view, onNavigate }: NavProps) {
   );
 }
 
+function AppleSidebarItem({
+  item: { id, label },
+  active,
+  onNavigate,
+}: {
+  item: (typeof NAV_ITEMS)[number];
+  active: boolean;
+  onNavigate: (view: ViewId) => void;
+}) {
+  const Icon = GLYPHS[id];
+  const badge = useBadge(id);
+
+  return (
+    <button
+      onClick={() => onNavigate(id)}
+      aria-current={active ? "page" : undefined}
+      className="lg-nav-item flex h-9 shrink-0 items-center gap-3 px-2.5 text-[0.9375rem]"
+    >
+      <Icon className="h-[19px] w-[19px] shrink-0" />
+      <span className="truncate">{label}</span>
+      <AppleBadge count={badge} className="ml-auto" />
+    </button>
+  );
+}
+
 /**
  * The dock, for a narrow window.
  *
@@ -204,7 +304,7 @@ export function AppleDock({ view, onNavigate }: NavProps) {
       capsule
       className="nav-in-y flex items-stretch gap-0.5 p-1.5"
     >
-      {NAV_ITEMS.map(({ id, label }) => {
+      {COMPACT_NAV_ITEMS.map(({ id, label }) => {
         const Icon = GLYPHS[id];
         return (
           <button

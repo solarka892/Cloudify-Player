@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   HardDriveDownload,
   Radio,
@@ -8,9 +8,15 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { scStationTracks, type Track } from "@/lib/tauri";
+import {
+  scGetReposts,
+  scStationTracks,
+  type Playlist,
+  type Track,
+} from "@/lib/tauri";
 import { TrackList } from "@/components/TrackList";
 import { PlaylistList } from "@/components/PlaylistList";
+import { UserList } from "@/components/UserList";
 import { DownloadAllButton } from "@/components/DownloadAllButton";
 import { useLibraryStore, type Section } from "@/stores/useLibraryStore";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
@@ -24,6 +30,8 @@ type SectionId =
   | "likes"
   | "playlists"
   | "albums"
+  | "reposts"
+  | "following"
   | "stations"
   | "history"
   | "downloads";
@@ -37,6 +45,12 @@ const SECTIONS: { id: SectionId; label: string }[] = [
   } },
   { id: "albums", get label() {
     return t.library.albums;
+  } },
+  { id: "reposts", get label() {
+    return t.library.reposts;
+  } },
+  { id: "following", get label() {
+    return t.library.following;
   } },
   { id: "stations", get label() {
     return t.library.stations;
@@ -139,6 +153,8 @@ export function LibraryView({ userId }: { userId: number }) {
       {section === "likes" && <LikesSection userId={userId} />}
       {section === "playlists" && <PlaylistsSection userId={userId} albums={false} />}
       {section === "albums" && <PlaylistsSection userId={userId} albums />}
+      {section === "reposts" && <RepostsSection userId={userId} />}
+      {section === "following" && <FollowingSection userId={userId} />}
       {section === "stations" && <StationsSection userId={userId} />}
       {section === "history" && <HistorySection userId={userId} />}
       {section === "downloads" && <DownloadsSection />}
@@ -241,6 +257,116 @@ function PlaylistsSection({
           </div>
         )}
       </div>
+    </Shell>
+  );
+}
+
+/**
+ * Everything the user has reposted, tracks and sets together.
+ *
+ * Fetched here rather than read from `useRepostStore`: that store keeps ids so
+ * the repost buttons know their state, not the objects a list needs.
+ */
+function RepostsSection({ userId }: { userId: number }) {
+  const [state, setState] = useState<{
+    tracks: Track[];
+    playlists: Playlist[];
+    status: "loading" | "ok" | "error";
+    error: string | null;
+  }>({ tracks: [], playlists: [], status: "loading", error: null });
+
+  const fetchReposts = useCallback(() => {
+    setState((s) => ({ ...s, status: "loading", error: null }));
+    scGetReposts(userId)
+      .then((mixed) =>
+        setState({
+          tracks: mixed.tracks,
+          playlists: mixed.playlists,
+          status: "ok",
+          error: null,
+        }),
+      )
+      .catch((e) =>
+        setState({
+          tracks: [],
+          playlists: [],
+          status: "error",
+          error: String(e),
+        }),
+      );
+  }, [userId]);
+
+  useEffect(() => {
+    fetchReposts();
+  }, [fetchReposts]);
+
+  const { query, setQuery, filtered } = useFilter(state.tracks, (t) =>
+    `${t.title} ${t.artist ?? ""}`,
+  );
+
+  return (
+    <Shell
+      section={{ items: state.tracks, status: state.status, error: state.error }}
+      count={filtered.length + state.playlists.length}
+      onRefresh={fetchReposts}
+      emptyLabel={t.library.noReposts}
+      tools={
+        <>
+          <FilterBox
+            value={query}
+            onChange={setQuery}
+            placeholder={t.library.searchTracks}
+          />
+          <ShufflePlayButton tracks={filtered} />
+          <DownloadAllButton tracks={filtered} />
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        {filtered.length > 0 && <TrackList tracks={filtered} />}
+        {state.playlists.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <h3 className="label text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {t.library.playlists}
+            </h3>
+            <PlaylistList playlists={state.playlists} />
+          </div>
+        )}
+      </div>
+    </Shell>
+  );
+}
+
+/** Who the user follows. The follow buttons live on the rows themselves. */
+function FollowingSection({ userId }: { userId: number }) {
+  const followings = useLibraryStore((s) => s.followings);
+  const load = useLibraryStore((s) => s.loadFollowings);
+  const refresh = useLibraryStore((s) => s.refreshFollowings);
+
+  useEffect(() => {
+    void load(userId);
+  }, [userId, load]);
+
+  const { query, setQuery, filtered } = useFilter(
+    followings.items,
+    (u) => u.username,
+  );
+
+  return (
+    <Shell
+      section={followings}
+      count={filtered.length}
+      onRefresh={() => void refresh(userId)}
+      emptyLabel={t.library.noFollowing}
+      tools={
+        <FilterBox
+          value={query}
+          onChange={setQuery}
+          placeholder={t.library.searchPeople}
+        />
+      }
+    >
+      <UserList users={filtered} />
     </Shell>
   );
 }

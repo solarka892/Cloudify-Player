@@ -880,3 +880,50 @@
 :root[data-apple="1"][data-glass="0"] {
   --row-alpha: 100%;
 }
+
+/* ── Messages ──────────────────────────────────────────────────────────────
+ *
+ * iMessage's geometry, which is specific enough that the shared bubble reads
+ * as "a chat" rather than as *this* platform's chat: a full capsule radius,
+ * squared off on the corner nearest its own side, and no border at all on the
+ * incoming side — iOS uses a fill, not an outline.
+ *
+ * The 1.125rem is the real thing: iOS bubbles are 18pt-rounded, which at a
+ * 17pt line is very nearly a capsule but not quite one, and that near-miss is
+ * what the eye recognises.
+ */
+:root[data-apple="1"] [data-bubble] {
+  border-radius: 1.125rem;
+  border-width: 0;
+  padding-inline: 0.75rem;
+  padding-block: 0.4375rem;
+}
+:root[data-apple="1"] [data-bubble="me"] {
+  border-bottom-right-radius: 0.3125rem;
+  background-image: none;
+  background-color: var(--ios-blue);
+  color: rgb(255 255 255);
+}
+:root[data-apple="1"] [data-bubble="them"] {
+  border-bottom-left-radius: 0.3125rem;
+  background-color: var(--ios-fill-3);
+  color: var(--ios-label);
+}
+/* The timestamp inside a bubble is quieter than iOS's own, which lives
+   outside it — but a per-bubble time is more useful in a desktop window than
+   a date separator every few hours. */
+:root[data-apple="1"] [data-bubble] time {
+  opacity: 0.55;
+  font-size: 0.625rem;
+}
+
+/* ── Waveform ──────────────────────────────────────────────────────────────
+ *
+ * The unplayed bars are `--ios-label-4` rather than a translucent grey mixed
+ * from the foreground: on a wallpaper-backed surface the mixed value drifts
+ * with whatever is behind it, and a waveform that changes weight as the
+ * artwork changes reads as a rendering fault.
+ */
+:root[data-apple="1"] [data-wave] .bg-muted-foreground\/35 {
+  background-color: var(--ios-label-4);
+}

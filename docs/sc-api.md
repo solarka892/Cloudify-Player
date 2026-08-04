@@ -343,19 +343,220 @@ changes.
 
 ---
 
+## Probing routes without an account (2026-08-04)
+
+Most of what was added in the "full SoundCloud" pass is auth-only, and the live
+test suite has no account. Route *shapes* can still be established without one,
+because api-v2 distinguishes the two failures:
+
+| Response | Means |
+|----------|-------|
+| `404` | no such route — the path or the method is wrong |
+| `401` | the route exists and wants a token |
+| `403` + a `geo.captcha-delivery.com` body | the route exists; DataDome is blocking an unauthenticated write |
+
+The control for this is `PUT /users/{id}/track_likes/{id}` — a route we ship and
+believe is correct. It answers `403`+captcha. A deliberately bogus sibling,
+`PUT /users/{id}/nonsense_xyz/{id}`, answers `404`. So on the write routes,
+`403` is a *positive* result and `404` is the failure.
+
+This is how "send a message" was pinned down: `POST …/conversations/{other}/messages`
+is a **404**, while `POST …/conversations/{other}` is a `403`. Sending posts to
+the conversation, not to its message collection — which is the one shape here
+that would have been easy to guess wrong and ship broken.
+
+**What this does not establish:** request and response *bodies*. Those are
+marked ⚠️ in the modules that carry them.
+
+---
+
+## Track pages ✅ verified public (2026-08-04)
+
+```
+GET /tracks/{id}                          → the full track object
+GET /tracks/{id}/comments?threaded=0&filter_replies=0
+GET /tracks/{id}/likers
+GET /tracks/{id}/reposters
+GET /tracks/{id}/playlists_without_albums → "In playlists" (albums excluded)
+GET /tracks/{id}/download                 → 401; artist-provided original file
+```
+
+`GET /tracks/{id}` carries everything a track page needs on top of the list
+projection: `description`, `genre`, `tag_list`, `waveform_url`,
+`playback_count`, `likes_count`, `reposts_count`, `comment_count`,
+`created_at`, `license`, `purchase_url`, `purchase_title`, `downloadable`,
+`has_downloads_left`, `label_name`. These live on `RawTrack` behind
+`#[serde(default)]` and feed `TrackDetail`, **not** `Track` — a likes list of
+5000 has no use for a description.
+
+`tag_list` is space-separated with multi-word tags in double quotes
+(`house "deep house" techno`); `models::parse_tags` handles the quoting.
+
+`downloadable` alone is not enough to offer a download button: a capped free
+download that has run out still reports `true`, with `has_downloads_left:
+false`. `TrackDetail.downloadable` is the conjunction.
+
+### Waveforms
+
+`waveform_url` points at **JSON on a CDN**, not at an image:
+
+```
+GET https://wave.sndcdn.com/<id>.json
+→ { "width": 1800, "height": 140, "samples": [11, 86, 91, …] }
+```
+
+No `client_id`, no auth. `tracks::waveform` refuses any host but
+`wave.sndcdn.com`, since it takes a URL out of an API payload and fetches it.
+
+---
+
+## Comments
+
+```
+GET    /tracks/{id}/comments   ✅ public
+POST   /tracks/{id}/comments   403 → route exists
+DELETE /comments/{id}          401 → route exists
+```
+
+`timestamp` is milliseconds into the track, or absent for an untimed comment —
+that field is what makes SoundCloud comments SoundCloud comments.
+
+⚠️ The POST **body** is unverified. It mirrors the envelope the playlist routes
+use: `{"comment": {"body": "…", "timestamp": 12345}}`. A `422` means this is
+wrong and nothing else is.
+
+---
+
+## Messages ✅ routes verified (2026-08-04)
+
+SoundCloud's DMs are alive — the web app's URL is `/messages/{me}:{other}`, and
+every route is keyed on the pair of user ids.
+
+| Operation | Route | Probe |
+|---|---|---|
+| inbox | `GET /users/{me}/conversations` | 401 |
+| unread count | `GET /users/{me}/conversations/unread` | 401 |
+| one thread | `GET /users/{me}/conversations/{other}/messages` | 401 |
+| **send** | `POST /users/{me}/conversations/{other}` | 403 |
+| mark read/unread | `PUT /users/{me}/conversations/{other}` | 401 |
+| delete thread | `DELETE /users/{me}/conversations/{other}` | 401 |
+
+404s, for the record, so nobody re-guesses them: `POST …/{other}/messages`,
+`GET /me/conversations`, `GET /users/{id}/messages`, `PUT …/{other}/read`.
+
+⚠️ Payloads unverified. `messages.rs` therefore accepts several spellings via
+`#[serde(alias)]` (`content`/`body`/`message`, `sender_urn`/`sender_id`/…) and
+makes every field optional, so an unexpected key degrades to `None` rather than
+failing the request. Messages can carry a `track`.
+
+---
+
+## Notifications ✅ route verified (2026-08-04)
+
+```
+GET /activities   → 401 (route exists)
+```
+
+Every other spelling is a 404: `/notifications`, `/me/activities`,
+`/users/{id}/notifications`, `/me/activities/all/own`, `/notifications/unseen`.
+
+Entries carry `type` (`track`, `playlist`, `track-repost`, `playlist-repost`,
+`comment`, `favoriting`, `affiliation`), a `user`, and an `origin` whose shape
+follows the type. `origin` is read as raw JSON and dispatched on its **own
+`kind` field** rather than through an untagged enum — SoundCloud's objects
+overlap enough that an untagged match decodes a track as a comment.
+
+There is no "mark as seen" route that survived probing, so unread-since-last-look
+is tracked locally (`useNotificationsStore`).
+
+---
+
+## Profile sections ✅ verified public (2026-08-04)
+
+```
+GET /users/{id}/albums          → albums only (distinct from /playlists)
+GET /users/{id}/toptracks       → most-played
+GET /users/{id}/spotlight       → pinned; mixes tracks and playlists
+GET /users/{id}/relatedartists  → "fans also like"
+GET /stream/users/{id}/reposts  → the reposts tab; items carry track|playlist
+```
+
+`/users/{id}/web-profiles` returns `400 Could not parse the 'user urn' param` —
+it wants a URN, not a numeric id. Not wired up.
+
+---
+
+## Search, the rest of it ✅ verified public (2026-08-04)
+
+```
+GET /search              → "Everything": tracks, users and playlists interleaved
+GET /search/albums       → albums only
+GET /search/queries?q=   → autocomplete: [{ "output": …, "query": … }]
+GET /recent-tracks/{tag} → genre/tag browsing (what replaced the dead /charts)
+```
+
+Track searches accept SoundCloud's own filters as query params:
+
+| Param | Values |
+|---|---|
+| `filter.genre` | a genre name, e.g. `House` |
+| `filter.duration` | `short` `medium` `long` `epic` |
+| `filter.created_at` | `last_hour` `last_day` `last_week` `last_month` `last_year` |
+| `filter.license` | `to_share` `to_modify_commercially` `to_use_commercially` |
+
+`search::Filters` rejects an unrecognised value instead of sending it: a bad
+filter comes back as an **empty result set**, which is indistinguishable from
+"no matches" and would send someone hunting a search bug that isn't one.
+
+---
+
+## Reposts & playlist editing
+
+```
+PUT/DELETE /me/track_reposts/{id}      403 → route exists
+PUT/DELETE /me/playlist_reposts/{id}   403 → route exists
+PUT        /playlists/{id}             metadata edit
+DELETE     /playlists/{id}             401 → route exists
+```
+
+`POST /reposts/tracks/{id}` — the shape some clients use for a captioned
+repost — is a **404** here. Do not add it back without re-probing.
+
+⚠️ **The `tracks` field of the playlist envelope is a foot-gun.** `PUT
+/playlists/{id}` replaces the whole track list, so a serialised `"tracks": []`
+does not mean "leave them alone", it means "empty the playlist".
+`PlaylistBody.tracks` is therefore `Option` with `skip_serializing_if`, and
+`edit_playlist` never sends it — renaming a set must not be able to delete it.
+
+---
+
+## Resolving links
+
+`GET /resolve?url=` handles tracks, users and playlists alike (see above), and
+`on.soundcloud.com` short links resolve too — SoundCloud follows them itself.
+`resolve::resolve` checks the host before making the request, because the URL
+comes from the clipboard.
+
+---
+
 ## TODO (to reverse next)
 
 - [x] ~~OAuth token capture (embedded webview + `oauth_token` cookie) + `/me`~~ — done, pending live verification.
-- [~] like/follow actions — route shapes verified 2026-07-28 (see above); responses
-      and the `401` → `client_id` refresh flow still untested. Reposts not started.
+- [~] like/follow/repost actions — route shapes verified (see above); responses
+      and the `401` → `client_id` refresh flow still untested.
 - [x] ~~`/users/{id}/likes` pagination~~ — done (`linked_partitioning=1` + `next_href`).
 - [x] ~~Stream URL resolution from a `transcoding.url`~~ — done (see above).
 - [ ] HLS manifest handling in the app (`hls.js`) & CDN signing lifetime (URLs expire).
 - [ ] Rate limits / when `client_id` gets throttled.
 - [x] ~~`/search/users`, `/search/playlists`~~ — done.
 - [x] ~~search pagination~~ — done (numeric `offset`).
-- [ ] `/search` (all kinds in one response) — untested.
-- [ ] reposts (`/stream/users/{id}/reposts`), the personal feed.
+- [x] ~~`/search` (all kinds in one response)~~ — done.
+- [x] ~~reposts (`/stream/users/{id}/reposts`)~~ — done.
+- [ ] **Message and comment request/response bodies** — the biggest remaining
+      unknown. Needs one signed-in run to confirm or correct.
+- [ ] Uploading a track. The three-step policy → S3 → create flow; no `/uploads/*`
+      route was found by guessing, so this needs the web app watched in DevTools.
+- [ ] Blocking and reporting a user (`/users/{id}/block` is a 404).
 
 ---
 

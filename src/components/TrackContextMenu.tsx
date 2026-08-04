@@ -3,16 +3,21 @@ import {
   Download,
   ExternalLink,
   Heart,
+  Info,
   Link as LinkIcon,
   ListEnd,
   ListPlus,
   ListStart,
   Radio,
+  Repeat2,
 } from "lucide-react";
 import type { Track } from "@/lib/tauri";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
 import { useLibraryStore } from "@/stores/useLibraryStore";
+import { useNavStore } from "@/stores/useNavStore";
+import { useRepostStore } from "@/stores/useRepostStore";
+import { toast } from "@/stores/useToastStore";
 import { copyLink } from "@/lib/share";
 import { t } from "@/i18n";
 
@@ -25,7 +30,7 @@ export interface MenuTarget {
 
 /** Menu width, used to keep it on screen near the right edge. */
 const WIDTH = 224;
-const ESTIMATED_HEIGHT = 260;
+const ESTIMATED_HEIGHT = 330;
 
 /** Right-click menu for a track row or tile. */
 export function TrackContextMenu({
@@ -44,6 +49,9 @@ export function TrackContextMenu({
   const startDownload = useDownloadsStore((s) => s.start);
   const toggleLike = useLibraryStore((s) => s.toggleLike);
   const liked = useLibraryStore((s) => s.likedIds.has(target.track.id));
+  const toggleRepost = useRepostStore((s) => s.toggleTrack);
+  const reposted = useRepostStore((s) => s.trackIds.has(target.track.id));
+  const openTrack = useNavStore((s) => s.openTrack);
 
   const { track } = target;
   const isDownloaded = downloadedIds.has(track.id);
@@ -78,9 +86,28 @@ export function TrackContextMenu({
       role="menu"
     >
       <Item
+        Icon={Info}
+        label={t.track.openTrack}
+        onClick={() => run(() => openTrack(track))}
+      />
+
+      <div className="my-1 h-px bg-border" />
+
+      <Item
         Icon={Heart}
         label={liked ? t.track.unlike : t.track.like}
         onClick={() => run(() => void toggleLike(track))}
+      />
+      <Item
+        Icon={Repeat2}
+        label={reposted ? t.track.unrepost : t.track.repost}
+        onClick={() =>
+          run(() =>
+            void toggleRepost(track).catch(() =>
+              toast(t.track.repostFailed, "error"),
+            ),
+          )
+        }
       />
       <Item
         Icon={ListPlus}

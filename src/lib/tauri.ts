@@ -154,16 +154,25 @@ export function scGetUserTracks(
 /**
  * Search tracks. Public data — no login needed. A blank query resolves to an
  * empty page; page on with the returned `next_offset`.
+ *
+ * `filters` mirrors soundcloud.com's own narrowing controls; see
+ * `SearchFilters`. A value Rust does not recognise is dropped rather than
+ * sent, so a typo cannot silently return zero results.
  */
 export function scSearchTracks(
   query: string,
   offset?: number,
   limit?: number,
+  filters?: SearchFilters,
 ): Promise<SearchPage<Track>> {
   return invoke<SearchPage<Track>>("sc_search_tracks", {
     query,
     offset,
     limit,
+    filterGenre: filters?.genre,
+    filterDuration: filters?.duration,
+    filterCreatedAt: filters?.createdAt,
+    filterLicense: filters?.license,
   });
 }
 
@@ -389,4 +398,351 @@ export function scGetFollowers(
 /** Delete every downloaded track. Resolves with how many were removed. */
 export function clearDownloads(): Promise<number> {
   return invoke<number>("clear_downloads");
+}
+
+// ────────────────────────────────────────────────────────── track pages ────
+
+/** Everything a track page shows, beyond what a list row needs. */
+export interface TrackDetail {
+  id: number;
+  title: string;
+  duration: number;
+  artwork_url: string | null;
+  permalink_url: string | null;
+  artist: string | null;
+  user: User | null;
+  description: string | null;
+  genre: string | null;
+  tags: string[];
+  waveform_url: string | null;
+  playback_count: number | null;
+  likes_count: number | null;
+  reposts_count: number | null;
+  comment_count: number | null;
+  created_at: string | null;
+  license: string | null;
+  purchase_url: string | null;
+  purchase_title: string | null;
+  /** The uploader allows downloading the original file. */
+  downloadable: boolean;
+  label_name: string | null;
+}
+
+/** A track's waveform: `samples` are heights in `0..=height`. */
+export interface Waveform {
+  width: number;
+  height: number;
+  samples: number[];
+}
+
+/** The full track object behind a track page. Public. */
+export function scTrackDetail(trackId: number): Promise<TrackDetail> {
+  return invoke<TrackDetail>("sc_track_detail", { trackId });
+}
+
+/** Users who liked a track. Public. */
+export function scTrackLikers(
+  trackId: number,
+  limit?: number,
+): Promise<User[]> {
+  return invoke<User[]>("sc_track_likers", { trackId, limit });
+}
+
+/** Users who reposted a track. Public. */
+export function scTrackReposters(
+  trackId: number,
+  limit?: number,
+): Promise<User[]> {
+  return invoke<User[]>("sc_track_reposters", { trackId, limit });
+}
+
+/** Playlists a track appears in. Public. */
+export function scTrackInPlaylists(
+  trackId: number,
+  limit?: number,
+): Promise<Playlist[]> {
+  return invoke<Playlist[]>("sc_track_in_playlists", { trackId, limit });
+}
+
+/**
+ * The uploader's original file, for tracks with downloads enabled — a
+ * different thing from `downloadTrack`, which saves the streaming mp3.
+ */
+export function scTrackDownloadUrl(trackId: number): Promise<string> {
+  return invoke<string>("sc_track_download_url", { trackId });
+}
+
+/** Waveform samples, from the URL on a track's detail object. */
+export function scWaveform(url: string): Promise<Waveform> {
+  return invoke<Waveform>("sc_waveform", { url });
+}
+
+// ─────────────────────────────────────────────────────────────── comments ────
+
+/** A comment, pinned to a point in the track when `timestamp` is set. */
+export interface Comment {
+  id: number;
+  body: string;
+  /** Milliseconds into the track, or null for an untimed comment. */
+  timestamp: number | null;
+  created_at: string | null;
+  user: User | null;
+}
+
+/** A track's comments, newest first. Public. */
+export function scTrackComments(
+  trackId: number,
+  limit?: number,
+): Promise<Comment[]> {
+  return invoke<Comment[]>("sc_track_comments", { trackId, limit });
+}
+
+/** Post a comment, optionally pinned to a point in the track. */
+export function scPostComment(
+  trackId: number,
+  body: string,
+  timestampMs?: number | null,
+): Promise<Comment> {
+  return invoke<Comment>("sc_post_comment", { trackId, body, timestampMs });
+}
+
+/** Delete one of your own comments. */
+export function scDeleteComment(commentId: number): Promise<void> {
+  return invoke<void>("sc_delete_comment", { commentId });
+}
+
+// ─────────────────────────────────────────────────────────────── messages ────
+
+/** A thread in the inbox. Threads are one-to-one on SoundCloud. */
+export interface Conversation {
+  user: User;
+  last_message: string | null;
+  last_at: string | null;
+  unread: boolean;
+}
+
+/** One message in a thread. */
+export interface Message {
+  id: number | null;
+  content: string;
+  created_at: string | null;
+  from_me: boolean;
+  /** Messages can carry a track, which the UI renders playable. */
+  track: Track | null;
+}
+
+/** The inbox, newest activity first. Requires login. */
+export function scConversations(limit?: number): Promise<Conversation[]> {
+  return invoke<Conversation[]>("sc_conversations", { limit });
+}
+
+/** How many threads are unread. Requires login. */
+export function scUnreadMessages(): Promise<number> {
+  return invoke<number>("sc_unread_messages");
+}
+
+/** One thread's messages, oldest first. Requires login. */
+export function scConversation(
+  userId: number,
+  limit?: number,
+): Promise<Message[]> {
+  return invoke<Message[]>("sc_conversation", { userId, limit });
+}
+
+/** Send a message; creates the thread if there isn't one. Requires login. */
+export function scSendMessage(userId: number, content: string): Promise<void> {
+  return invoke<void>("sc_send_message", { userId, content });
+}
+
+/** Mark a thread read or unread. Requires login. */
+export function scMarkConversation(
+  userId: number,
+  read: boolean,
+): Promise<void> {
+  return invoke<void>("sc_mark_conversation", { userId, read });
+}
+
+/** Delete a thread. Requires login. */
+export function scDeleteConversation(userId: number): Promise<void> {
+  return invoke<void>("sc_delete_conversation", { userId });
+}
+
+// ────────────────────────────────────────────────────────── notifications ────
+
+/**
+ * One line in the notifications list. `kind` is SoundCloud's own type string —
+ * `track`, `playlist`, `track-repost`, `playlist-repost`, `comment`,
+ * `favoriting`, `affiliation` (a follow).
+ */
+export interface Activity {
+  kind: string;
+  created_at: string | null;
+  user: User | null;
+  track: Track | null;
+  playlist: Playlist | null;
+  comment: string | null;
+  comment_timestamp: number | null;
+}
+
+/** Likes, comments, follows and reposts on your things. Requires login. */
+export function scNotifications(limit?: number): Promise<Activity[]> {
+  return invoke<Activity[]>("sc_notifications", { limit });
+}
+
+// ─────────────────────────────────────────────────────── profile sections ────
+
+/** Tracks and playlists together, for the endpoints that mix them. */
+export interface Mixed {
+  tracks: Track[];
+  playlists: Playlist[];
+}
+
+/** Albums a user released. Public. */
+export function scGetAlbums(
+  userId: number,
+  limit?: number,
+): Promise<Playlist[]> {
+  return invoke<Playlist[]>("sc_get_albums", { userId, limit });
+}
+
+/** A user's most-played tracks. Public. */
+export function scGetTopTracks(
+  userId: number,
+  limit?: number,
+): Promise<Track[]> {
+  return invoke<Track[]>("sc_get_top_tracks", { userId, limit });
+}
+
+/** What a user pinned to the top of their profile. Public. */
+export function scGetSpotlight(userId: number, limit?: number): Promise<Mixed> {
+  return invoke<Mixed>("sc_get_spotlight", { userId, limit });
+}
+
+/** What a user reposted. Public. */
+export function scGetReposts(userId: number, limit?: number): Promise<Mixed> {
+  return invoke<Mixed>("sc_get_reposts", { userId, limit });
+}
+
+/** Artists SoundCloud considers similar. Public. */
+export function scGetRelatedArtists(
+  userId: number,
+  limit?: number,
+): Promise<User[]> {
+  return invoke<User[]>("sc_get_related_artists", { userId, limit });
+}
+
+// ─────────────────────────────────────────────────── browse & link paste ────
+
+/** Newest tracks carrying a tag — SoundCloud's genre pages. Public. */
+export function scTagTracks(tag: string, limit?: number): Promise<Track[]> {
+  return invoke<Track[]>("sc_tag_tracks", { tag, limit });
+}
+
+/** Whatever a pasted soundcloud.com link turned out to be. */
+export type Resolved =
+  | ({ kind: "track" } & Track)
+  | ({ kind: "user" } & User)
+  | ({ kind: "playlist" } & Playlist);
+
+/** Resolve a soundcloud.com link. Rejects anything that isn't one. */
+export function scResolve(url: string): Promise<Resolved> {
+  return invoke<Resolved>("sc_resolve", { url });
+}
+
+// ─────────────────────────────────────── search: albums, all, autocomplete ────
+
+/** One entry in an "Everything" result set. */
+export type SearchMixed =
+  | ({ kind: "track" } & Track)
+  | ({ kind: "user" } & User)
+  | ({ kind: "playlist" } & Playlist)
+  | { kind: "unknown" };
+
+/** How SoundCloud's own result filters narrow a track search. */
+export interface SearchFilters {
+  genre?: string;
+  duration?: "short" | "medium" | "long" | "epic";
+  createdAt?: "last_hour" | "last_day" | "last_week" | "last_month" | "last_year";
+  license?: "to_share" | "to_modify_commercially" | "to_use_commercially";
+}
+
+/** Search albums. Distinct from playlists on SoundCloud. Public. */
+export function scSearchAlbums(
+  query: string,
+  offset?: number,
+  limit?: number,
+): Promise<SearchPage<Playlist>> {
+  return invoke<SearchPage<Playlist>>("sc_search_albums", {
+    query,
+    offset,
+    limit,
+  });
+}
+
+/** "Everything": tracks, users and playlists in one ranked list. Public. */
+export function scSearchAll(
+  query: string,
+  offset?: number,
+  limit?: number,
+): Promise<SearchPage<SearchMixed>> {
+  return invoke<SearchPage<SearchMixed>>("sc_search_all", {
+    query,
+    offset,
+    limit,
+  });
+}
+
+/** Autocomplete suggestions for the search box. Public. */
+export function scSearchSuggest(
+  query: string,
+  limit?: number,
+): Promise<string[]> {
+  return invoke<string[]>("sc_search_suggest", { query, limit });
+}
+
+// ──────────────────────────────────────────── reposts & playlist editing ────
+
+/** Repost or un-repost a track. Requires login. */
+export function scRepostTrack(trackId: number, on: boolean): Promise<void> {
+  return invoke<void>("sc_repost_track", { trackId, on });
+}
+
+/** Repost or un-repost a playlist or album. Requires login. */
+export function scRepostPlaylist(
+  playlistId: number,
+  on: boolean,
+): Promise<void> {
+  return invoke<void>("sc_repost_playlist", { playlistId, on });
+}
+
+/**
+ * Rename a playlist, change its description or visibility. Fields left
+ * undefined are untouched — the track list included.
+ */
+export function scEditPlaylist(
+  playlistId: number,
+  changes: { title?: string; description?: string; public?: boolean },
+): Promise<void> {
+  return invoke<void>("sc_edit_playlist", {
+    playlistId,
+    title: changes.title,
+    description: changes.description,
+    public: changes.public,
+  });
+}
+
+/** Delete a playlist. Requires login. */
+export function scDeletePlaylist(playlistId: number): Promise<void> {
+  return invoke<void>("sc_delete_playlist", { playlistId });
+}
+
+/**
+ * Set a playlist's tracks outright — how reordering and bulk removal work,
+ * since SoundCloud replaces the whole list on every edit.
+ */
+export function scSetPlaylistTracks(
+  playlistId: number,
+  trackIds: number[],
+): Promise<void> {
+  return invoke<void>("sc_set_playlist_tracks", { playlistId, trackIds });
 }

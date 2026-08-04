@@ -8,7 +8,9 @@ import { useLibraryStore } from "@/stores/useLibraryStore";
 import { TrackContextMenu, type MenuTarget } from "./TrackContextMenu";
 import { AddToPlaylistDialog } from "./AddToPlaylistDialog";
 import { LikeButton } from "./LikeButton";
+import { RepostButton } from "./RepostButton";
 import { ShareButton } from "./ShareButton";
+import { useRepostStore } from "@/stores/useRepostStore";
 import { useVirtual } from "@/hooks/useVirtual";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import type { Density } from "@/theme/apply";
@@ -111,6 +113,7 @@ const TrackRow = memo(function TrackRow({
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const isDownloaded = useDownloadsStore((s) => s.ids.has(track.id));
   const liked = useLibraryStore((s) => s.likedIds.has(track.id));
+  const reposted = useRepostStore((s) => s.trackIds.has(track.id));
 
   return (
     <div
@@ -192,13 +195,20 @@ const TrackRow = memo(function TrackRow({
           >
             <ListPlus className="h-4 w-4" />
           </button>
-          {/* Dimmed until hover so a long list stays calm; a liked track keeps
-              its heart at full strength. */}
+          {/* Dimmed until hover so a long list stays calm; a liked or
+              reposted track keeps its icon at full strength. */}
           <LikeButton
             track={track}
             className={cn(
               "transition-opacity duration-[var(--motion-fast)] group-hover:opacity-100",
               liked ? "opacity-100" : "opacity-0",
+            )}
+          />
+          <RepostButton
+            track={track}
+            className={cn(
+              "transition-opacity duration-[var(--motion-fast)] group-hover:opacity-100",
+              reposted ? "opacity-100" : "opacity-0",
             )}
           />
           <ShareButton

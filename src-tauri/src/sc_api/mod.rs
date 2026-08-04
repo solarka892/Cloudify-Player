@@ -13,14 +13,19 @@
 //! Reverse-engineering notes & verified endpoints: `docs/sc-api.md`.
 
 pub mod actions;
+pub mod activities;
 pub mod client_id;
+pub mod comments;
 pub mod discover;
 pub mod likes;
 pub mod me;
+pub mod messages;
 pub mod models;
 pub mod playlists;
+pub mod resolve;
 pub mod search;
 pub mod stream;
+pub mod tracks;
 pub mod users;
 
 mod paging;
@@ -29,7 +34,7 @@ mod paging;
 mod tests;
 
 pub use error::ScApiError;
-pub use models::{Playlist, Profile, Track, User};
+pub use models::{Comment, Playlist, Profile, Track, TrackDetail, User, Waveform};
 
 /// Base URL of SoundCloud's internal API.
 pub(crate) const API_V2: &str = "https://api-v2.soundcloud.com";
@@ -65,6 +70,15 @@ mod error {
         /// immediately makes it worse — the caller has to back off.
         #[error("soundcloud is rate-limiting us — wait a minute and retry")]
         RateLimited,
+
+        /// A pasted link that does not point at SoundCloud. Refused before the
+        /// request rather than after: the URL comes from the clipboard.
+        #[error("that link is not a soundcloud.com URL")]
+        NotSoundCloudUrl,
+
+        /// A URL from an API payload pointed somewhere we do not fetch from.
+        #[error("unexpected host in a soundcloud payload")]
+        UnexpectedHost,
     }
 
     impl Serialize for ScApiError {

@@ -105,6 +105,32 @@ export const AppleSquareStack: Glyph = (props) => (
   </Outline>
 );
 
+/**
+ * `envelope` — messages.
+ *
+ * The flap is two straight strokes meeting at the centre, not a curve: SF's
+ * envelope is a folded rectangle, and an arc there reads as a paper plane.
+ */
+export const AppleEnvelope: Glyph = (props) => (
+  <Outline {...props}>
+    <rect x="2.6" y="5.4" width="18.8" height="13.2" rx="3.4" />
+    <path d="M3.6 8.2 12 13.4l8.4-5.2" />
+  </Outline>
+);
+
+/**
+ * `bell` — notifications.
+ *
+ * The clapper is a separate short stroke under the body, which is what keeps
+ * it from reading as a mushroom at 18px.
+ */
+export const AppleBell: Glyph = (props) => (
+  <Outline {...props}>
+    <path d="M12 3.1a6.1 6.1 0 0 0-6.1 6.1c0 4.2-1.15 5.9-2 6.85a.85.85 0 0 0 .62 1.45h14.96a.85.85 0 0 0 .62-1.45c-.85-.95-2-2.65-2-6.85A6.1 6.1 0 0 0 12 3.1Z" />
+    <path d="M10.1 20.2a2.15 2.15 0 0 0 3.8 0" />
+  </Outline>
+);
+
 /** `person.crop.circle` — the shoulders stay inside the crop. */
 export const ApplePersonCircle: Glyph = (props) => (
   <Outline {...props}>

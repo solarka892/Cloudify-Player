@@ -4,6 +4,7 @@ import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
 import { useNavStore } from "@/stores/useNavStore";
 import { LikeButton } from "@/components/LikeButton";
+import { RepostButton } from "@/components/RepostButton";
 import { ShareButton } from "@/components/ShareButton";
 import { Ambient } from "@/components/Ambient";
 import { NowPlaying } from "./NowPlaying";
@@ -114,6 +115,7 @@ export function PlayerBar() {
             </div>
 
             <LikeButton track={current} />
+            <RepostButton track={current} />
             <ShareButton url={current.permalink_url} />
 
             <button

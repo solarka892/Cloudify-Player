@@ -1,7 +1,9 @@
 import { Settings } from "lucide-react";
 import { Logo } from "@/components/Logo";
-import { NAV_ITEMS, type ViewId } from "./nav-items";
+import { COMPACT_NAV_ITEMS, NAV_ITEMS, type ViewId } from "./nav-items";
 import { useLibraryStore } from "@/stores/useLibraryStore";
+import { useMessagesStore } from "@/stores/useMessagesStore";
+import { useNotificationsStore } from "@/stores/useNotificationsStore";
 import { useNavStore } from "@/stores/useNavStore";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
@@ -15,6 +17,36 @@ import { cn } from "@/lib/utils";
 
 export type { ViewId };
 
+/**
+ * Unread count for a section, or 0 for the ones that never have one.
+ *
+ * Both stores are subscribed to unconditionally — a hook cannot be called
+ * behind a branch — and the numbers are cheap: one is a field, the other a
+ * filter over a list that is already in memory.
+ */
+function useBadge(id: ViewId): number {
+  const messages = useMessagesStore((s) => s.unread);
+  const notifications = useNotificationsStore((s) => s.unreadCount());
+  if (id === "messages") return messages;
+  if (id === "notifications") return notifications;
+  return 0;
+}
+
+/** The little count on a nav item. Caps at 99 so it cannot widen the rail. */
+function Badge({ count, className }: { count: number; className?: string }) {
+  if (count <= 0) return null;
+  return (
+    <span
+      className={cn(
+        "brand-gradient flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold leading-none text-brand-foreground",
+        className,
+      )}
+    >
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
+
 interface NavProps {
   view: ViewId;
   onNavigate: (view: ViewId) => void;
@@ -26,28 +58,55 @@ export function NavRail({ view, onNavigate }: NavProps) {
     <div className="nav-in-x relative h-full w-14 shrink-0">
       <nav className="group/rail panel absolute inset-y-0 left-0 z-20 flex w-14 flex-col gap-1 overflow-hidden rounded-none border-y-0 border-l-0 p-2 transition-[width] duration-[var(--motion-slow)] hover:w-48">
         <BrandMark compact />
-        {NAV_ITEMS.map(({ id, label, Icon }) => (
-          <button
-            key={id}
-            onClick={() => onNavigate(id)}
-            title={label}
-            className={cn(
-              "flex h-10 shrink-0 items-center gap-3 rounded-md px-2.5 text-sm",
-              view === id
-                ? "bg-accent text-foreground"
-                : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
-            )}
-          >
-            <Icon className="h-[18px] w-[18px] shrink-0" />
-            {/* Fades in only after the width has finished travelling, so the
-                label is never painted half-clipped. */}
-            <span className="label whitespace-nowrap opacity-0 transition-opacity duration-[var(--motion-fast)] group-hover/rail:opacity-100 group-hover/rail:delay-[var(--motion-slow)]">
-              {label}
-            </span>
-          </button>
+        {NAV_ITEMS.map((item) => (
+          <RailItem
+            key={item.id}
+            item={item}
+            active={view === item.id}
+            onNavigate={onNavigate}
+          />
         ))}
       </nav>
     </div>
+  );
+}
+
+function RailItem({
+  item: { id, label, Icon },
+  active,
+  onNavigate,
+}: {
+  item: (typeof NAV_ITEMS)[number];
+  active: boolean;
+  onNavigate: (view: ViewId) => void;
+}) {
+  const badge = useBadge(id);
+
+  return (
+    <button
+      onClick={() => onNavigate(id)}
+      title={label}
+      className={cn(
+        "relative flex h-10 shrink-0 items-center gap-3 rounded-md px-2.5 text-sm",
+        active
+          ? "bg-accent text-foreground"
+          : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+      )}
+    >
+      <span className="relative shrink-0">
+        <Icon className="h-[18px] w-[18px]" />
+        {/* Pinned to the icon rather than the row: the rail widens on hover,
+            and a badge at the row's end would travel with it. */}
+        {badge > 0 && (
+          <Badge count={badge} className="absolute -right-2 -top-1.5" />
+        )}
+      </span>
+      {/* Fades in only after the width has finished travelling, so the
+          label is never painted half-clipped. */}
+      <span className="label whitespace-nowrap opacity-0 transition-opacity duration-[var(--motion-fast)] group-hover/rail:opacity-100 group-hover/rail:delay-[var(--motion-slow)]">
+        {label}
+      </span>
+    </button>
   );
 }
 
@@ -57,23 +116,14 @@ export function NavTop({ view, onNavigate }: NavProps) {
     <header className="nav-in-y flex h-14 shrink-0 items-center gap-1 border-b border-border px-4">
       <BrandMark />
       <div className="ml-4 flex items-center gap-1">
-        {NAV_ITEMS.filter((i) => i.id !== "settings").map(
-          ({ id, label, Icon }) => (
-            <button
-              key={id}
-              onClick={() => onNavigate(id)}
-              className={cn(
-                "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors duration-[var(--motion-fast)]",
-                view === id
-                  ? "bg-accent text-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              <span className="label">{label}</span>
-            </button>
-          ),
-        )}
+        {NAV_ITEMS.filter((i) => i.id !== "settings").map((item) => (
+          <TopItem
+            key={item.id}
+            item={item}
+            active={view === item.id}
+            onNavigate={onNavigate}
+          />
+        ))}
       </div>
       <button
         onClick={() => onNavigate("settings")}
@@ -91,6 +141,34 @@ export function NavTop({ view, onNavigate }: NavProps) {
   );
 }
 
+function TopItem({
+  item: { id, label, Icon },
+  active,
+  onNavigate,
+}: {
+  item: (typeof NAV_ITEMS)[number];
+  active: boolean;
+  onNavigate: (view: ViewId) => void;
+}) {
+  const badge = useBadge(id);
+
+  return (
+    <button
+      onClick={() => onNavigate(id)}
+      className={cn(
+        "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors duration-[var(--motion-fast)]",
+        active
+          ? "bg-accent text-foreground"
+          : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      <Icon className="h-4 w-4" />
+      <span className="label">{label}</span>
+      <Badge count={badge} />
+    </button>
+  );
+}
+
 /**
  * Bottom tab bar, for phone-width windows.
  *
@@ -105,7 +183,7 @@ export function NavTop({ view, onNavigate }: NavProps) {
 export function NavBottom({ view, onNavigate }: NavProps) {
   return (
     <nav className="nav-in-y pb-safe flex shrink-0 items-stretch border-t border-border bg-card/80 backdrop-blur-lg">
-      {NAV_ITEMS.map(({ id, label, Icon }) => (
+      {COMPACT_NAV_ITEMS.map(({ id, label, Icon }) => (
         <button
           key={id}
           onClick={() => onNavigate(id)}
@@ -136,20 +214,13 @@ export function NavSidebar({ view, onNavigate }: NavProps) {
     <nav className="nav-in-x flex h-full w-60 shrink-0 flex-col gap-1 border-r border-border p-3">
       <BrandMark />
       <div className="mt-2 flex flex-col gap-0.5">
-        {NAV_ITEMS.map(({ id, label, Icon }) => (
-          <button
-            key={id}
-            onClick={() => onNavigate(id)}
-            className={cn(
-              "flex h-9 items-center gap-3 rounded-md px-2.5 text-sm transition-colors duration-[var(--motion-fast)]",
-              view === id
-                ? "bg-accent text-foreground"
-                : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
-            )}
-          >
-            <Icon className="h-[18px] w-[18px]" />
-            <span className="label">{label}</span>
-          </button>
+        {NAV_ITEMS.map((item) => (
+          <SidebarItem
+            key={item.id}
+            item={item}
+            active={view === item.id}
+            onNavigate={onNavigate}
+          />
         ))}
       </div>
 
@@ -173,6 +244,34 @@ export function NavSidebar({ view, onNavigate }: NavProps) {
         </>
       )}
     </nav>
+  );
+}
+
+function SidebarItem({
+  item: { id, label, Icon },
+  active,
+  onNavigate,
+}: {
+  item: (typeof NAV_ITEMS)[number];
+  active: boolean;
+  onNavigate: (view: ViewId) => void;
+}) {
+  const badge = useBadge(id);
+
+  return (
+    <button
+      onClick={() => onNavigate(id)}
+      className={cn(
+        "flex h-9 items-center gap-3 rounded-md px-2.5 text-sm transition-colors duration-[var(--motion-fast)]",
+        active
+          ? "bg-accent text-foreground"
+          : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+      )}
+    >
+      <Icon className="h-[18px] w-[18px]" />
+      <span className="label">{label}</span>
+      <Badge count={badge} className="ml-auto" />
+    </button>
   );
 }
 

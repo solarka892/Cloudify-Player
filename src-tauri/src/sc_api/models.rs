@@ -26,6 +26,11 @@ pub struct Track {
 
 /// The parts of SoundCloud's track object we deserialise. Everything past
 /// `id`/`title` is optional — the API omits fields freely per endpoint.
+///
+/// The fields below `user` are only populated by `GET /tracks/{id}`; list
+/// endpoints leave them out. They feed `TrackDetail`, not `Track` — a likes
+/// list of 5000 has no use for a description, and paying to carry one across
+/// the bridge 5000 times is the kind of thing that makes a list feel slow.
 #[derive(Deserialize)]
 pub(crate) struct RawTrack {
     pub id: u64,
@@ -38,6 +43,40 @@ pub(crate) struct RawTrack {
     pub permalink_url: Option<String>,
     #[serde(default)]
     pub user: Option<RawUser>,
+
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub genre: Option<String>,
+    /// Space-separated, with multi-word tags in double quotes.
+    #[serde(default)]
+    pub tag_list: Option<String>,
+    /// Points at a JSON document of amplitude samples, not an image.
+    #[serde(default)]
+    pub waveform_url: Option<String>,
+    #[serde(default)]
+    pub playback_count: Option<u64>,
+    #[serde(default)]
+    pub likes_count: Option<u64>,
+    #[serde(default)]
+    pub reposts_count: Option<u64>,
+    #[serde(default)]
+    pub comment_count: Option<u64>,
+    #[serde(default)]
+    pub created_at: Option<String>,
+    #[serde(default)]
+    pub license: Option<String>,
+    #[serde(default)]
+    pub purchase_url: Option<String>,
+    #[serde(default)]
+    pub purchase_title: Option<String>,
+    /// The uploader ticked "allow downloads".
+    #[serde(default)]
+    pub downloadable: Option<bool>,
+    #[serde(default)]
+    pub has_downloads_left: Option<bool>,
+    #[serde(default)]
+    pub label_name: Option<String>,
 }
 
 impl From<RawTrack> for Track {
@@ -268,6 +307,157 @@ impl From<RawPlaylist> for Playlist {
             permalink_url: p.permalink_url,
             owner,
             is_album: p.is_album,
+        }
+    }
+}
+
+// --------------------------------------------------------- track detail ----
+
+/// Everything a track page shows, on top of what a list row needs.
+///
+/// Separate from `Track` on purpose: this is fetched one at a time for the
+/// track currently being looked at, whereas `Track` is what crosses the bridge
+/// in the thousands.
+#[derive(Debug, Serialize)]
+pub struct TrackDetail {
+    pub id: u64,
+    pub title: String,
+    pub duration: u64,
+    pub artwork_url: Option<String>,
+    pub permalink_url: Option<String>,
+    pub artist: Option<String>,
+    /// The uploader, so the page can link through to their profile.
+    pub user: Option<User>,
+    pub description: Option<String>,
+    pub genre: Option<String>,
+    pub tags: Vec<String>,
+    pub waveform_url: Option<String>,
+    pub playback_count: Option<u64>,
+    pub likes_count: Option<u64>,
+    pub reposts_count: Option<u64>,
+    pub comment_count: Option<u64>,
+    /// ISO-8601, as SoundCloud sends it.
+    pub created_at: Option<String>,
+    pub license: Option<String>,
+    /// "Buy" / "Free download" link the uploader attached.
+    pub purchase_url: Option<String>,
+    pub purchase_title: Option<String>,
+    /// An artist-provided original file can be pulled via `tracks::download_url`.
+    pub downloadable: bool,
+    pub label_name: Option<String>,
+}
+
+/// Split SoundCloud's `tag_list` into tags.
+///
+/// The format is space-separated with multi-word tags wrapped in double quotes
+/// (`house "deep house" techno`), so a plain `split_whitespace` would shred
+/// every two-word tag into nonsense.
+fn parse_tags(list: &str) -> Vec<String> {
+    let mut tags = Vec::new();
+    let mut current = String::new();
+    let mut quoted = false;
+
+    for ch in list.chars() {
+        match ch {
+            '"' => {
+                quoted = !quoted;
+                // A closing quote ends the tag even without a trailing space.
+                if !quoted && !current.trim().is_empty() {
+                    tags.push(current.trim().to_string());
+                    current.clear();
+                }
+            }
+            c if c.is_whitespace() && !quoted => {
+                if !current.trim().is_empty() {
+                    tags.push(current.trim().to_string());
+                }
+                current.clear();
+            }
+            c => current.push(c),
+        }
+    }
+    if !current.trim().is_empty() {
+        tags.push(current.trim().to_string());
+    }
+    tags
+}
+
+impl From<RawTrack> for TrackDetail {
+    fn from(t: RawTrack) -> Self {
+        let user = t.user.map(User::from);
+        TrackDetail {
+            id: t.id,
+            title: t.title,
+            duration: t.duration,
+            artwork_url: t
+                .artwork_url
+                .or_else(|| user.as_ref().and_then(|u| u.avatar_url.clone())),
+            permalink_url: t.permalink_url,
+            artist: user.as_ref().map(|u| u.username.clone()),
+            description: t.description.filter(|v| !v.trim().is_empty()),
+            genre: t.genre.filter(|v| !v.trim().is_empty()),
+            tags: t.tag_list.as_deref().map(parse_tags).unwrap_or_default(),
+            waveform_url: t.waveform_url,
+            playback_count: t.playback_count,
+            likes_count: t.likes_count,
+            reposts_count: t.reposts_count,
+            comment_count: t.comment_count,
+            created_at: t.created_at,
+            license: t.license.filter(|v| !v.trim().is_empty()),
+            purchase_url: t.purchase_url.filter(|v| !v.trim().is_empty()),
+            purchase_title: t.purchase_title.filter(|v| !v.trim().is_empty()),
+            // `has_downloads_left` is false once a capped free download runs
+            // out, at which point offering the button is a lie.
+            downloadable: t.downloadable.unwrap_or(false) && t.has_downloads_left.unwrap_or(true),
+            label_name: t.label_name.filter(|v| !v.trim().is_empty()),
+            user,
+        }
+    }
+}
+
+/// A track's rendered waveform: `samples` are heights in `0..=height`.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Waveform {
+    pub width: u32,
+    pub height: u32,
+    pub samples: Vec<u32>,
+}
+
+// -------------------------------------------------------------- comment ----
+
+/// A comment on a track. `timestamp` is the point in the track it is pinned
+/// to — that is what makes SoundCloud comments SoundCloud comments.
+#[derive(Debug, Serialize)]
+pub struct Comment {
+    pub id: u64,
+    pub body: String,
+    /// Milliseconds into the track, or `None` for an untimed comment.
+    pub timestamp: Option<u64>,
+    pub created_at: Option<String>,
+    pub user: Option<User>,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct RawComment {
+    pub id: u64,
+    #[serde(default)]
+    pub body: String,
+    #[serde(default)]
+    pub timestamp: Option<u64>,
+    #[serde(default)]
+    pub created_at: Option<String>,
+    #[serde(default)]
+    pub user: Option<RawUser>,
+}
+
+impl From<RawComment> for Comment {
+    fn from(c: RawComment) -> Self {
+        Comment {
+            id: c.id,
+            body: c.body,
+            timestamp: c.timestamp,
+            created_at: c.created_at,
+            user: c.user.map(User::from),
         }
     }
 }

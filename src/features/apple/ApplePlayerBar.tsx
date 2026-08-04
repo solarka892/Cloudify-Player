@@ -4,6 +4,7 @@ import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
 import { useNavStore } from "@/stores/useNavStore";
 import { LikeButton } from "@/components/LikeButton";
+import { RepostButton } from "@/components/RepostButton";
 import { ShareButton } from "@/components/ShareButton";
 import { Ambient } from "@/components/Ambient";
 import { AppleNowPlaying } from "./AppleNowPlaying";
@@ -167,6 +168,7 @@ export function ApplePlayerBar() {
           {/* Secondary actions, each on its own glass. */}
           <div className="flex shrink-0 items-center gap-1.5">
             <LikeButton track={current} className="lg-chip h-8 w-8" />
+            <RepostButton track={current} className="lg-chip h-8 w-8" />
             <ShareButton
               url={current.permalink_url}
               className="lg-chip h-8 w-8"

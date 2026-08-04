@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, Play } from "lucide-react";
-import { scGetPlaylistTracks, type Track } from "@/lib/tauri";
+import { ArrowLeft, Pencil, Play } from "lucide-react";
+import { scGetPlaylistTracks, type Playlist, type Track } from "@/lib/tauri";
 import { TrackList } from "@/components/TrackList";
 import { DownloadAllButton } from "@/components/DownloadAllButton";
 import { ShareButton } from "@/components/ShareButton";
+import { RepostButton } from "@/components/RepostButton";
+import { PlaylistEditDialog } from "@/components/PlaylistEditDialog";
 import { ProfileView } from "@/features/profile/ProfileView";
+import { TrackView } from "@/features/track/TrackView";
+import { useLibraryStore } from "@/stores/useLibraryStore";
 import { useNavStore, type Detail } from "@/stores/useNavStore";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { t } from "@/i18n";
@@ -14,9 +18,11 @@ type State =
   | { status: "ok"; tracks: Track[] }
   | { status: "error"; message: string };
 
-/** The tracks behind an opened playlist or user. */
-export function DetailView({ detail }: { detail: Detail }) {
+/** Whatever was drilled into: a playlist, a user, or a track. */
+export function DetailView({ detail, meId }: { detail: Detail; meId: number }) {
   if (detail.kind === "user") return <UserDetail detail={detail} />;
+  if (detail.kind === "track")
+    return <TrackView trackId={detail.id} meId={meId} />;
   return <PlaylistDetail detail={detail} />;
 }
 
@@ -40,8 +46,13 @@ function UserDetail({ detail }: { detail: Detail }) {
 
 function PlaylistDetail({ detail }: { detail: Detail }) {
   const [state, setState] = useState<State>({ status: "loading" });
+  const [editing, setEditing] = useState(false);
   const back = useNavStore((s) => s.back);
   const playTrack = usePlayerStore((s) => s.playTrack);
+  /** Editing is only offered on sets the signed-in user owns. */
+  const isMine = useLibraryStore((s) =>
+    s.ownPlaylists.items.some((p) => p.id === detail.id),
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -57,6 +68,18 @@ function PlaylistDetail({ detail }: { detail: Detail }) {
   }, [detail.kind, detail.id]);
 
   const tracks = state.status === "ok" ? state.tracks : [];
+
+  // The repost and edit affordances want a `Playlist`; the nav store only
+  // carries what a header needs, so the rest is filled in from what loaded.
+  const asPlaylist: Playlist = {
+    id: detail.id,
+    title: detail.title,
+    track_count: tracks.length,
+    artwork_url: tracks[0]?.artwork_url ?? null,
+    permalink_url: detail.url,
+    owner: detail.subtitle,
+    is_album: false,
+  };
 
   return (
     <section className="flex w-full max-w-2xl flex-col gap-3">
@@ -77,6 +100,19 @@ function PlaylistDetail({ detail }: { detail: Detail }) {
             </span>
           )}
         </div>
+
+        <RepostButton playlist={asPlaylist} />
+
+        {isMine && (
+          <button
+            onClick={() => setEditing(true)}
+            aria-label={t.playlistEdit.edit}
+            title={t.playlistEdit.edit}
+            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+        )}
 
         <ShareButton url={detail.url} />
 
@@ -111,6 +147,15 @@ function PlaylistDetail({ detail }: { detail: Detail }) {
       )}
 
       {tracks.length > 0 && <TrackList tracks={tracks} />}
+
+      {editing && (
+        <PlaylistEditDialog
+          playlist={asPlaylist}
+          tracks={tracks}
+          onClose={() => setEditing(false)}
+          onSaved={(next) => setState({ status: "ok", tracks: next })}
+        />
+      )}
     </section>
   );
 }

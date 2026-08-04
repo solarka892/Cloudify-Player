@@ -56,7 +56,11 @@ async fn toggle(token: &str, path: String, on: bool, verb: On) -> Result<(), ScA
 /// that cannot change while a token is valid.
 static SELF_ID: Mutex<Option<u64>> = Mutex::new(None);
 
-async fn self_id(token: &str) -> Result<u64, ScApiError> {
+/// The signed-in user's id, from cache when it is warm.
+///
+/// Public because the message routes need it too: conversations are addressed
+/// as `/users/{me}/conversations/{other}`, so every one of them starts here.
+pub async fn self_id(token: &str) -> Result<u64, ScApiError> {
     if let Some(id) = *SELF_ID.lock().expect("SELF_ID poisoned") {
         return Ok(id);
     }
@@ -99,18 +103,47 @@ pub async fn follow_user(token: &str, user_id: u64, on: bool) -> Result<(), ScAp
     toggle(token, format!("/me/followings/{user_id}"), on, On::Post).await
 }
 
+/// Repost or un-repost a track.
+///
+/// Route shape probed 2026-08-04: `PUT /me/track_reposts/{id}` answers `403`
+/// unauthenticated — the same response our working like route gives, whereas a
+/// route that does not exist answers `404`.
+pub async fn repost_track(token: &str, track_id: u64, on: bool) -> Result<(), ScApiError> {
+    toggle(token, format!("/me/track_reposts/{track_id}"), on, On::Put).await
+}
+
+/// Repost or un-repost a playlist or album.
+pub async fn repost_playlist(token: &str, playlist_id: u64, on: bool) -> Result<(), ScApiError> {
+    toggle(
+        token,
+        format!("/me/playlist_reposts/{playlist_id}"),
+        on,
+        On::Put,
+    )
+    .await
+}
+
 #[derive(Serialize)]
 struct TrackRef {
     id: u64,
 }
 
+/// The `playlist` half of the envelope SoundCloud's playlist routes expect.
+///
+/// Every field is skipped when absent, `tracks` included — and that one
+/// matters: this is a PUT, so a serialised `"tracks": []` is not "leave the
+/// tracks alone", it is "empty the playlist". Renaming a set must not be able
+/// to delete it.
 #[derive(Serialize)]
 struct PlaylistBody<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     title: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    description: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     sharing: Option<&'a str>,
-    tracks: Vec<TrackRef>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tracks: Option<Vec<TrackRef>>,
 }
 
 #[derive(Serialize)]
@@ -140,8 +173,9 @@ pub async fn create_playlist(
         .json(&PlaylistEnvelope {
             playlist: PlaylistBody {
                 title: Some(title),
+                description: None,
                 sharing: Some(if public { "public" } else { "private" }),
-                tracks: track_ids.iter().map(|&id| TrackRef { id }).collect(),
+                tracks: Some(track_ids.iter().map(|&id| TrackRef { id }).collect()),
             },
         })
         .send()
@@ -151,6 +185,54 @@ pub async fn create_playlist(
         .await?;
 
     Ok(created.id)
+}
+
+/// Edit a playlist's metadata, leaving its tracks untouched.
+///
+/// `None` means "don't change this field" — `tracks` is never sent from here,
+/// so a rename cannot empty the set.
+pub async fn edit_playlist(
+    token: &str,
+    playlist_id: u64,
+    title: Option<&str>,
+    description: Option<&str>,
+    public: Option<bool>,
+) -> Result<(), ScApiError> {
+    let cid = client_id::get(false).await?;
+    let client = http_client()?;
+
+    client
+        .put(format!("{API_V2}/playlists/{playlist_id}"))
+        .query(&[("client_id", cid.as_str())])
+        .header("Authorization", format!("OAuth {token}"))
+        .json(&PlaylistEnvelope {
+            playlist: PlaylistBody {
+                title,
+                description,
+                sharing: public.map(|p| if p { "public" } else { "private" }),
+                tracks: None,
+            },
+        })
+        .send()
+        .await?
+        .error_for_status()?;
+    Ok(())
+}
+
+/// Delete a playlist for good. `DELETE /playlists/{id}` answers `401`
+/// unauthenticated, so the route is real (probed 2026-08-04).
+pub async fn delete_playlist(token: &str, playlist_id: u64) -> Result<(), ScApiError> {
+    let cid = client_id::get(false).await?;
+    let client = http_client()?;
+
+    client
+        .delete(format!("{API_V2}/playlists/{playlist_id}"))
+        .query(&[("client_id", cid.as_str())])
+        .header("Authorization", format!("OAuth {token}"))
+        .send()
+        .await?
+        .error_for_status()?;
+    Ok(())
 }
 
 /// Replace a playlist's track list.
@@ -173,8 +255,9 @@ pub async fn set_playlist_tracks(
         .json(&PlaylistEnvelope {
             playlist: PlaylistBody {
                 title: None,
+                description: None,
                 sharing: None,
-                tracks: track_ids.iter().map(|&id| TrackRef { id }).collect(),
+                tracks: Some(track_ids.iter().map(|&id| TrackRef { id }).collect()),
             },
         })
         .send()

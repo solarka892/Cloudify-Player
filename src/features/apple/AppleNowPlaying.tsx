@@ -3,6 +3,7 @@ import { Moon, Radio } from "lucide-react";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
 import { LikeButton } from "@/components/LikeButton";
+import { RepostButton } from "@/components/RepostButton";
 import { ShareButton } from "@/components/ShareButton";
 import { LyricsPanel } from "@/features/player/Lyrics";
 import { QueuePanel } from "@/features/player/QueuePanel";
@@ -244,6 +245,7 @@ export function AppleNowPlaying({ onClose }: { onClose: () => void }) {
           </div>
           <div className="flex shrink-0 items-center gap-1.5 pt-0.5">
             <LikeButton track={current} className="lg-chip h-9 w-9" />
+            <RepostButton track={current} className="lg-chip h-9 w-9" />
             <ShareButton
               url={current.permalink_url}
               className="lg-chip h-9 w-9"

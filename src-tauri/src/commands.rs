@@ -213,13 +213,58 @@ pub async fn sc_get_user_tracks(
 
 /// Search tracks. Public — works logged out. A blank query returns an empty
 /// page. `limit` defaults to 50; page with the returned `next_offset`.
+///
+/// The `filter_*` arguments mirror soundcloud.com's own narrowing controls;
+/// see `sc_api::search::Filters` for the accepted values.
 #[tauri::command]
 pub async fn sc_search_tracks(
     query: String,
     limit: Option<u32>,
     offset: Option<u32>,
+    filter_genre: Option<String>,
+    filter_duration: Option<String>,
+    filter_created_at: Option<String>,
+    filter_license: Option<String>,
 ) -> Result<sc_api::search::SearchPage<sc_api::Track>, String> {
-    sc_api::search::search_tracks(&query, limit.unwrap_or(50), offset.unwrap_or(0))
+    let filters = sc_api::search::Filters {
+        genre: filter_genre.as_deref(),
+        duration: filter_duration.as_deref(),
+        created_at: filter_created_at.as_deref(),
+        license: filter_license.as_deref(),
+    };
+    sc_api::search::search_tracks(&query, limit.unwrap_or(50), offset.unwrap_or(0), &filters)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Search albums. Distinct from playlists on SoundCloud. Public.
+#[tauri::command]
+pub async fn sc_search_albums(
+    query: String,
+    limit: Option<u32>,
+    offset: Option<u32>,
+) -> Result<sc_api::search::SearchPage<sc_api::Playlist>, String> {
+    sc_api::search::search_albums(&query, limit.unwrap_or(50), offset.unwrap_or(0))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// "Everything": tracks, users and playlists in one ranked list. Public.
+#[tauri::command]
+pub async fn sc_search_all(
+    query: String,
+    limit: Option<u32>,
+    offset: Option<u32>,
+) -> Result<sc_api::search::SearchPage<sc_api::search::Mixed>, String> {
+    sc_api::search::search_all(&query, limit.unwrap_or(50), offset.unwrap_or(0))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Autocomplete suggestions for the search box. Public.
+#[tauri::command]
+pub async fn sc_search_suggest(query: String, limit: Option<u32>) -> Result<Vec<String>, String> {
+    sc_api::search::suggest(&query, limit.unwrap_or(10))
         .await
         .map_err(|e| e.to_string())
 }
@@ -490,4 +535,331 @@ pub async fn media_session_update(state: crate::media::NowPlaying) -> Result<(),
 #[tauri::command]
 pub async fn media_session_stop() -> Result<(), String> {
     crate::media::stop().await
+}
+
+// ───────────────────────────────────────────────────────── track pages ────
+
+/// The full track object behind a track page. Public.
+#[tauri::command]
+pub async fn sc_track_detail(track_id: u64) -> Result<sc_api::TrackDetail, String> {
+    let token = optional_token();
+    sc_api::tracks::detail(token.as_deref(), track_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Users who liked a track. Public.
+#[tauri::command]
+pub async fn sc_track_likers(
+    track_id: u64,
+    limit: Option<u32>,
+) -> Result<Vec<sc_api::User>, String> {
+    sc_api::tracks::likers(track_id, limit.unwrap_or(200))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Users who reposted a track. Public.
+#[tauri::command]
+pub async fn sc_track_reposters(
+    track_id: u64,
+    limit: Option<u32>,
+) -> Result<Vec<sc_api::User>, String> {
+    sc_api::tracks::reposters(track_id, limit.unwrap_or(200))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Playlists a track appears in. Public.
+#[tauri::command]
+pub async fn sc_track_in_playlists(
+    track_id: u64,
+    limit: Option<u32>,
+) -> Result<Vec<sc_api::Playlist>, String> {
+    sc_api::tracks::in_playlists(track_id, limit.unwrap_or(100))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// The uploader's original file, for tracks with downloads enabled. Requires
+/// login even for a public track.
+#[tauri::command]
+pub async fn sc_track_download_url(track_id: u64) -> Result<String, String> {
+    let token = require_token()?;
+    sc_api::tracks::download_url(&token, track_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// A track's waveform samples, fetched from the URL in its detail object.
+#[tauri::command]
+pub async fn sc_waveform(url: String) -> Result<sc_api::Waveform, String> {
+    sc_api::tracks::waveform(&url)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+// ───────────────────────────────────────────────────────────── comments ────
+
+/// A track's comments, newest first. Public.
+#[tauri::command]
+pub async fn sc_track_comments(
+    track_id: u64,
+    limit: Option<u32>,
+) -> Result<Vec<sc_api::Comment>, String> {
+    let token = optional_token();
+    sc_api::comments::list(token.as_deref(), track_id, limit.unwrap_or(200))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Post a comment, optionally pinned to a point in the track. Requires login.
+#[tauri::command]
+pub async fn sc_post_comment(
+    track_id: u64,
+    body: String,
+    timestamp_ms: Option<u64>,
+) -> Result<sc_api::Comment, String> {
+    let token = require_token()?;
+    let body = body.trim();
+    if body.is_empty() {
+        return Err("empty comment".to_string());
+    }
+    sc_api::comments::post(&token, track_id, body, timestamp_ms)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Delete one of your own comments. Requires login.
+#[tauri::command]
+pub async fn sc_delete_comment(comment_id: u64) -> Result<(), String> {
+    let token = require_token()?;
+    sc_api::comments::delete(&token, comment_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+// ───────────────────────────────────────────────────────────── messages ────
+
+/// The signed-in user's id, which every message route is keyed on.
+async fn me_id() -> Result<(String, u64), String> {
+    let token = require_token()?;
+    let id = sc_api::actions::self_id(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok((token, id))
+}
+
+/// The inbox: one entry per thread, newest activity first. Requires login.
+#[tauri::command]
+pub async fn sc_conversations(
+    limit: Option<u32>,
+) -> Result<Vec<sc_api::messages::Conversation>, String> {
+    let (token, me) = me_id().await?;
+    sc_api::messages::conversations(&token, me, limit.unwrap_or(200))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// How many threads are unread — the inbox badge. Requires login.
+#[tauri::command]
+pub async fn sc_unread_messages() -> Result<u64, String> {
+    let (token, me) = me_id().await?;
+    sc_api::messages::unread_count(&token, me)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// One thread's messages, oldest first. Requires login.
+#[tauri::command]
+pub async fn sc_conversation(
+    user_id: u64,
+    limit: Option<u32>,
+) -> Result<Vec<sc_api::messages::Message>, String> {
+    let (token, me) = me_id().await?;
+    sc_api::messages::thread(&token, me, user_id, limit.unwrap_or(200))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Send a message. Requires login.
+#[tauri::command]
+pub async fn sc_send_message(user_id: u64, content: String) -> Result<(), String> {
+    let (token, me) = me_id().await?;
+    let content = content.trim();
+    if content.is_empty() {
+        return Err("empty message".to_string());
+    }
+    sc_api::messages::send(&token, me, user_id, content)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Mark a thread read or unread. Requires login.
+#[tauri::command]
+pub async fn sc_mark_conversation(user_id: u64, read: bool) -> Result<(), String> {
+    let (token, me) = me_id().await?;
+    sc_api::messages::set_read(&token, me, user_id, read)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Delete a thread. Requires login.
+#[tauri::command]
+pub async fn sc_delete_conversation(user_id: u64) -> Result<(), String> {
+    let (token, me) = me_id().await?;
+    sc_api::messages::delete(&token, me, user_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+// ──────────────────────────────────────────────────────── notifications ────
+
+/// Likes, comments, follows and reposts on your own things. Requires login.
+#[tauri::command]
+pub async fn sc_notifications(
+    limit: Option<u32>,
+) -> Result<Vec<sc_api::activities::Activity>, String> {
+    let token = require_token()?;
+    sc_api::activities::list(&token, limit.unwrap_or(100))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+// ───────────────────────────────────────────────────── profile sections ────
+
+/// Albums a user released. Public.
+#[tauri::command]
+pub async fn sc_get_albums(
+    user_id: u64,
+    limit: Option<u32>,
+) -> Result<Vec<sc_api::Playlist>, String> {
+    let token = optional_token();
+    sc_api::users::get_albums(token.as_deref(), user_id, limit.unwrap_or(500))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// A user's most-played tracks. Public.
+#[tauri::command]
+pub async fn sc_get_top_tracks(
+    user_id: u64,
+    limit: Option<u32>,
+) -> Result<Vec<sc_api::Track>, String> {
+    sc_api::users::get_top_tracks(user_id, limit.unwrap_or(50))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// What a user pinned to the top of their profile. Public.
+#[tauri::command]
+pub async fn sc_get_spotlight(
+    user_id: u64,
+    limit: Option<u32>,
+) -> Result<sc_api::users::Mixed, String> {
+    sc_api::users::get_spotlight(user_id, limit.unwrap_or(20))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// What a user reposted. Public.
+#[tauri::command]
+pub async fn sc_get_reposts(
+    user_id: u64,
+    limit: Option<u32>,
+) -> Result<sc_api::users::Mixed, String> {
+    sc_api::users::get_reposts(user_id, limit.unwrap_or(200))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Artists SoundCloud considers similar. Public.
+#[tauri::command]
+pub async fn sc_get_related_artists(
+    user_id: u64,
+    limit: Option<u32>,
+) -> Result<Vec<sc_api::User>, String> {
+    sc_api::users::get_related_artists(user_id, limit.unwrap_or(20))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+// ───────────────────────────────────────────────── browse & link paste ────
+
+/// The newest tracks carrying a tag — SoundCloud's genre pages. Public.
+#[tauri::command]
+pub async fn sc_tag_tracks(tag: String, limit: Option<u32>) -> Result<Vec<sc_api::Track>, String> {
+    sc_api::discover::tag_tracks(&tag, limit.unwrap_or(50))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Resolve a pasted soundcloud.com link to the track, user or playlist it
+/// points at. Public.
+#[tauri::command]
+pub async fn sc_resolve(url: String) -> Result<sc_api::resolve::Resolved, String> {
+    let token = optional_token();
+    sc_api::resolve::resolve(token.as_deref(), &url)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+// ──────────────────────────────────────────── reposts & playlist edits ────
+
+/// Repost or un-repost a track. Requires login.
+#[tauri::command]
+pub async fn sc_repost_track(track_id: u64, on: bool) -> Result<(), String> {
+    let token = require_token()?;
+    sc_api::actions::repost_track(&token, track_id, on)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Repost or un-repost a playlist or album. Requires login.
+#[tauri::command]
+pub async fn sc_repost_playlist(playlist_id: u64, on: bool) -> Result<(), String> {
+    let token = require_token()?;
+    sc_api::actions::repost_playlist(&token, playlist_id, on)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Rename a playlist, change its description or its visibility. Fields left
+/// out are untouched — including the track list. Requires login.
+#[tauri::command]
+pub async fn sc_edit_playlist(
+    playlist_id: u64,
+    title: Option<String>,
+    description: Option<String>,
+    public: Option<bool>,
+) -> Result<(), String> {
+    let token = require_token()?;
+    sc_api::actions::edit_playlist(
+        &token,
+        playlist_id,
+        title.as_deref(),
+        description.as_deref(),
+        public,
+    )
+    .await
+    .map_err(|e| e.to_string())
+}
+
+/// Delete a playlist. Requires login.
+#[tauri::command]
+pub async fn sc_delete_playlist(playlist_id: u64) -> Result<(), String> {
+    let token = require_token()?;
+    sc_api::actions::delete_playlist(&token, playlist_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Set a playlist's tracks outright — how reordering and bulk removal work,
+/// since SoundCloud replaces the whole list on every edit. Requires login.
+#[tauri::command]
+pub async fn sc_set_playlist_tracks(playlist_id: u64, track_ids: Vec<u64>) -> Result<(), String> {
+    let token = require_token()?;
+    sc_api::actions::set_playlist_tracks(&token, playlist_id, &track_ids)
+        .await
+        .map_err(|e| e.to_string())
 }

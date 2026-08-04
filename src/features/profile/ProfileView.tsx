@@ -1,12 +1,24 @@
 import { useEffect, useRef, useState } from "react";
-import { BadgeCheck, ExternalLink, MapPin, User as UserIcon } from "lucide-react";
 import {
+  BadgeCheck,
+  ExternalLink,
+  MapPin,
+  MessageSquare,
+  Radio,
+  User as UserIcon,
+} from "lucide-react";
+import {
+  scGetAlbums,
   scGetFollowers,
   scGetFollowings,
   scGetLikes,
   scGetPlaylists,
   scGetProfile,
+  scGetRelatedArtists,
+  scGetReposts,
+  scGetTopTracks,
   scGetUserTracks,
+  scStationTracks,
   type Playlist,
   type Profile,
   type Track,
@@ -18,11 +30,22 @@ import { UserList } from "@/components/UserList";
 import { DownloadAllButton } from "@/components/DownloadAllButton";
 import { ShareButton } from "@/components/ShareButton";
 import { useLibraryStore } from "@/stores/useLibraryStore";
+import { useNavStore } from "@/stores/useNavStore";
+import { usePlayerStore } from "@/stores/usePlayerStore";
 import { toast } from "@/stores/useToastStore";
 import { t } from "@/i18n";
 import { artwork, cn } from "@/lib/utils";
 
-type Tab = "tracks" | "playlists" | "likes" | "followers" | "following";
+type Tab =
+  | "tracks"
+  | "top"
+  | "albums"
+  | "playlists"
+  | "reposts"
+  | "likes"
+  | "related"
+  | "followers"
+  | "following";
 
 /** Compact number formatting: 12500 → 12.5K. */
 function formatCount(n: number | null | undefined): string {
@@ -34,16 +57,27 @@ function formatCount(n: number | null | undefined): string {
 
 interface Loaded {
   tracks: Track[];
+  top: Track[];
+  albums: Playlist[];
   playlists: Playlist[];
+  /** Reposts mix tracks and sets, the way the website's tab does. */
+  repostTracks: Track[];
+  repostPlaylists: Playlist[];
   likes: Track[];
+  related: User[];
   followers: User[];
   following: User[];
 }
 
 const EMPTY: Loaded = {
   tracks: [],
+  top: [],
+  albums: [],
   playlists: [],
+  repostTracks: [],
+  repostPlaylists: [],
   likes: [],
+  related: [],
   followers: [],
   following: [],
 };
@@ -75,6 +109,23 @@ export function ProfileView({
 
   const following = useLibraryStore((s) => s.followingIds.has(userId));
   const toggleFollow = useLibraryStore((s) => s.toggleFollow);
+  const openThread = useNavStore((s) => s.openThread);
+  const playTrack = usePlayerStore((s) => s.playTrack);
+  const [stationBusy, setStationBusy] = useState(false);
+
+  /** Start this artist's endless station, the way the website's play button does. */
+  async function startStation() {
+    setStationBusy(true);
+    try {
+      const tracks = await scStationTracks("artist", userId, 50);
+      const first = tracks[0];
+      if (first) await playTrack(first, tracks);
+    } catch (e) {
+      toast(String(e), "error");
+    } finally {
+      setStationBusy(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -98,8 +149,18 @@ export function ProfileView({
 
     const fetcher: Record<Tab, () => Promise<Partial<Loaded>>> = {
       tracks: async () => ({ tracks: await scGetUserTracks(userId) }),
+      top: async () => ({ top: await scGetTopTracks(userId) }),
+      albums: async () => ({ albums: await scGetAlbums(userId) }),
       playlists: async () => ({ playlists: await scGetPlaylists(userId) }),
+      reposts: async () => {
+        const mixed = await scGetReposts(userId);
+        return {
+          repostTracks: mixed.tracks,
+          repostPlaylists: mixed.playlists,
+        };
+      },
       likes: async () => ({ likes: await scGetLikes(userId) }),
+      related: async () => ({ related: await scGetRelatedArtists(userId) }),
       followers: async () => ({ followers: await scGetFollowers(userId) }),
       following: async () => ({ following: await scGetFollowings(userId) }),
     };
@@ -121,8 +182,12 @@ export function ProfileView({
 
   const tabs: { id: Tab; label: string; count: number | null | undefined }[] = [
     { id: "tracks", label: t.profile.tracks, count: profile?.track_count },
+    { id: "top", label: t.profile.topTracks, count: null },
+    { id: "albums", label: t.profile.albums, count: null },
     { id: "playlists", label: t.profile.playlists, count: profile?.playlist_count },
+    { id: "reposts", label: t.profile.reposts, count: null },
     { id: "likes", label: t.library.likes, count: profile?.likes_count },
+    { id: "related", label: t.profile.relatedArtists, count: null },
   ];
 
   return (
@@ -238,6 +303,37 @@ export function ProfileView({
             <ShareButton url={profile.permalink_url} withLabel className="self-start" />
           )}
 
+          {profile && (
+            <button
+              onClick={() => void startStation()}
+              disabled={stationBusy}
+              title={t.library.startStation}
+              aria-label={t.library.startStation}
+              className="shrink-0 self-start rounded-[var(--radius-control)] border border-border p-2 text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground disabled:opacity-50"
+            >
+              <Radio className="h-4 w-4" />
+            </button>
+          )}
+
+          {!isSelf && profile && (
+            <button
+              onClick={() =>
+                openThread({
+                  id: profile.id,
+                  username: profile.username,
+                  avatar_url: profile.avatar_url,
+                  permalink_url: profile.permalink_url,
+                  followers_count: profile.followers_count,
+                  track_count: profile.track_count,
+                })
+              }
+              className="flex shrink-0 items-center gap-1.5 self-start rounded-[var(--radius-control)] border border-border px-3 py-2 text-sm font-medium transition-colors duration-[var(--motion-fast)] hover:bg-accent"
+            >
+              <MessageSquare className="h-4 w-4" />
+              {t.profile.message}
+            </button>
+          )}
+
           {!isSelf && profile && (
             <button
               onClick={() =>
@@ -301,11 +397,46 @@ export function ProfileView({
         <Empty>{t.profile.noTracks}</Empty>
       )}
 
+      {tab === "top" && data.top.length > 0 && <TrackList tracks={data.top} />}
+      {tab === "top" && loading !== tab && data.top.length === 0 && (
+        <Empty>{t.profile.noTracks}</Empty>
+      )}
+
+      {tab === "albums" &&
+        (data.albums.length > 0 ? (
+          <PlaylistList playlists={data.albums} />
+        ) : (
+          loading !== tab && <Empty>{t.profile.noAlbums}</Empty>
+        ))}
+
       {tab === "playlists" &&
         (data.playlists.length > 0 ? (
           <PlaylistList playlists={data.playlists} />
         ) : (
           loading !== tab && <Empty>{t.library.noPlaylists}</Empty>
+        ))}
+
+      {tab === "reposts" && (
+        <>
+          {data.repostTracks.length > 0 && (
+            <TrackList tracks={data.repostTracks} />
+          )}
+          {data.repostPlaylists.length > 0 && (
+            <PlaylistList playlists={data.repostPlaylists} />
+          )}
+          {loading !== tab &&
+            data.repostTracks.length === 0 &&
+            data.repostPlaylists.length === 0 && (
+              <Empty>{t.profile.noReposts}</Empty>
+            )}
+        </>
+      )}
+
+      {tab === "related" &&
+        (data.related.length > 0 ? (
+          <UserList users={data.related} />
+        ) : (
+          loading !== tab && <Empty>{t.library.noFollowing}</Empty>
         ))}
 
       {tab === "likes" && data.likes.length > 0 && (

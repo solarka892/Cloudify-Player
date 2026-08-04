@@ -19,16 +19,20 @@ import { LogoMark } from "@/components/Logo";
 import { HotkeyHelp } from "@/components/HotkeyHelp";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
-import type { ViewId } from "@/components/shell/nav";
 import { HomeView } from "@/features/home/HomeView";
 import { LibraryView } from "@/features/library/LibraryView";
 import { SearchView } from "@/features/search/SearchView";
 import { ProfileView } from "@/features/profile/ProfileView";
 import { SettingsView } from "@/features/settings/SettingsView";
 import { DetailView } from "@/features/detail/DetailView";
+import { MessagesView } from "@/features/messages/MessagesView";
+import { NotificationsView } from "@/features/notifications/NotificationsView";
 import { PlayerBar } from "@/features/player/PlayerBar";
 import { useNavStore } from "@/stores/useNavStore";
 import { usePlayerStore } from "@/stores/usePlayerStore";
+import { useMessagesStore } from "@/stores/useMessagesStore";
+import { useNotificationsStore } from "@/stores/useNotificationsStore";
+import { useRepostStore } from "@/stores/useRepostStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { artwork } from "@/lib/utils";
 import { t } from "@/i18n";
@@ -44,10 +48,12 @@ type AuthStatus =
 
 function App() {
   const [auth, setAuth] = useState<AuthStatus>({ state: "unknown" });
-  const [view, setView] = useState<ViewId>("home");
   const [showHelp, setShowHelp] = useState(false);
+  // Navigation lives in the store now: notifications, profiles and pasted
+  // links all move the app around, not just the nav bar.
+  const view = useNavStore((s) => s.view);
+  const setView = useNavStore((s) => s.setView);
   const detail = useNavStore((s) => s.detail);
-  const closeDetail = useNavStore((s) => s.back);
   const nowPlaying = useNavStore((s) => s.nowPlaying);
   const setNowPlaying = useNavStore((s) => s.setNowPlaying);
   const requestSearchFocus = useNavStore((s) => s.requestSearchFocus);
@@ -171,12 +177,10 @@ function App() {
     <Shell
       key={locale}
       view={view}
-      onNavigate={(next) => {
-        closeDetail(); // leaving a tab abandons whatever was drilled into
-        setView(next);
-      }}
+      onNavigate={setView}
       player={apple ? <ApplePlayerBar /> : <PlayerBar />}
     >
+      <SocialSeed userId={me.id} />
       <Toaster />
       {showHelp && <HotkeyHelp onClose={() => setShowHelp(false)} />}
 
@@ -185,7 +189,7 @@ function App() {
       {/* Inside the keyed wrapper, so navigating away clears a crashed view. */}
       <ErrorBoundary>
       {detail ? (
-        <DetailView detail={detail} />
+        <DetailView detail={detail} meId={me.id} />
       ) : (
         <>
           {view === "home" && (
@@ -193,6 +197,8 @@ function App() {
           )}
           {view === "search" && <SearchView />}
           {view === "library" && <LibraryView userId={me.id} />}
+          {view === "messages" && <MessagesView />}
+          {view === "notifications" && <NotificationsView />}
           {view === "profile" && <ProfileView userId={me.id} isSelf />}
           {view === "settings" && (
             <>
@@ -216,6 +222,32 @@ function App() {
       </div>
     </Shell>
   );
+}
+
+/**
+ * Warms the account-wide state the chrome depends on, once per session.
+ *
+ * Rendered rather than run from an effect up in `App` so it sits below the auth
+ * gate — none of this has an answer before we know who is signed in.
+ *
+ * The inbox and the notifications feed are fetched here rather than lazily by
+ * their views, because their whole point in the nav is the unread badge: a
+ * count that only appears after you have already visited the tab is not a
+ * notification. The reposts feed is what every repost button reads its state
+ * from, and it is persisted, so this is a refresh rather than a cold load.
+ */
+function SocialSeed({ userId }: { userId: number }) {
+  const loadReposts = useRepostStore((s) => s.load);
+  const loadConversations = useMessagesStore((s) => s.load);
+  const loadNotifications = useNotificationsStore((s) => s.load);
+
+  useEffect(() => {
+    void loadReposts(userId);
+    void loadConversations();
+    void loadNotifications();
+  }, [userId, loadReposts, loadConversations, loadNotifications]);
+
+  return null;
 }
 
 /** Pre-auth screen. Deliberately quiet: one primary path, one fallback. */

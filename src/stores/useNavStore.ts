@@ -1,12 +1,14 @@
 import { create } from "zustand";
-import type { Playlist, User } from "@/lib/tauri";
+import type { Playlist, Track, User } from "@/lib/tauri";
+import type { ViewId } from "@/components/shell/nav-items";
 
 /**
- * One level of drill-down on top of the main tabs.
+ * Where the app is: which tab, and what is drilled into on top of it.
  *
- * Playlists and users can be opened from several places (library, search
- * results), so "what is open" lives in a store rather than being threaded
- * through every list component.
+ * The current tab lives here rather than in `App`'s state because navigation
+ * is no longer something only the nav bar does — a notification opens a track,
+ * a profile opens a conversation, a pasted link opens whatever it resolves to.
+ * Threading a callback down to each of those was the alternative.
  */
 interface Opened {
   id: number;
@@ -18,25 +20,53 @@ interface Opened {
 
 export type Detail =
   | ({ kind: "playlist" } & Opened)
-  | ({ kind: "user" } & Opened);
+  | ({ kind: "user" } & Opened)
+  | ({ kind: "track" } & Opened);
 
 interface NavState {
+  view: ViewId;
   detail: Detail | null;
   /** Whether the full-screen player is up. Lives here so a hotkey can toggle it. */
   nowPlaying: boolean;
   /** Bumped to ask the search view to focus its input. */
   searchFocusToken: number;
+  /**
+   * A conversation the messages view should open when it mounts. Set by the
+   * "Message" button on a profile, cleared once the view has honoured it.
+   */
+  pendingThread: User | null;
+  /**
+   * A query the search view should run when it mounts. Set by tag chips and
+   * by "find more like this" affordances elsewhere in the app.
+   */
+  pendingQuery: string | null;
+
+  setView: (view: ViewId) => void;
+  openSearch: (query: string) => void;
   openPlaylist: (playlist: Playlist) => void;
   openUser: (user: User) => void;
+  openTrack: (track: Track) => void;
+  openThread: (user: User) => void;
+  clearPendingThread: () => void;
+  clearPendingQuery: () => void;
   back: () => void;
   setNowPlaying: (open: boolean) => void;
   requestSearchFocus: () => void;
 }
 
 export const useNavStore = create<NavState>((set) => ({
+  view: "home",
   detail: null,
   nowPlaying: false,
   searchFocusToken: 0,
+  pendingThread: null,
+  pendingQuery: null,
+
+  // Leaving a tab abandons whatever was drilled into on it.
+  setView: (view) => set({ view, detail: null }),
+
+  openSearch: (query) =>
+    set({ view: "search", detail: null, pendingQuery: query }),
 
   openPlaylist: (playlist) =>
     set({
@@ -59,6 +89,22 @@ export const useNavStore = create<NavState>((set) => ({
         url: user.permalink_url,
       },
     }),
+
+  openTrack: (track) =>
+    set({
+      detail: {
+        kind: "track",
+        id: track.id,
+        title: track.title,
+        subtitle: track.artist,
+        url: track.permalink_url,
+      },
+    }),
+
+  openThread: (user) =>
+    set({ view: "messages", detail: null, pendingThread: user }),
+  clearPendingThread: () => set({ pendingThread: null }),
+  clearPendingQuery: () => set({ pendingQuery: null }),
 
   back: () => set({ detail: null }),
   setNowPlaying: (nowPlaying) => set({ nowPlaying }),
