@@ -5,7 +5,14 @@ import { setViewScroller, scrollViewToTop } from "@/lib/scroll";
 import { useWheelStep } from "@/hooks/useWheelStep";
 import { Ambient } from "@/components/Ambient";
 import { useCompact } from "@/hooks/useCompact";
-import { NavBottom, NavRail, NavSidebar, NavTop, type ViewId } from "./nav";
+import {
+  NavBottom,
+  NavCompactHeader,
+  NavRail,
+  NavSidebar,
+  NavTop,
+  type ViewId,
+} from "./nav";
 
 /**
  * The application frame.
@@ -72,7 +79,12 @@ export function AppShell({
       <Ambient className="fixed z-[1]" />
 
       {compact ? (
-        main
+        <>
+          {/* Messages and notifications have no tab on a phone, so they live
+              in the header — otherwise they are unreachable there entirely. */}
+          <NavCompactHeader view={view} onNavigate={onNavigate} />
+          {main}
+        </>
       ) : layout === "top" ? (
         <div className="relative z-10 flex min-h-0 flex-1 flex-col">
           <NavTop view={view} onNavigate={onNavigate} />

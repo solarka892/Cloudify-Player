@@ -372,7 +372,8 @@
     "unrepost": "Убрать репост",
     "reposted": "Репостнуто",
     "repostFailed": "Не удалось сделать репост",
-    "openTrack": "К треку"
+    "openTrack": "К треку",
+    "more": "Ещё"
   },
   "trackPage": {
     "comments": "Комментарии",
@@ -464,5 +465,9 @@
     "removeTrack": "Убрать из плейлиста",
     "reordered": "Порядок сохранён",
     "edit": "Редактировать"
+  },
+  "common": {
+    "cancel": "Отмена",
+    "delete": "Удалить"
   }
 }

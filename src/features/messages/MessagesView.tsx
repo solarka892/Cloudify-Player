@@ -16,6 +16,7 @@ import { useMessagesStore } from "@/stores/useMessagesStore";
 import { useNavStore } from "@/stores/useNavStore";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useCompact } from "@/hooks/useCompact";
+import { confirmAction } from "@/stores/useConfirmStore";
 import { toast } from "@/stores/useToastStore";
 import { artwork, cn } from "@/lib/utils";
 import { t } from "@/i18n";
@@ -80,7 +81,7 @@ export function MessagesView() {
     // scrolling `main` whose inner wrapper is `height: auto`, so `h-full`
     // resolves to nothing and both panes collapse. Sizing against the viewport
     // gives the inbox and the thread their own scrollers in every layout.
-    <div className="flex h-[calc(100vh-13rem)] min-h-80 w-full gap-4">
+    <div className="flex h-[calc(100dvh-20rem)] min-h-72 w-full gap-4 md:h-[calc(100dvh-13rem)]">
       {showList && (
         <div
           className={cn(
@@ -192,11 +193,17 @@ export function MessagesView() {
                     </button>
                     <button
                       onClick={() => {
-                        if (!window.confirm(t.messages.deleteConfirm)) return;
-                        if (selected?.id === conversation.user.id) setSelected(null);
-                        void remove(conversation.user.id)
-                          .then(() => toast(t.messages.deleted, "success"))
-                          .catch((e) => toast(String(e), "error"));
+                        void confirmAction(t.messages.deleteConfirm, {
+                          confirmLabel: t.common.delete,
+                        }).then((ok) => {
+                          if (!ok) return;
+                          if (selected?.id === conversation.user.id) {
+                            setSelected(null);
+                          }
+                          return remove(conversation.user.id)
+                            .then(() => toast(t.messages.deleted, "success"))
+                            .catch((e) => toast(String(e), "error"));
+                        });
                       }}
                       title={t.messages.delete}
                       className="rounded p-1 text-muted-foreground hover:text-destructive"

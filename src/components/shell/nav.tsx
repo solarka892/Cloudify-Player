@@ -170,6 +170,76 @@ function TopItem({
 }
 
 /**
+ * The phone-width header: the wordmark, and the two sections the tab bar has
+ * no room for.
+ *
+ * Five tabs is already the most a 360px bar can hold at Android's 48px touch
+ * target, so messages and notifications are dropped from it — which left them
+ * with no way in at all on a phone. They live up here instead, as icons with
+ * their unread badges, which is also where SoundCloud's own app keeps them.
+ *
+ * `pt-safe` because `MainActivity` draws edge to edge and this is the topmost
+ * thing on the screen.
+ */
+export function NavCompactHeader({ view, onNavigate }: NavProps) {
+  const unreadMessages = useBadge("messages");
+  const unreadNotifications = useBadge("notifications");
+
+  return (
+    <header className="nav-in-y pt-safe relative z-20 flex shrink-0 items-center gap-1 border-b border-border px-2">
+      <BrandMark />
+      <div className="ml-auto flex items-center gap-1">
+        <HeaderIcon
+          id="messages"
+          active={view === "messages"}
+          badge={unreadMessages}
+          onNavigate={onNavigate}
+        />
+        <HeaderIcon
+          id="notifications"
+          active={view === "notifications"}
+          badge={unreadNotifications}
+          onNavigate={onNavigate}
+        />
+      </div>
+    </header>
+  );
+}
+
+function HeaderIcon({
+  id,
+  active,
+  badge,
+  onNavigate,
+}: {
+  id: ViewId;
+  active: boolean;
+  badge: number;
+  onNavigate: (view: ViewId) => void;
+}) {
+  const item = NAV_ITEMS.find((i) => i.id === id);
+  if (!item) return null;
+  const { Icon, label } = item;
+
+  return (
+    <button
+      onClick={() => onNavigate(id)}
+      aria-label={label}
+      title={label}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        // 44px, not the 32px the desktop toolbar uses: this is a thumb target.
+        "relative flex h-11 w-11 items-center justify-center rounded-[var(--radius-control)] transition-colors duration-[var(--motion-fast)]",
+        active ? "text-brand" : "text-muted-foreground",
+      )}
+    >
+      <Icon className="h-[22px] w-[22px]" />
+      <Badge count={badge} className="absolute right-1 top-1.5" />
+    </button>
+  );
+}
+
+/**
  * Bottom tab bar, for phone-width windows.
  *
  * Not one of the three layout settings — it replaces whichever of them is chosen

@@ -372,7 +372,8 @@
     "unrepost": "Remove repost",
     "reposted": "Reposted",
     "repostFailed": "Could not repost that",
-    "openTrack": "Go to track"
+    "openTrack": "Go to track",
+    "more": "More"
   },
   "trackPage": {
     "comments": "Comments",
@@ -464,5 +465,9 @@
     "removeTrack": "Remove from playlist",
     "reordered": "Order saved",
     "edit": "Edit"
+  },
+  "common": {
+    "cancel": "Cancel",
+    "delete": "Delete"
   }
 }

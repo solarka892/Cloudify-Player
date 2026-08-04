@@ -19,6 +19,7 @@ import { useNavStore } from "@/stores/useNavStore";
 import { useRepostStore } from "@/stores/useRepostStore";
 import { toast } from "@/stores/useToastStore";
 import { copyLink } from "@/lib/share";
+import { openExternal } from "@/lib/open";
 import { t } from "@/i18n";
 
 /** Where a context menu was opened, in viewport coordinates. */
@@ -153,7 +154,7 @@ export function TrackContextMenu({
             Icon={ExternalLink}
             label={t.track.openOnSc}
             onClick={() =>
-              run(() => window.open(track.permalink_url!, "_blank"))
+              run(() => void openExternal(track.permalink_url!))
             }
           />
         </>

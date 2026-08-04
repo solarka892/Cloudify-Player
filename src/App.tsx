@@ -14,6 +14,7 @@ import { AppShell } from "@/components/shell/AppShell";
 import { AppleShell } from "@/features/apple/AppleShell";
 import { ApplePlayerBar } from "@/features/apple/ApplePlayerBar";
 import { Toaster } from "@/components/Toaster";
+import { ConfirmHost } from "@/components/ConfirmHost";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LogoMark } from "@/components/Logo";
 import { HotkeyHelp } from "@/components/HotkeyHelp";
@@ -182,6 +183,7 @@ function App() {
     >
       <SocialSeed userId={me.id} />
       <Toaster />
+      <ConfirmHost />
       {showHelp && <HotkeyHelp onClose={() => setShowHelp(false)} />}
 
       {/* Keyed so a tab change remounts and replays the entry animation. */}

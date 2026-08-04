@@ -9,6 +9,7 @@ import {
 } from "@/lib/tauri";
 import { useLibraryStore } from "@/stores/useLibraryStore";
 import { useNavStore } from "@/stores/useNavStore";
+import { confirmAction } from "@/stores/useConfirmStore";
 import { toast } from "@/stores/useToastStore";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
@@ -90,7 +91,10 @@ export function PlaylistEditDialog({
   }
 
   async function remove() {
-    if (!window.confirm(t.playlistEdit.deleteConfirm)) return;
+    const ok = await confirmAction(t.playlistEdit.deleteConfirm, {
+      confirmLabel: t.common.delete,
+    });
+    if (!ok) return;
     setBusy(true);
     try {
       await scDeletePlaylist(playlist.id);

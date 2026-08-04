@@ -113,6 +113,37 @@ what anti-fraud actually detects.
 There is no browser-cookie flow on Android (`sc_login_browser` returns an
 explanatory error there): no other browser's profile is readable.
 
+## Running it in an emulator
+
+The machine is x86_64 and `/dev/kvm` is present, so use an **x86_64** system
+image — an arm64 one would be fully emulated and unusably slow.
+
+```bash
+export ANDROID_HOME="$HOME/Android/Sdk"
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk
+export PATH="$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
+
+sdkmanager --sdk_root="$ANDROID_HOME" emulator "system-images;android-35;google_apis;x86_64"
+avdmanager create avd -n cloudify -k "system-images;android-35;google_apis;x86_64" -d pixel_6
+
+emulator -avd cloudify -gpu host &      # -gpu swiftshader_indirect if host GPU misbehaves
+adb wait-for-device
+
+pnpm tauri android build --debug --target x86_64 --apk
+adb install -r src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk
+```
+
+`google_apis` rather than the plain AOSP image: it ships a current WebView,
+which is what the whole app runs in. `google_apis_playstore` also works but
+cannot be rooted, and `adb root` is occasionally useful for reading the app's
+private download directory.
+
+`--target x86_64` matters. A default build produces all four ABIs and spends
+most of its time cross-compiling Rust for three architectures the emulator will
+never load.
+
+Logs: `adb logcat -s Cloudify:V chromium:V RustStdoutStderr:V`.
+
 ## Frontend differences
 
 - `src/lib/platform.ts` — `isAndroid`, from the user agent.
@@ -124,14 +155,34 @@ explanatory error there): no other browser's profile is readable.
 - `viewport-fit=cover` plus the `pt-safe`/`pb-safe` utilities keep content out
   from under the status bar and the gesture bar, since `MainActivity` draws edge
   to edge.
+- **Seven sections, five tabs.** `COMPACT_NAV_ITEMS` drops messages and
+  notifications from the bottom bar — five is the most a 360px bar fits at a
+  48px touch target. They move to `NavCompactHeader` instead, as icons with
+  their unread badges, which is where SoundCloud's own app keeps them.
+- **No hover on a touch screen.** A track row's play-next, repost and share
+  buttons are revealed by `group-hover`, which never fires on a phone; the row
+  offered play and the heart and nothing else. On compact each row grows a `⋮`
+  that opens the same menu the right click does.
+
+## Three web APIs that do nothing in Android's WebView
+
+Each of these works on the desktop and fails *silently* here, which is the worst
+way to fail — the button is there, it is pressed, nothing happens.
+
+| Don't | Use | Why |
+| --- | --- | --- |
+| `window.open`, `<a target="_blank">` | `lib/open.ts` → `openExternal` | The WebView refuses a second window unless the host implements `onCreateWindow`. Cost: "buy", "download original", "open on SoundCloud". |
+| `window.confirm` | `stores/useConfirmStore` → `confirmAction` | A JS dialog needs a `WebChromeClient` with `onJsConfirm`; without one the call returns `false`. Cost: deleting a conversation or a playlist did nothing. |
+| `100vh` | `100dvh` | `vh` ignores the browser chrome and the gesture bar on mobile. |
+
+`openExternal` goes through `tauri-plugin-opener`, so the link opens in the
+user's real browser — which is also the right behaviour on the desktop.
 
 ## Known gaps
 
-- **Not verified on hardware.** Everything here compiles and the APK installs,
-  but the Kotlin paths — Keystore, cookie capture, the foreground service — have
-  not been exercised on a real device.
-- `POST_NOTIFICATIONS` is declared but never requested at runtime, so on Android
-  13+ the transport notification will not appear until the user grants it in
-  system settings. Playback itself is unaffected.
+- **Not verified on hardware.** The emulator exercises the WebView, the layout
+  and the Rust core. It does *not* prove the Keystore path, the sign-in cookie
+  capture or the foreground service behave on a real device — an emulator's
+  Keystore is software-backed and its Doze behaviour is not a phone's.
 - Downloads land in the app's private storage, so other apps cannot see them.
 - No iOS. `gen/apple` has never been generated.

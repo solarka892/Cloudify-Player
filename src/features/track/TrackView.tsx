@@ -38,6 +38,7 @@ import { useNavStore } from "@/stores/useNavStore";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
 import { toast } from "@/stores/useToastStore";
+import { openExternal } from "@/lib/open";
 import { artwork, cn } from "@/lib/utils";
 import { t } from "@/i18n";
 
@@ -340,22 +341,20 @@ export function TrackView({ trackId, meId }: { trackId: number; meId: number }) 
       {(detail.purchase_url || detail.downloadable) && (
         <div className="flex flex-wrap gap-2">
           {detail.purchase_url && (
-            <a
-              href={detail.purchase_url}
-              target="_blank"
-              rel="noreferrer"
+            <button
+              onClick={() => void openExternal(detail.purchase_url!)}
               className="flex items-center gap-1.5 rounded-[var(--radius-control)] border border-border px-3 py-1.5 text-sm text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground"
             >
               <ShoppingBag className="h-4 w-4" />
               {detail.purchase_title ?? t.trackPage.buy}
-            </a>
+            </button>
           )}
           {detail.downloadable && (
             <button
               onClick={() => {
                 void scTrackDownloadUrl(detail.id)
-                  .then((url) => {
-                    window.open(url, "_blank");
+                  .then(async (url) => {
+                    await openExternal(url);
                     toast(t.trackPage.downloadStarted, "info");
                   })
                   .catch(() => toast(t.trackPage.downloadFailed, "error"));
@@ -367,15 +366,13 @@ export function TrackView({ trackId, meId }: { trackId: number; meId: number }) 
             </button>
           )}
           {detail.permalink_url && (
-            <a
-              href={detail.permalink_url}
-              target="_blank"
-              rel="noreferrer"
+            <button
+              onClick={() => void openExternal(detail.permalink_url!)}
               className="flex items-center gap-1.5 rounded-[var(--radius-control)] border border-border px-3 py-1.5 text-sm text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground"
             >
               <ExternalLink className="h-4 w-4" />
               {t.trackPage.openOnSc}
-            </a>
+            </button>
           )}
         </div>
       )}

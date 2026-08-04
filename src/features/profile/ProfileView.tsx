@@ -34,6 +34,7 @@ import { useNavStore } from "@/stores/useNavStore";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { toast } from "@/stores/useToastStore";
 import { t } from "@/i18n";
+import { openExternal } from "@/lib/open";
 import { artwork, cn } from "@/lib/utils";
 
 type Tab =
@@ -297,15 +298,13 @@ export function ProfileView({
                 </span>
               )}
               {profile?.permalink_url && (
-                <a
-                  href={profile.permalink_url}
-                  target="_blank"
-                  rel="noreferrer"
+                <button
+                  onClick={() => void openExternal(profile.permalink_url!)}
                   className="inline-flex items-center gap-1 transition-colors duration-[var(--motion-fast)] hover:text-foreground"
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
                   SoundCloud
-                </a>
+                </button>
               )}
             </div>
 

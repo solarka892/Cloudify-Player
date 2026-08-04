@@ -1,5 +1,5 @@
 import { memo, useState } from "react";
-import { Download, ListPlus, Music, Pause, Play } from "lucide-react";
+import { Download, ListPlus, MoreVertical, Music, Pause, Play } from "lucide-react";
 import type { Track } from "@/lib/tauri";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
@@ -11,6 +11,7 @@ import { RepostButton } from "./RepostButton";
 import { ShareButton } from "./ShareButton";
 import { useRepostStore } from "@/stores/useRepostStore";
 import { useVirtual } from "@/hooks/useVirtual";
+import { useCompact } from "@/hooks/useCompact";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import type { Density } from "@/theme/apply";
 import { artwork, cn } from "@/lib/utils";
@@ -51,6 +52,8 @@ export function TrackList({ tracks }: { tracks: Track[] }) {
   const [addTo, setAddTo] = useState<Track | null>(null);
   const rowHeight = ROW_HEIGHT[useSettingsStore((s) => s.theme.density)];
   const { ref, start, end } = useVirtual(tracks.length, rowHeight);
+  // One subscription for the whole list rather than one per row.
+  const compact = useCompact();
 
   const visible = tracks.slice(start, end);
 
@@ -67,12 +70,14 @@ export function TrackList({ tracks }: { tracks: Track[] }) {
             key={track.id}
             track={track}
             queue={tracks}
+            compact={compact}
             top={(start + index) * rowHeight}
             height={rowHeight}
             onContextMenu={(e) => {
               e.preventDefault();
               setMenu({ track, x: e.clientX, y: e.clientY });
             }}
+            onMenu={(x, y) => setMenu({ track, x, y })}
           />
         ))}
       </div>
@@ -95,15 +100,20 @@ export function TrackList({ tracks }: { tracks: Track[] }) {
 const TrackRow = memo(function TrackRow({
   track,
   queue,
+  compact,
   top,
   height,
   onContextMenu,
+  onMenu,
 }: {
   track: Track;
   queue: Track[];
+  /** Touch-sized layout: no hover, so the row's actions need a real button. */
+  compact: boolean;
   top: number;
   height: number;
   onContextMenu: (e: React.MouseEvent) => void;
+  onMenu: (x: number, y: number) => void;
 }) {
   const art = artwork(track.artwork_url);
   const playTrack = usePlayerStore((s) => s.playTrack);
@@ -184,31 +194,52 @@ const TrackRow = memo(function TrackRow({
               the pointer over every row. Liked is the accent, not-liked is the
               muted outline — the state is the colour, not the presence. */}
           <LikeButton track={track} />
-          {/* The rest stay hover-only, which is what keeps a long list calm. */}
-          <button
-            onClick={(e) => {
-              // The whole row is a play button; this must not trigger it.
-              e.stopPropagation();
-              addNext(track);
-              toast(t.track.queuedNext, "info");
-            }}
-            title={t.track.playNext}
-            aria-label={t.track.playNext}
-            className="rounded-[var(--radius-control)] p-1 text-muted-foreground opacity-0 transition-[opacity,color] duration-[var(--motion-fast)] hover:text-foreground group-hover:opacity-100"
-          >
-            <ListPlus className="h-4 w-4" />
-          </button>
-          <RepostButton
-            track={track}
-            className={cn(
-              "transition-opacity duration-[var(--motion-fast)] group-hover:opacity-100",
-              reposted ? "opacity-100" : "opacity-0",
-            )}
-          />
-          <ShareButton
-            url={track.permalink_url}
-            className="opacity-0 transition-opacity duration-[var(--motion-fast)] group-hover:opacity-100"
-          />
+
+          {compact ? (
+            /* A touch screen has no hover, so hover-revealed actions are
+               unreachable on a phone — a row offered play and the heart and
+               nothing else. One overflow button opens the same menu the right
+               click does, which is the pattern every mobile list uses. */
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                const box = e.currentTarget.getBoundingClientRect();
+                onMenu(box.right, box.bottom);
+              }}
+              aria-label={t.track.more}
+              className="rounded-[var(--radius-control)] p-1.5 text-muted-foreground"
+            >
+              <MoreVertical className="h-4 w-4" />
+            </button>
+          ) : (
+            <>
+              {/* The rest stay hover-only, which keeps a long list calm. */}
+              <button
+                onClick={(e) => {
+                  // The whole row is a play button; this must not trigger it.
+                  e.stopPropagation();
+                  addNext(track);
+                  toast(t.track.queuedNext, "info");
+                }}
+                title={t.track.playNext}
+                aria-label={t.track.playNext}
+                className="rounded-[var(--radius-control)] p-1 text-muted-foreground opacity-0 transition-[opacity,color] duration-[var(--motion-fast)] hover:text-foreground group-hover:opacity-100"
+              >
+                <ListPlus className="h-4 w-4" />
+              </button>
+              <RepostButton
+                track={track}
+                className={cn(
+                  "transition-opacity duration-[var(--motion-fast)] group-hover:opacity-100",
+                  reposted ? "opacity-100" : "opacity-0",
+                )}
+              />
+              <ShareButton
+                url={track.permalink_url}
+                className="opacity-0 transition-opacity duration-[var(--motion-fast)] group-hover:opacity-100"
+              />
+            </>
+          )}
           <span className="font-mono text-xs tabular-nums text-muted-foreground">
             {formatDuration(track.duration)}
           </span>
