@@ -27,11 +27,25 @@ import { cn } from "@/lib/utils";
  * which is what Apple mode does, to trade lucide's play triangle for SF's.
  */
 
-export function PlayPauseButton({ size = "md" }: { size?: "md" | "lg" }) {
+export function PlayPauseButton({
+  size = "md",
+  /**
+   * `plain` drops the filled disc for a bare glyph.
+   *
+   * For the phone's mini bar, where a solid light circle beside a 44px cover was
+   * the heaviest thing on a screen it is meant to sit quietly at the bottom of —
+   * and where the disc's 40px was under the size a thumb wants anyway.
+   */
+  variant = "solid",
+}: {
+  size?: "md" | "lg";
+  variant?: "solid" | "plain";
+}) {
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const isLoading = usePlayerStore((s) => s.isLoading);
   const togglePlay = usePlayerStore((s) => s.togglePlay);
   const { Play: PlayGlyph, Pause: PauseGlyph } = useContext(TransportIcons);
+  const plain = variant === "plain";
 
   return (
     <button
@@ -40,8 +54,11 @@ export function PlayPauseButton({ size = "md" }: { size?: "md" | "lg" }) {
       data-transport="play"
       aria-label={isPlaying ? t.player.pause : t.player.play}
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-[opacity,transform] duration-[var(--motion-fast)] hover:scale-105 hover:opacity-90 disabled:opacity-50",
-        size === "lg" ? "h-14 w-14" : "h-10 w-10",
+        "flex shrink-0 items-center justify-center rounded-full transition-[opacity,transform,background-color] duration-[var(--motion-fast)] hover:opacity-90 disabled:opacity-50",
+        plain
+          ? "h-11 w-11 text-foreground hover:bg-accent active:scale-90"
+          : "bg-primary text-primary-foreground hover:scale-105",
+        !plain && (size === "lg" ? "h-14 w-14" : "h-10 w-10"),
       )}
     >
       {/* Keyed on the state, so React replaces the glyph rather than swapping
@@ -50,12 +67,14 @@ export function PlayPauseButton({ size = "md" }: { size?: "md" | "lg" }) {
           changes without moving. */}
       <span key={isPlaying ? "pause" : "play"} className="pop-in flex">
         {isPlaying ? (
-          <PauseGlyph className={size === "lg" ? "h-6 w-6" : "h-5 w-5"} />
+          <PauseGlyph
+            className={size === "lg" || plain ? "h-6 w-6" : "h-5 w-5"}
+          />
         ) : (
           <PlayGlyph
             className={cn(
               "translate-x-[1px]",
-              size === "lg" ? "h-6 w-6" : "h-5 w-5",
+              size === "lg" || plain ? "h-6 w-6" : "h-5 w-5",
             )}
           />
         )}

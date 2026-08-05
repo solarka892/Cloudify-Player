@@ -167,6 +167,20 @@ pub async fn login_cancel() -> Result<(), AndroidError> {
 }
 
 // ---------------------------------------------------------------------------
+// Window insets
+// ---------------------------------------------------------------------------
+
+/// Ask Kotlin to publish the system-bar insets as CSS custom properties.
+///
+/// `env(safe-area-inset-*)` is filled from the display cutout alone in Android's
+/// webview, so the gesture bar is invisible to it — see
+/// `MainActivity.publishInsets`. The frontend calls this once it has mounted,
+/// which is the first moment there is a document to write them into.
+pub async fn insets_sync() -> Result<(), AndroidError> {
+    call_async::<_, Ack>("syncInsets", ()).await.map(|_| ())
+}
+
+// ---------------------------------------------------------------------------
 // Background playback
 // ---------------------------------------------------------------------------
 

@@ -111,6 +111,21 @@ class CloudifyPlugin(private val activity: Activity) : Plugin(activity) {
         invoke.resolve()
     }
 
+    // ── window insets ──────────────────────────────────────────────────────
+
+    /**
+     * Publish the system-bar insets into the current document.
+     *
+     * Called by the frontend once it has mounted, because the dispatches the
+     * platform makes on its own all land before there is a document to receive
+     * them. See `MainActivity.publishInsets`.
+     */
+    @Command
+    fun syncInsets(invoke: Invoke) {
+        (activity as? MainActivity)?.syncInsets()
+        invoke.resolve()
+    }
+
     // ── background playback ────────────────────────────────────────────────
 
     @Command

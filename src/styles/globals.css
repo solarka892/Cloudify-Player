@@ -75,6 +75,27 @@
   --backdrop-blur: 40px;
   --backdrop-dim: 0.55;
   --backdrop-saturate: 1.2;
+  /* Multipliers the phone raises. Deliberately separate from `--backdrop-dim`
+     and `--backdrop-saturate`, which are settings the store writes as inline
+     style on the root and which no stylesheet rule could override anyway. */
+  --backdrop-blur-scale: 1;
+  --backdrop-dim-boost: 0;
+  --backdrop-saturate-scale: 1;
+}
+
+/* A blur radius is in CSS pixels and a phone is a quarter of a desktop window
+   wide, so what reads as soft lighting across 1600px arrives as two or three
+   enormous shapes across 412px — a square cover cropped to a tall portrait
+   viewport is only a few upscaled regions to begin with. Blurring further alone
+   just turns the shapes into fields of colour, bright magenta in one corner and
+   teal in another, so the veil goes up and the saturation comes down with it.
+   What is left is a tint off the artwork, which is what the layer is for. */
+@media (max-width: 767px) {
+  :root {
+    --backdrop-blur-scale: 2.5;
+    --backdrop-dim-boost: 0.3;
+    --backdrop-saturate-scale: 0.8;
+  }
 }
 
 .dark {
@@ -209,13 +230,14 @@
        hides the same thing with the least crop there is, and at blur 0 there is
        none at all: the image is then as zoomed-out as it can be while still
        filling the window. */
-    inset: calc(-1 * var(--backdrop-blur));
+    inset: calc(-1 * var(--backdrop-blur) * var(--backdrop-blur-scale));
     z-index: 0;
     pointer-events: none;
     background-image: var(--backdrop-image);
     background-size: cover;
     background-position: center;
-    filter: blur(var(--backdrop-blur)) saturate(var(--backdrop-saturate));
+    filter: blur(calc(var(--backdrop-blur) * var(--backdrop-blur-scale)))
+      saturate(calc(var(--backdrop-saturate) * var(--backdrop-saturate-scale)));
     image-rendering: auto;
     transition: background-image var(--motion-slow) ease;
   }
@@ -224,7 +246,7 @@
     position: absolute;
     inset: 0;
     background: var(--background);
-    opacity: var(--backdrop-dim);
+    opacity: min(1, calc(var(--backdrop-dim) + var(--backdrop-dim-boost)));
   }
 
   /* A surface. Translucency and blur come from the skin, so the same class is
@@ -607,13 +629,26 @@
  * neither, so these are free to apply unconditionally — which is why the shell
  * does, rather than asking which platform it is on. They need
  * `viewport-fit=cover` in the viewport meta to report anything at all.
+ *
+ * On Android `env()` alone is not enough: the webview fills those values from the
+ * display *cutout* and nothing else. Measured on a phone-shaped emulator,
+ * `safe-area-inset-top` was 49px — the notch, which the status bar happens to sit
+ * in — while `safe-area-inset-bottom` was 0px with a gesture bar plainly there,
+ * putting the tab bar's labels underneath it. So `MainActivity` publishes the
+ * real system-bar insets as `--inset-*` and these take whichever is larger. In
+ * landscape the notch moves to a side edge and only `--inset-*` is right.
  */
+:root {
+  --safe-top: max(env(safe-area-inset-top, 0px), var(--inset-top, 0px));
+  --safe-bottom: max(env(safe-area-inset-bottom, 0px), var(--inset-bottom, 0px));
+}
+
 @utility pt-safe {
-  padding-top: env(safe-area-inset-top, 0px);
+  padding-top: var(--safe-top);
 }
 
 @utility pb-safe {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: var(--safe-bottom);
 }
 
 /* ── Search ────────────────────────────────────────────────────────────────

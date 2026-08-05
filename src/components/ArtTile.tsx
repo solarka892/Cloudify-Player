@@ -1,7 +1,11 @@
-import { ListMusic, Music, Pause, Play } from "lucide-react";
+import { useState } from "react";
+import { ListMusic, MoreVertical, Music, Pause, Play } from "lucide-react";
 import type { Playlist, Track } from "@/lib/tauri";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useNavStore } from "@/stores/useNavStore";
+import { AddToPlaylistDialog } from "./AddToPlaylistDialog";
+import { TrackContextMenu, type MenuTarget } from "./TrackContextMenu";
+import { t } from "@/i18n";
 import { artwork, cn } from "@/lib/utils";
 
 /**
@@ -21,6 +25,7 @@ function Shell({
   playing,
   Fallback,
   index,
+  onMenu,
 }: {
   art: string | null;
   title: string;
@@ -36,10 +41,20 @@ function Shell({
    * against.
    */
   index?: number;
+  /**
+   * Opens the track menu at the given viewport point. Omitted for tiles with
+   * nothing to act on, like a playlist.
+   */
+  onMenu?: (x: number, y: number) => void;
 }) {
   return (
-    <button
-      onClick={onClick}
+    // The wrapper exists so the overflow button can be a sibling of the tile
+    // rather than a button inside a button.
+    <div
+      className={cn(
+        "group/tile relative min-w-0",
+        index !== undefined && "rise-in",
+      )}
       // Capped: past a dozen items the delay is longer than anyone waits to see
       // a grid appear.
       style={
@@ -47,11 +62,27 @@ function Shell({
           ? undefined
           : ({ "--i": Math.min(index, 12) } as React.CSSProperties)
       }
-      className={cn(
-        "group/tile flex w-full flex-col gap-2 rounded-[var(--radius)] p-2 text-left transition-[background-color,translate,scale] duration-[var(--motion-fast)] hover:-translate-y-0.5 hover:bg-accent/60 active:scale-[0.98]",
-        index !== undefined && "rise-in",
-      )}
+      onContextMenu={
+        onMenu &&
+        ((e) => {
+          e.preventDefault();
+          onMenu(e.clientX, e.clientY);
+        })
+      }
     >
+      <button
+        onClick={onClick}
+        className={cn(
+          // `items-stretch` and `min-w-0` are load-bearing, not tidying.
+          // Chromium's UA stylesheet gives a <button> `align-items: flex-start`,
+          // and in a column flex container the cross axis is the width — so the
+          // title block took its max-content width, which `truncate`'s `nowrap`
+          // makes the whole untruncated string. On a two-column phone grid the
+          // titles overlapped the next tile. WebKitGTK has no such rule, so the
+          // desktop never showed it.
+          "flex w-full min-w-0 flex-col items-stretch gap-2 rounded-[var(--radius)] p-2 text-left transition-[background-color,translate,scale] duration-[var(--motion-fast)] hover:-translate-y-0.5 hover:bg-accent/60 active:scale-[0.98]",
+        )}
+      >
       <div className="relative aspect-square w-full">
         {art ? (
           <img
@@ -92,20 +123,43 @@ function Shell({
         </span>
       </div>
 
-      <div className="min-w-0 px-0.5">
-        <div
-          className={cn(
-            "truncate text-sm font-medium",
-            active && "text-brand",
+        <div className="min-w-0 px-0.5">
+          <div
+            className={cn(
+              "truncate text-sm font-medium",
+              active && "text-brand",
+            )}
+          >
+            {title}
+          </div>
+          {subtitle && (
+            <div className="truncate text-xs text-muted-foreground">
+              {subtitle}
+            </div>
           )}
-        >
-          {title}
         </div>
-        {subtitle && (
-          <div className="truncate text-xs text-muted-foreground">{subtitle}</div>
-        )}
-      </div>
-    </button>
+      </button>
+
+      {onMenu && (
+        // Always on screen below `md`, hover-revealed above it — the same split
+        // the track rows make. A touch screen has no hover, so a grid of tiles
+        // offered play and nothing else on a phone: no queueing, no repost, no
+        // "go to track". Done in CSS rather than with `useCompact` because a
+        // grid mounts dozens of these and one media-query subscription each is
+        // a lot for a layout question CSS can answer.
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            const box = e.currentTarget.getBoundingClientRect();
+            onMenu(box.right, box.bottom);
+          }}
+          aria-label={t.track.more}
+          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-background/70 text-foreground backdrop-blur-sm transition-[opacity,background-color] duration-[var(--motion-fast)] hover:bg-background md:opacity-0 md:focus-visible:opacity-100 md:group-hover/tile:opacity-100"
+        >
+          <MoreVertical className="h-4 w-4" />
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -122,19 +176,35 @@ export function TrackTile({
   const playTrack = usePlayerStore((s) => s.playTrack);
   const active = usePlayerStore((s) => s.current?.id === track.id);
   const playing = usePlayerStore((s) => s.isPlaying);
+  const [menu, setMenu] = useState<MenuTarget | null>(null);
+  const [addTo, setAddTo] = useState<Track | null>(null);
 
   return (
-    <Shell
-      art={artwork(track.artwork_url, "t300x300")}
-      title={track.title}
-      subtitle={track.artist}
-      rounded="square"
-      active={active}
-      playing={playing}
-      Fallback={Music}
-      index={index}
-      onClick={() => void playTrack(track, queue)}
-    />
+    <>
+      <Shell
+        art={artwork(track.artwork_url, "t300x300")}
+        title={track.title}
+        subtitle={track.artist}
+        rounded="square"
+        active={active}
+        playing={playing}
+        Fallback={Music}
+        index={index}
+        onClick={() => void playTrack(track, queue)}
+        onMenu={(x, y) => setMenu({ track, x, y })}
+      />
+
+      {menu && (
+        <TrackContextMenu
+          target={menu}
+          onClose={() => setMenu(null)}
+          onAddToPlaylist={setAddTo}
+        />
+      )}
+      {addTo && (
+        <AddToPlaylistDialog track={addTo} onClose={() => setAddTo(null)} />
+      )}
+    </>
   );
 }
 

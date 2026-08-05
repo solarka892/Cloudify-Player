@@ -8,7 +8,6 @@ import {
   Moon,
   RotateCcw,
   Palette as PaletteIcon,
-  Save,
   SlidersHorizontal,
   Sun,
   Trash2,
@@ -37,7 +36,6 @@ import {
 } from "@/i18n";
 import {
   AppleAppearance,
-  AppleBookmark,
   AppleCheck,
   AppleChevronDown,
   AppleDisplay,
@@ -52,6 +50,7 @@ import {
   AppleUpload,
   type Glyph,
 } from "@/features/apple/icons";
+import { useCompact } from "@/hooks/useCompact";
 import { scrollViewToTop } from "@/lib/scroll";
 import { cn } from "@/lib/utils";
 
@@ -63,6 +62,7 @@ import { cn } from "@/lib/utils";
  * would just hide combinations from the user.
  */
 export function SettingsView() {
+  const compact = useCompact();
   const layout = useSettingsStore((s) => s.layout);
   const theme = useSettingsStore((s) => s.theme);
   const backdrop = useSettingsStore((s) => s.backdrop);
@@ -218,6 +218,12 @@ export function SettingsView() {
       </Group>
 
       {/* ── Layout ─────────────────────────────────────────────────────── */}
+      {/* Not offered on a phone: `AppShell` draws the bottom tab bar whenever
+          the window is compact and never consults `layout` there, so all three
+          choices would look identical and only the widest one is even a shape a
+          360px screen could take. The setting itself is kept — the same install
+          may be a desktop window tomorrow. */}
+      {!compact && (
       <Group
         title={t.settings.layout}
         hint={t.settings.layoutHint}
@@ -255,6 +261,7 @@ export function SettingsView() {
           ))}
         </div>
       </Group>
+      )}
 
       {/* ── Apple mode ─────────────────────────────────────────────────── */}
       {/* Above skin and colour on purpose: it replaces both, and the two
@@ -674,7 +681,11 @@ export function SettingsView() {
 
       {section === "audio" && <AudioSettings />}
 
-      {section === "themes" && (<>
+      {/* Presets render inside Appearance rather than as their own section.
+          Five tabs do not fit across 360px — the strip scrolled sideways and
+          the last one had to be hunted for — and "save the current look" was
+          never a different subject from the look itself. */}
+      {section === "appearance" && (<>
       {/* ── Presets ────────────────────────────────────────────────────── */}
       <Group title={t.settings.presets} hint={t.settings.presetsHint}>
         <div className="flex flex-wrap items-center gap-2 px-4 py-3">
@@ -792,8 +803,7 @@ type SectionId =
   | "appearance"
   | "backdrop"
   | "audio"
-  | "playback"
-  | "themes";
+  | "playback";
 
 /**
  * Every glyph this page draws, in both idioms.
@@ -833,7 +843,6 @@ const LUCIDE_GLYPHS: GlyphSet = {
     backdrop: Wallpaper,
     audio: Volume2,
     playback: SlidersHorizontal,
-    themes: Save,
   },
 };
 
@@ -853,7 +862,6 @@ const APPLE_GLYPHS: GlyphSet = {
     backdrop: ApplePhoto,
     audio: AppleSpeaker,
     playback: ApplePlayCircle,
-    themes: AppleBookmark,
   },
 };
 
@@ -876,9 +884,6 @@ const SECTIONS: { id: SectionId; label: string }[] = [
   } },
   { id: "playback", get label() {
     return t.settings.playback;
-  } },
-  { id: "themes", get label() {
-    return t.settings.presets;
   } },
 ];
 

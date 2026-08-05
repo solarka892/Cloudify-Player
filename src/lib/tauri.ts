@@ -51,6 +51,19 @@ export function scLogout(): Promise<void> {
   return invoke<void>("sc_logout");
 }
 
+/**
+ * Ask the host to publish the window's safe-area insets as `--inset-*`.
+ *
+ * Only Android needs this and it is a no-op elsewhere. Its webview fills
+ * `env(safe-area-inset-*)` from the display cutout alone, so a gesture bar
+ * measures as zero and anything pinned to the bottom ends up underneath it. The
+ * call has to come from here rather than the host pushing on its own: every
+ * inset dispatch the platform makes happens before this document exists.
+ */
+export function syncInsets(): Promise<void> {
+  return invoke<void>("sync_insets");
+}
+
 /** Whether a token is currently stored. */
 export function scIsLoggedIn(): Promise<boolean> {
   return invoke<boolean>("sc_is_logged_in");

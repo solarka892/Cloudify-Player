@@ -94,7 +94,7 @@ export function AppleShell({
             <div
               className="mx-auto w-full max-w-3xl px-4 pt-4"
               style={{
-                paddingBottom: `calc(${player ? "10.5rem" : "6.5rem"} + env(safe-area-inset-bottom, 0px))`,
+                paddingBottom: `calc(${player ? "10.5rem" : "6.5rem"} + var(--safe-bottom))`,
               }}
             >
               {children}
@@ -108,7 +108,7 @@ export function AppleShell({
           <div
             className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex flex-col gap-2 px-3"
             style={{
-              paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom, 0px))",
+              paddingBottom: "calc(0.75rem + var(--safe-bottom))",
             }}
           >
             {player && <div className="pointer-events-auto">{player}</div>}

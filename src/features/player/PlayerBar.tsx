@@ -243,9 +243,11 @@ function CompactBar({ track, onExpand }: { track: Track; onExpand: () => void })
           </span>
         </button>
 
-        <div className="flex shrink-0 items-center">
-          <PlayPauseButton />
-          <NextButton />
+        {/* Glyphs rather than a filled disc, and both at a thumb's size with a
+            gap between them: they were touching, and one of the two was 32px. */}
+        <div className="flex shrink-0 items-center gap-1">
+          <PlayPauseButton variant="plain" />
+          <NextButton size="lg" />
         </div>
       </div>
     </footer>

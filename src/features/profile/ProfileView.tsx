@@ -234,30 +234,39 @@ export function ProfileView({
           />
         )}
 
+        {/*
+          A column on a phone, the wrapping row above `sm`.
+
+          Wrapping was all it had: on 360px the avatar, the identity block and
+          the buttons could not share a line, so the identity got squeezed to
+          about sixty pixels and "Solar Crew" came out one word per line with the
+          follower counts stacked underneath. A phone has room for exactly one of
+          these things per row.
+        */}
         <div
           className={cn(
-            "relative flex flex-wrap items-end gap-5 p-6",
-            banner && "pt-28",
+            "relative flex flex-col items-start gap-4 p-4 sm:flex-row sm:flex-wrap sm:items-end sm:gap-5 sm:p-6",
+            banner && "pt-24 sm:pt-28",
           )}
         >
           {avatar ? (
             <img
               src={avatar}
               alt=""
-              className="h-28 w-28 shrink-0 rounded-full object-cover shadow-[var(--shadow-2)]"
+              className="h-20 w-20 shrink-0 rounded-full object-cover shadow-[var(--shadow-2)] sm:h-28 sm:w-28"
             />
           ) : (
-            <div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-full bg-secondary">
+            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-secondary sm:h-28 sm:w-28">
               <UserIcon className="h-10 w-10 text-muted-foreground" />
             </div>
           )}
 
-          <div className="min-w-0 flex-1">
+          <div className="w-full min-w-0 sm:flex-1">
             <div className="label text-xs font-semibold text-muted-foreground">
               {isSelf ? t.profile.you : t.nav.profile}
             </div>
             <h1
-              className="flex items-center gap-2 truncate text-3xl font-bold tracking-tight"
+              className="flex items-center gap-2 truncate text-2xl font-bold tracking-tight sm:text-3xl"
               style={{ fontFamily: "var(--font-display)" }}
             >
               {profile?.username ?? "…"}
@@ -270,7 +279,7 @@ export function ProfileView({
               <p className="text-sm text-muted-foreground">{profile.full_name}</p>
             )}
 
-            <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
               <Stat
                 value={profile?.followers_count}
                 label={t.profile.followers}
@@ -319,7 +328,7 @@ export function ProfileView({
               separate `self-start` children with their own paddings they sat
               at three different heights against each other. */}
           {profile && (
-            <div className="flex shrink-0 items-center gap-2 self-start">
+            <div className="flex w-full flex-wrap items-center gap-2 self-start sm:w-auto sm:shrink-0 sm:flex-nowrap">
               <ShareButton url={profile.permalink_url} withLabel />
 
               <button
@@ -503,7 +512,7 @@ function Stat({
     <button
       onClick={onClick}
       className={cn(
-        "rounded-[var(--radius-control)] px-1.5 py-0.5 transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground",
+        "whitespace-nowrap rounded-[var(--radius-control)] px-1.5 py-0.5 transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground",
         active && "text-foreground",
       )}
     >

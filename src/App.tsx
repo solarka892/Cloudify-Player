@@ -6,6 +6,7 @@ import {
   scLoginBrowser,
   scLogout,
   scSetToken,
+  syncInsets,
   type Me,
 } from "@/lib/tauri";
 import { isAndroid } from "@/lib/platform";
@@ -131,6 +132,12 @@ function App() {
   useEffect(() => {
     void refreshMe();
   }, [refreshMe]);
+
+  // The host cannot publish its safe-area insets until a document exists to
+  // receive them, so the document asks. No-op off Android; see `syncInsets`.
+  useEffect(() => {
+    void syncInsets();
+  }, []);
 
   if (auth.state === "unknown") {
     return <div className="h-full w-full bg-background" />;

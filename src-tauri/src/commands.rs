@@ -537,6 +537,27 @@ pub async fn media_session_stop() -> Result<(), String> {
     crate::media::stop().await
 }
 
+// ───────────────────────────────────────────────────────── window insets ────
+
+/// Publish the window's safe-area insets to CSS as `--inset-*`.
+///
+/// Android only, and only because `env(safe-area-inset-*)` cannot answer there:
+/// its webview fills those from the display cutout, so a gesture bar reads as
+/// zero. A no-op everywhere else, where `env()` is correct.
+#[cfg(target_os = "android")]
+#[tauri::command]
+pub async fn sync_insets() -> Result<(), String> {
+    crate::android::insets_sync()
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[cfg(not(target_os = "android"))]
+#[tauri::command]
+pub async fn sync_insets() -> Result<(), String> {
+    Ok(())
+}
+
 // ───────────────────────────────────────────────────────── track pages ────
 
 /// The full track object behind a track page. Public.
