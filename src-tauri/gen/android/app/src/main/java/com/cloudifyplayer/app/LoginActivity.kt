@@ -1,5 +1,6 @@
 package com.cloudifyplayer.app
 
+import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -10,6 +11,9 @@ import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 
 /**
  * SoundCloud's sign-in page, in a WebView whose cookie jar we can read.
@@ -82,7 +86,26 @@ class LoginActivity : AppCompatActivity() {
         }
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
 
-        setContentView(webView)
+        // From targetSdk 35 the platform lays every window out edge to edge, so
+        // the page would start underneath the status bar and end underneath the
+        // gesture bar. SoundCloud's page knows nothing about either, so the inset
+        // is applied here instead. White, because their sign-in pages are, and a
+        // strip of the app's dark theme above a white page looks like a glitch.
+        val root = FrameLayout(this).apply { setBackgroundColor(Color.WHITE) }
+        root.addView(webView)
+        ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+            // The soft keyboard covers the bottom of a form it is being typed
+            // into, so it displaces the page rather than overlapping it.
+            view.setPadding(bars.left, bars.top, bars.right, maxOf(bars.bottom, ime.bottom))
+            insets
+        }
+        // Dark status bar icons: the app's own theme is dark, which on a white
+        // page leaves the clock and the battery invisible.
+        WindowInsetsControllerCompat(window, root).isAppearanceLightStatusBars = true
+
+        setContentView(root)
         webView.loadUrl(SIGNIN_URL)
 
         // Backing out is a cancellation, not a silent no-op: the Rust side is
@@ -130,8 +153,11 @@ class LoginActivity : AppCompatActivity() {
      * `CookieManager` reads the native store, so unlike `document.cookie` it can
      * see HttpOnly cookies — which is the whole reason this Activity exists.
      */
-    private fun readToken(): String? {
-        val cookies = CookieManager.getInstance().getCookie(COOKIE_DOMAIN) ?: return null
+    private fun readToken(): String? =
+        COOKIE_DOMAINS.asSequence().mapNotNull(::readTokenFrom).firstOrNull()
+
+    private fun readTokenFrom(url: String): String? {
+        val cookies = CookieManager.getInstance().getCookie(url) ?: return null
         return cookies.split(';')
             .asSequence()
             .map { it.trim() }
@@ -142,7 +168,22 @@ class LoginActivity : AppCompatActivity() {
 
     companion object {
         private const val SIGNIN_URL = "https://soundcloud.com/signin"
-        private const val COOKIE_DOMAIN = "https://soundcloud.com"
+
+        /**
+         * Where to look for the token, mobile host first.
+         *
+         * A phone user agent gets redirected to `m.soundcloud.com`, and the
+         * `oauth_token` cookie is then set *host-only* on that host. `getCookie`
+         * returns the domain cookies of whatever host it is asked about, so a
+         * query for `soundcloud.com` cannot see it — which left the poll loop
+         * running forever after a sign-in that had in fact succeeded. The
+         * desktop host stays in the list because the redirect is the web app's
+         * choice, not a promise.
+         */
+        private val COOKIE_DOMAINS = listOf(
+            "https://m.soundcloud.com",
+            "https://soundcloud.com",
+        )
         private const val TOKEN_COOKIE = "oauth_token"
         private const val POLL_MS = 500L
     }

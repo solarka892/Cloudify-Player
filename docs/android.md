@@ -113,6 +113,14 @@ what anti-fraud actually detects.
 There is no browser-cookie flow on Android (`sc_login_browser` returns an
 explanatory error there): no other browser's profile is readable.
 
+**The token does not arrive on the host you signed in to.** A phone user agent
+gets redirected to `m.soundcloud.com`, and `oauth_token` is then set *host-only*
+on that host — `CookieManager.getCookie` returns the domain cookies of whichever
+host it is asked about, so a query for `soundcloud.com` cannot see it. Asking
+only about the desktop host left the poll loop running forever after a sign-in
+that had in fact succeeded, with the SoundCloud site sitting there logged in.
+`LoginActivity.COOKIE_DOMAINS` now asks about both, mobile first.
+
 ## Running it in an emulator
 
 The machine is x86_64 and `/dev/kvm` is present, so use an **x86_64** system
@@ -154,7 +162,15 @@ Logs: `adb logcat -s Cloudify:V chromium:V RustStdoutStderr:V`.
   queue and lyrics appear on a phone; the compact bar is a launcher for it.
 - `viewport-fit=cover` plus the `pt-safe`/`pb-safe` utilities keep content out
   from under the status bar and the gesture bar, since `MainActivity` draws edge
-  to edge.
+  to edge — and from targetSdk 35 the platform enforces edge to edge regardless.
+  **`env(safe-area-inset-*)` is not sufficient here.** Android's webview fills it
+  from the display *cutout* and nothing else: measured in the emulator, the top
+  was 49px (the notch, which the status bar happens to occupy) and the bottom was
+  0px with a gesture bar plainly there, so the tab bar's labels rendered
+  underneath it. `MainActivity.publishInsets` pushes the real system-bar insets
+  in as `--inset-*` custom properties and the utilities take `max()` of the two.
+  `LoginActivity` pads its own webview, since the page inside it is
+  SoundCloud's and knows nothing about any of this.
 - **Seven sections, five tabs.** `COMPACT_NAV_ITEMS` drops messages and
   notifications from the bottom bar — five is the most a 360px bar fits at a
   48px touch target. They move to `NavCompactHeader` instead, as icons with

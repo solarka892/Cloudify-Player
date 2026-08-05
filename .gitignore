@@ -58,3 +58,6 @@ src-tauri/gen/schemas/
 # The build glue Tauri regenerates on every build is excluded by the project's
 # own nested .gitignore files, along with local.properties and the signing
 # keystore config.
+
+# Locally built APKs, kept out of the tree for hand-testing.
+dist-apk/
