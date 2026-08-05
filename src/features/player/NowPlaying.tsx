@@ -7,6 +7,7 @@ import {
   Moon,
   Radio,
 } from "lucide-react";
+import type { Track } from "@/lib/tauri";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
 import { LyricsPanel } from "./Lyrics";
@@ -28,6 +29,8 @@ import { Ambient } from "@/components/Ambient";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { AudioLines } from "lucide-react";
 import { useDismiss } from "@/hooks/useDismiss";
+import { useCompact } from "@/hooks/useCompact";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { t } from "@/i18n";
 import { artwork, cn } from "@/lib/utils";
 
@@ -35,6 +38,15 @@ type Side = "none" | "lyrics" | "queue";
 
 const SLEEP_OPTIONS = [15, 30, 45, 60, 90];
 const RATES = [0.75, 1, 1.25, 1.5, 2];
+
+/**
+ * The width at which lyrics and the queue fit *beside* the player.
+ *
+ * Tailwind's `xl`. Below it they take the screen instead: the panel used to be
+ * `hidden xl:flex`, so on anything narrower the buttons toggled a panel that was
+ * never drawn and the feature looked broken rather than absent.
+ */
+const SIDE_BY_SIDE = "(min-width: 1280px)";
 
 /**
  * Full-screen now-playing view: big artwork, transport, and a side panel for
@@ -58,6 +70,10 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
   const setAudio = useSettingsStore((s) => s.setAudio);
   const [side, setSide] = useState<Side>("none");
   const [showSleep, setShowSleep] = useState(false);
+  const compact = useCompact();
+  const sideBySide = useMediaQuery(SIDE_BY_SIDE);
+  const toggleSide = (which: Exclude<Side, "none">) =>
+    setSide(side === which ? "none" : which);
 
   if (!current) return null;
 
@@ -82,7 +98,7 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
       )}
       <div className="pointer-events-none absolute inset-0 bg-background/70" aria-hidden />
 
-      <header className="relative z-10 flex items-center gap-2 p-4">
+      <header className="pt-safe relative z-10 flex items-center gap-2 p-4">
         <button
           onClick={dismiss}
           aria-label={t.player.collapse}
@@ -94,22 +110,28 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
           {t.player.nowPlaying}
         </span>
 
-        <div className="ml-auto flex items-center gap-1">
-          <IconToggle
-            active={side === "lyrics"}
-            label={t.player.lyrics}
-            onClick={() => setSide(side === "lyrics" ? "none" : "lyrics")}
-          >
-            <Mic2 className="h-4 w-4" />
-          </IconToggle>
-          <IconToggle
-            active={side === "queue"}
-            label={t.player.queue}
-            onClick={() => setSide(side === "queue" ? "none" : "queue")}
-          >
-            <ListMusic className="h-4 w-4" />
-          </IconToggle>
-        </div>
+        {/* On a phone these live in the row of chips down by the transport
+            instead: the top corners of a 6" screen are the two places a thumb
+            cannot go, and lyrics and the queue are things you reach for while
+            listening rather than once on the way in. */}
+        {!compact && (
+          <div className="ml-auto flex items-center gap-1">
+            <IconToggle
+              active={side === "lyrics"}
+              label={t.player.lyrics}
+              onClick={() => toggleSide("lyrics")}
+            >
+              <Mic2 className="h-4 w-4" />
+            </IconToggle>
+            <IconToggle
+              active={side === "queue"}
+              label={t.player.queue}
+              onClick={() => toggleSide("queue")}
+            >
+              <ListMusic className="h-4 w-4" />
+            </IconToggle>
+          </div>
+        )}
       </header>
 
       <div className="relative z-10 flex min-h-0 flex-1 justify-center gap-6 px-6 pb-4">
@@ -179,6 +201,28 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
           <div className="flex justify-center">
             <VolumeControl />
           </div>
+
+          {/* The two panels, where the thumb is. Full-width rows rather than
+              chips: these are the ones reached for mid-song, and they open a
+              whole screen, so they should not be the smallest targets on it. */}
+          {compact && (
+            <div className="flex items-center gap-2">
+              <PanelButton
+                active={side === "lyrics"}
+                label={t.player.lyrics}
+                onClick={() => toggleSide("lyrics")}
+              >
+                <Mic2 className="h-4 w-4" />
+              </PanelButton>
+              <PanelButton
+                active={side === "queue"}
+                label={t.player.queue}
+                onClick={() => toggleSide("queue")}
+              >
+                <ListMusic className="h-4 w-4" />
+              </PanelButton>
+            </div>
+          )}
 
           {/* Everything else: the long tail, on its own line. */}
           <div className="flex flex-wrap items-center justify-center gap-3">
@@ -287,27 +331,94 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
-        {/* Side panel */}
-        {side !== "none" && (
-          // `xl`, not `lg`: the player column is a fixed 34rem now, and 34 plus
-          // this panel's 26 does not fit inside a 1024px window without one of
-          // them being squeezed — which would move the cover, the one thing the
-          // eye is anchored to.
-          <aside className="panel pop-in hidden w-[26rem] shrink-0 overflow-hidden xl:flex xl:flex-col">
-            {side === "queue" ? (
-              <QueuePanel onClose={() => setSide("none")} />
-            ) : (
-              <div className="relative min-h-0 flex-1 overflow-hidden">
-                <Ambient />
-                <div className="relative h-full overflow-y-auto">
-                  <LyricsPanel track={current} />
-                </div>
+        {/*
+          Lyrics or the queue: beside the player where both fit, over it where
+          they do not.
+
+          `xl`, not `lg`: the player column is a fixed 34rem, and 34 plus this
+          panel's 26 does not fit inside a 1024px window without one of them
+          being squeezed — which would move the cover, the one thing the eye is
+          anchored to. Below that the panel used to be `hidden`, so on a phone
+          both buttons did nothing at all.
+        */}
+        {side !== "none" &&
+          (sideBySide ? (
+            <aside className="panel pop-in flex w-[26rem] shrink-0 flex-col overflow-hidden">
+              {side === "queue" ? (
+                <QueuePanel onClose={() => setSide("none")} />
+              ) : (
+                <LyricsSurface track={current} />
+              )}
+            </aside>
+          ) : (
+            <div className="pop-in pt-safe pb-safe absolute inset-0 z-30 flex flex-col bg-background/95 backdrop-blur-xl">
+              <header className="flex items-center gap-2 p-4">
+                <button
+                  onClick={() => setSide("none")}
+                  aria-label={t.player.collapse}
+                  className="rounded-[var(--radius-control)] p-2 text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground"
+                >
+                  <ChevronDown className="h-5 w-5" />
+                </button>
+                {/* Only for lyrics: the queue names itself in its own header. */}
+                {side === "lyrics" && (
+                  <span className="label text-xs font-semibold text-muted-foreground">
+                    {t.player.lyrics}
+                  </span>
+                )}
+              </header>
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                {side === "queue" ? (
+                  <QueuePanel />
+                ) : (
+                  <LyricsSurface track={current} />
+                )}
               </div>
-            )}
-          </aside>
-        )}
+            </div>
+          ))}
       </div>
     </div>
+  );
+}
+
+/** The lyrics surface: a scrolling transcript over its own soft lighting. */
+function LyricsSurface({ track }: { track: Track }) {
+  return (
+    <div className="relative min-h-0 flex-1 overflow-hidden">
+      <Ambient />
+      <div className="relative h-full overflow-y-auto">
+        <LyricsPanel track={track} />
+      </div>
+    </div>
+  );
+}
+
+/** A full-width toggle for one of the panels. Compact layout only. */
+function PanelButton({
+  active,
+  label,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "flex flex-1 items-center justify-center gap-2 rounded-[var(--radius-control)] border py-2.5 text-sm font-medium transition-colors duration-[var(--motion-fast)]",
+        active
+          ? "border-brand/40 bg-brand/10 text-brand"
+          : "border-border text-muted-foreground hover:bg-accent hover:text-foreground",
+      )}
+    >
+      {children}
+      {label}
+    </button>
   );
 }
 
