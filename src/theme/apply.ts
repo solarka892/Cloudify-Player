@@ -45,6 +45,15 @@ export interface ThemeInput {
    * which is also the cheap path on a software-composited desktop.
    */
   appleTransparency: boolean;
+  /**
+   * Whether cover art is reduced to one tone.
+   *
+   * A setting rather than part of the skin because it is the one piece of
+   * Obsidian people reasonably disagree with — the covers are the only place
+   * their library's own colour appears. Off simply blanks `--art-filter`; nothing
+   * else in the interface changes, the wallpaper included.
+   */
+  monoArtwork: boolean;
   /** Per-property overrides authored by the user; applied last. */
   overrides: ThemeVars;
 }
@@ -99,6 +108,11 @@ export function buildVars(input: ThemeInput): ThemeVars {
     vars["--surface-alpha"] = skin.glass.alpha;
   }
 
+  // Only ever *removes* a filter: a skin that does not ask for one has nothing
+  // here to turn off, so the switch is inert everywhere but Obsidian. A hand
+  // override of `--art-filter` still wins, like every other override.
+  if (!input.monoArtwork) vars["--art-filter"] = "none";
+
   // An accent preset overrides only the two brand colours, so it composes with
   // any palette instead of replacing it — Apple mode included. iOS ships one
   // tint, but it is also a tint the user is allowed to change, and the mode
@@ -141,6 +155,12 @@ export function applyTheme(input: ThemeInput): void {
   // The whole of `styles/apple.css` hangs off this one attribute, so the mode
   // is a single flag on <html> rather than a class on every component.
   root.dataset.apple = input.apple ? "1" : "0";
+  // For the handful of rules a skin cannot express as one custom property: the
+  // ambient light layer, the film of grain, the desaturated wallpaper. Written
+  // here rather than read by components, so no component branches on the skin —
+  // they set a class and CSS decides what it means. Apple mode replaces the skin
+  // outright, so while it is on that is what the attribute says.
+  root.dataset.skin = input.apple ? "apple" : input.skin;
 
   // Anything painting outside CSS — the canvas effects — cannot see a custom
   // property change, so it is announced.

@@ -162,7 +162,8 @@
     "skinHints": {
       "aurora": "Szkło, rozmycie i delikatna poświata",
       "editorial": "Duża typografia, twarde linie, bez cieni",
-      "studio": "Dotykowe kontrolki, subtelna głębia, fala"
+      "studio": "Dotykowe kontrolki, subtelna głębia, fala",
+      "obsidian": "Czarne szkło, włosowe linie, ostre krawędzie"
     },
     "colour": "Kolor",
     "theme": "Motyw",
@@ -213,6 +214,13 @@
     "glassHint": "Przezroczyste, rozmyte powierzchnie",
     "glassOn": "Włącz szkło",
     "glassPerf": "Kosztowne w rysowaniu — wyłącz, jeśli interfejs zwalnia",
+    "monoArtwork": "Okładki w odcieniach szarości",
+    "monoArtworkHint": "Działa tylko w skinie Obsidian",
+    "window": "Okno",
+    "nativeFrame": "Systemowa ramka okna",
+    "nativeFrameHint": "Pasek tytułu rysuje system. Włącz, jeśli przeciąganie albo zmiana rozmiaru nie działa.",
+    "builtin": "Gotowe wyglądy",
+    "builtinHint": "Skin, paleta i tło jednym kliknięciem. Wszystkie przełączniki potem nadal są twoje.",
     "resetSection": "Przywróć",
     "custom": "Własne kolory",
     "customHint": "Nadpisują paletę; obok można je wyczyścić",
@@ -327,5 +335,11 @@
     "share": "Udostępnij",
     "shareCopied": "Link skopiowany",
     "shareFailed": "Nie udało się skopiować linku"
+  },
+  "window": {
+    "minimize": "Zminimalizuj",
+    "maximize": "Zmaksymalizuj",
+    "restore": "Przywróć",
+    "close": "Zamknij"
   }
 }

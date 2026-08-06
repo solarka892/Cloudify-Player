@@ -162,7 +162,8 @@
     "skinHints": {
       "aurora": "Cam, bulanıklık ve yumuşak bir parıltı",
       "editorial": "Büyük tipografi, keskin çizgiler, gölge yok",
-      "studio": "Dokunsal kontroller, ölçülü derinlik, dalga"
+      "studio": "Dokunsal kontroller, ölçülü derinlik, dalga",
+      "obsidian": "Siyah cam, saç çizgileri, keskin köşeler"
     },
     "colour": "Renk",
     "theme": "Tema",
@@ -213,6 +214,13 @@
     "glassHint": "Yarı saydam, bulanık yüzeyler",
     "glassOn": "Camı aç",
     "glassPerf": "Çizmesi pahalı — arayüz ağırlaşırsa kapat",
+    "monoArtwork": "Kapaklar gri tonlamalı",
+    "monoArtworkHint": "Yalnızca Obsidian görünümünde etkili",
+    "window": "Pencere",
+    "nativeFrame": "Sistem pencere çerçevesi",
+    "nativeFrameHint": "Başlık çubuğunu sistem çizer. Sürükleme veya yeniden boyutlandırma çalışmazsa açın.",
+    "builtin": "Hazır görünümler",
+    "builtinHint": "Tek dokunuşta görünüm, palet ve arka plan. Sonrasında tüm anahtarlar sizde kalır.",
     "resetSection": "Sıfırla",
     "custom": "Özel renkler",
     "customHint": "Paleti geçersiz kılar; yanından temizleyebilirsin",
@@ -327,5 +335,11 @@
     "share": "Paylaş",
     "shareCopied": "Bağlantı kopyalandı",
     "shareFailed": "Bağlantı kopyalanamadı"
+  },
+  "window": {
+    "minimize": "Küçült",
+    "maximize": "Büyült",
+    "restore": "Geri yükle",
+    "close": "Kapat"
   }
 }

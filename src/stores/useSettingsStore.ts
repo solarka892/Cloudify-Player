@@ -12,14 +12,15 @@ import {
   type Density,
   type ThemeMode,
 } from "@/theme/apply";
-import { accentFromArtwork } from "@/theme/artwork";
+import { accentFromArtwork, desaturate } from "@/theme/artwork";
+import { setNativeDecorations } from "@/lib/window";
 import {
   applyAudio,
   DEFAULT_AUDIO,
   needsGraph,
   type AudioConfig,
 } from "@/audio/engine";
-import type { PaletteId } from "@/theme/palettes";
+import { PALETTES, type PaletteId } from "@/theme/palettes";
 import type { SkinId } from "@/theme/skins";
 import type { EffectId } from "@/theme/particles";
 import type { ThemeVars } from "@/theme/tokens";
@@ -72,6 +73,11 @@ export interface ThemeState {
   apple: boolean;
   /** Apple mode's own glass switch; iOS calls the inverse Reduce Transparency. */
   appleTransparency: boolean;
+  /**
+   * Reduce cover art to one tone. Only the Obsidian skin asks for a filter, so
+   * this is inert under the others — see `--art-filter`.
+   */
+  monoArtwork: boolean;
   /** Hand-edited CSS custom properties; win over everything else. */
   overrides: ThemeVars;
 }
@@ -82,6 +88,11 @@ export interface Preset {
   theme: ThemeState;
   backdrop: BackdropState;
   layout: LayoutId;
+  /**
+   * Ships with the app rather than saved by the user. Cannot be deleted, and
+   * applying it must not mutate it — see `applyPreset`.
+   */
+  builtin?: boolean;
 }
 
 /** Shape written to disk and produced by "export theme". */
@@ -112,6 +123,10 @@ const DEFAULT_THEME: ThemeState = {
   glass: false,
   apple: false,
   appleTransparency: true,
+  // On by default so the Obsidian preset needs no extra step to look like
+  // itself; inert under every other skin, which is why it costs nothing to
+  // default to on.
+  monoArtwork: true,
   overrides: {},
 };
 
@@ -129,6 +144,61 @@ const DEFAULT_BACKDROP: BackdropState = {
   saturate: 1.2,
 };
 
+/**
+ * Presets that ship with the app.
+ *
+ * The three appearance axes are independent, and that is the point — but a
+ * *designed* look is a particular combination of them, and asking the user to
+ * find four settings before Obsidian looks like Obsidian would hide the design
+ * behind the architecture. A preset is the one place the axes are allowed to be
+ * named together, and it stays a suggestion: every switch it touches is still
+ * there afterwards.
+ *
+ * Built-ins are not persisted. They live here so a later version can change what
+ * "Obsidian" means without a migration, and so nothing the user saved can be
+ * shadowed by an id we later reuse.
+ */
+export const BUILTIN_PRESETS: Preset[] = [
+  {
+    id: "builtin:obsidian",
+    name: "Obsidian",
+    builtin: true,
+    layout: "rail",
+    theme: {
+      ...DEFAULT_THEME,
+      mode: "dark",
+      palette: "obsidian",
+      skin: "obsidian",
+      // The reference look. Glass stays a user-owned perf switch everywhere
+      // else, but the preset is a statement about how the mode is meant to look,
+      // and frosted is how: 30px of blur over a 26% surface.
+      glass: true,
+      accent: null,
+      // Both off: the accent is white by palette, and a sampled one would be the
+      // one colour in the interface. See `Palette.achromatic`.
+      accentFromArtwork: false,
+      apple: false,
+      density: "cozy",
+      monoArtwork: true,
+      // A preset that carried overrides would silently discard the user's own
+      // hand edits, which are theirs and not part of any look we ship.
+      overrides: {},
+    },
+    backdrop: {
+      ...DEFAULT_BACKDROP,
+      mode: "artwork",
+      blur: 64,
+      // Deeper than the default 0.55: the wallpaper is the only thing the loupe
+      // has to compete with, and at 0.55 a bright cover washes the light out.
+      dim: 0.78,
+      // Not optional. The blurred cover is a full-window field of colour, and it
+      // is the single easiest way to put colour back into a mode that rules it
+      // out — the skin also zeroes this in CSS, and both are on purpose.
+      saturate: 0,
+    },
+  },
+];
+
 interface SettingsState {
   layout: LayoutId;
   theme: ThemeState;
@@ -136,6 +206,19 @@ interface SettingsState {
   presets: Preset[];
   /** Ids of easter-egg extras the user has found. */
   unlocked: string[];
+
+  /**
+   * Let the window manager draw the title bar instead of the app.
+   *
+   * The escape hatch for the custom chrome, not a style choice: without system
+   * decorations the app owns dragging, the maximise button and every resize
+   * edge, and a tiling WM or an unusual compositor can leave one of those not
+   * working. Applied live with `setDecorations`, so a user who has locked
+   * themselves out of resizing can get the real frame back without a restart —
+   * which is also why it is *not* part of `ThemeState`: an imported theme file
+   * must never be able to take a window's controls away.
+   */
+  nativeFrame: boolean;
 
   /** UI language. Applied to the live `t` dictionary, not just stored. */
   locale: Locale;
@@ -155,6 +238,7 @@ interface SettingsState {
   artworkUrl: string | null;
 
   setLayout: (layout: LayoutId) => void;
+  setNativeFrame: (on: boolean) => void;
   /** Reveal a hidden extra. Returns true the first time only. */
   unlock: (id: string) => boolean;
   setTheme: (patch: Partial<ThemeState>) => void;
@@ -201,6 +285,14 @@ export const useSettingsStore = create<SettingsState>()(
       /** Push the current appearance onto the document. */
       function sync(): void {
         const { theme, artworkAccent } = get();
+        // An accent sampled from the cover is the one path by which colour can
+        // reach a palette that rules colour out, and the palette gets to say what
+        // happens to it. Reduced to its lightness rather than dropped: a dark
+        // cover still gives a dark accent, so the setting keeps meaning something.
+        const sampled =
+          artworkAccent && PALETTES[theme.palette]?.achromatic
+            ? desaturate(artworkAccent)
+            : artworkAccent;
         applyTheme({
           mode: theme.mode,
           palette: theme.palette,
@@ -211,10 +303,11 @@ export const useSettingsStore = create<SettingsState>()(
           glass: theme.glass,
           apple: theme.apple,
           appleTransparency: theme.appleTransparency,
+          monoArtwork: theme.monoArtwork,
           // Artwork accent sits under the user's own edits, above the palette.
           overrides: {
-            ...(theme.accentFromArtwork && artworkAccent
-              ? { "--brand": artworkAccent.brand, "--brand-2": artworkAccent.brand2 }
+            ...(theme.accentFromArtwork && sampled
+              ? { "--brand": sampled.brand, "--brand-2": sampled.brand2 }
               : {}),
             ...theme.overrides,
           },
@@ -245,6 +338,9 @@ export const useSettingsStore = create<SettingsState>()(
         backdrop: DEFAULT_BACKDROP,
         presets: [],
         unlocked: [],
+        // The app draws its own title bar by default; this is the way back to the
+        // system's. See the field's comment for why that is the default.
+        nativeFrame: false,
 
         locale: detectLocale(),
         autoplayNext: true,
@@ -258,6 +354,13 @@ export const useSettingsStore = create<SettingsState>()(
         artworkUrl: null,
 
         setLayout: (layout) => set({ layout }),
+
+        setNativeFrame(on) {
+          set({ nativeFrame: on });
+          // Live, not on next launch: the whole reason this setting exists is
+          // that someone may be unable to resize or move the window right now.
+          void setNativeDecorations(on);
+        },
 
         unlock(id) {
           if (get().unlocked.includes(id)) return false;
@@ -341,10 +444,16 @@ export const useSettingsStore = create<SettingsState>()(
         },
 
         applyPreset(id) {
-          const preset = get().presets.find((p) => p.id === id);
+          const preset =
+            get().presets.find((p) => p.id === id) ??
+            BUILTIN_PRESETS.find((p) => p.id === id);
           if (!preset) return;
+          // Copied field by field, not referenced. A built-in is a module-level
+          // object shared by every window and every later `applyPreset`, so
+          // handing its `theme` straight to `set` would let the next settings
+          // change edit the preset itself.
           set({
-            theme: { ...preset.theme },
+            theme: { ...preset.theme, overrides: { ...preset.theme.overrides } },
             backdrop: { ...preset.backdrop },
             layout: preset.layout,
           });
@@ -352,6 +461,8 @@ export const useSettingsStore = create<SettingsState>()(
         },
 
         deletePreset(id) {
+          // Built-ins are not in `presets`, so this cannot reach them — the guard
+          // is in the UI, which does not offer the button.
           set({ presets: get().presets.filter((p) => p.id !== id) });
         },
 
@@ -423,6 +534,7 @@ export const useSettingsStore = create<SettingsState>()(
         backdrop: s.backdrop,
         presets: s.presets,
         unlocked: s.unlocked,
+        nativeFrame: s.nativeFrame,
         locale: s.locale,
         autoplayNext: s.autoplayNext,
         rememberVolume: s.rememberVolume,
@@ -490,8 +602,13 @@ export const useSettingsStore = create<SettingsState>()(
     glass: s.theme.glass,
     apple: s.theme.apple,
     appleTransparency: s.theme.appleTransparency,
+    monoArtwork: s.theme.monoArtwork,
     overrides: s.theme.overrides,
   });
+  // `tauri.conf.json` launches the window undecorated, which is the common case
+  // and avoids a visible re-frame at startup. Only the minority who asked for the
+  // system frame need it put back, so only they pay for the flip.
+  if (s.nativeFrame) void setNativeDecorations(true);
   applyBackdrop({
     "--backdrop-image": s.backdrop.image && s.backdrop.mode === "image"
       ? `url("${s.backdrop.image}")`

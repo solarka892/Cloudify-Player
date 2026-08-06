@@ -1,4 +1,4 @@
-import type { SkinVars } from "./tokens";
+import { SIGNATURE_OFF, type SkinVars } from "./tokens";
 
 /**
  * Skins control *form* only — never colour. Swapping a skin must leave the
@@ -9,7 +9,7 @@ import type { SkinVars } from "./tokens";
  * fonts).
  */
 
-export type SkinId = "aurora" | "editorial" | "studio";
+export type SkinId = "aurora" | "editorial" | "studio" | "obsidian";
 
 export interface Skin {
   id: SkinId;
@@ -56,6 +56,8 @@ export const SKINS: Record<SkinId, Skin> = {
       "--label-spacing": "0em",
       "--motion-fast": "130ms",
       "--motion-slow": "280ms",
+      "--focus-ring": "0 0 0 2px color-mix(in srgb, var(--brand) 65%, transparent)",
+      ...SIGNATURE_OFF,
     },
     // The soft one: the most blur and the least surface, so the backdrop is
     // most of what you see.
@@ -81,6 +83,8 @@ export const SKINS: Record<SkinId, Skin> = {
       "--label-spacing": "0.09em",
       "--motion-fast": "80ms",
       "--motion-slow": "150ms",
+      "--focus-ring": "0 0 0 2px var(--foreground)",
+      ...SIGNATURE_OFF,
     },
     // Editorial is about hard edges and legible type, so it frosts tightly:
     // enough blur to read as glass, opaque enough that the rules stay crisp
@@ -109,10 +113,78 @@ export const SKINS: Record<SkinId, Skin> = {
       "--label-spacing": "0.01em",
       "--motion-fast": "110ms",
       "--motion-slow": "220ms",
+      "--focus-ring":
+        "0 0 0 1px var(--background), 0 0 0 3px color-mix(in srgb, var(--brand) 70%, transparent)",
+      ...SIGNATURE_OFF,
     },
     // Hardware has depth but not transparency; a moderate frost keeps the
     // inset highlights readable against it.
     glass: { blur: "20px", alpha: "68%" },
+  },
+
+  /**
+   * Black glass. Hairlines instead of borders, weight instead of colour, and a
+   * radius of exactly zero everywhere.
+   *
+   * The one skin that reaches past form into the two things a skin normally has
+   * no say over — the artwork and the window frame — because both are what would
+   * otherwise break it: a SoundCloud cover is the most saturated object on the
+   * screen, and a system title bar is the one rectangle with rounded corners and
+   * a gradient. Both go through tokens (`--art-filter`, `--chrome-*`) so the
+   * other skins say "no" in the same vocabulary rather than by omission.
+   */
+  obsidian: {
+    id: "obsidian",
+    name: "Obsidian",
+    vars: {
+      // Zero, not "small". A 2px radius reads as a mistake; 0 reads as a
+      // decision, and it is the mode's whole signature.
+      "--radius": "0px",
+      "--radius-control": "0px",
+      "--radius-hero": "0px",
+      "--border-width": "1px",
+      "--blur": "0px",
+      "--surface-alpha": "100%",
+      // No shadows at all: depth is layers of translucency and hairlines. If an
+      // element sinks into the page, strengthen its border — do not bring a
+      // shadow back. The window's own drop shadow on the desktop is not part of
+      // the interface and is not this.
+      "--shadow-1": "none",
+      "--shadow-2": "none",
+      "--font-ui": SANS,
+      // One typeface. The character comes from weight (200 headings against 600
+      // micro-caps) and from tracking, which is cheaper and more consistent than
+      // a second family the user may not have.
+      "--font-display": SANS,
+      "--label-transform": "uppercase",
+      "--label-spacing": "0.17em",
+      "--label-size": "0.5625rem",
+      "--motion-fast": "90ms",
+      "--motion-slow": "200ms",
+      // A square ring with a gap: on black, a ring that touches the element
+      // merges with its hairline border and stops reading as focus.
+      "--focus-ring": "0 0 0 1px var(--background), 0 0 0 2px var(--foreground)",
+      // The key token of the mode. Desaturate, then pull the level down and the
+      // contrast up a hair, so a cover reads as texture rather than as a photo
+      // someone drained.
+      "--art-filter": "grayscale(1) brightness(0.82) contrast(1.06)",
+      "--chrome-height": "32px",
+      "--chrome-alpha": "2%",
+      "--grain": "0.05",
+      // Deliberately quieter than it wants to be. The light is what makes the
+      // glass legible; past about 0.5 it stops being a reflection and becomes
+      // wallpaper, and then the interface is competing with it.
+      "--glow": "0.44",
+      // With glass off the panels would otherwise be the palette's `surface` at
+      // full strength, which is three times brighter than the frosted version of
+      // the same colour. See the token's comment.
+      "--surface-sink": "55%",
+    },
+    // The heaviest frost of any skin, over the least surface. It can afford both
+    // because the palette under it is black: 26% of a near-black card is about
+    // 2% of white, which is the "panel is barely lighter than the page" the mode
+    // is built on, and the blur is what keeps that from reading as flat.
+    glass: { blur: "30px", alpha: "26%" },
   },
 };
 

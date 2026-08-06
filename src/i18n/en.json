@@ -203,7 +203,8 @@
     "skinHints": {
       "aurora": "Glass, blur and a soft glow",
       "editorial": "Large type, hard lines, no shadows",
-      "studio": "Tactile controls, careful depth, a waveform"
+      "studio": "Tactile controls, careful depth, a waveform",
+      "obsidian": "Black glass, hairlines, hard edges"
     },
     "colour": "Colour",
     "theme": "Theme",
@@ -254,6 +255,13 @@
     "glassHint": "Translucent, blurred surfaces",
     "glassOn": "Enable glass",
     "glassPerf": "Costly to render — turn it off if the UI feels sluggish",
+    "monoArtwork": "Greyscale artwork",
+    "monoArtworkHint": "Only the Obsidian skin asks for this",
+    "window": "Window",
+    "nativeFrame": "Native window frame",
+    "nativeFrameHint": "Let the system draw the title bar. Turn it on if dragging or resizing misbehaves.",
+    "builtin": "Ready-made looks",
+    "builtinHint": "Skin, palette and wallpaper in one tap. Every switch stays yours afterwards.",
     "resetSection": "Reset",
     "custom": "Custom colours",
     "customHint": "Override the palette; clear them next to it",
@@ -469,5 +477,11 @@
   "common": {
     "cancel": "Cancel",
     "delete": "Delete"
+  },
+  "window": {
+    "minimize": "Minimise",
+    "maximize": "Maximise",
+    "restore": "Restore",
+    "close": "Close"
   }
 }

@@ -128,3 +128,36 @@ export async function accentFromArtwork(
 
   return { brand: css(top), brand2: css(partner) };
 }
+
+/** Rec. 709 luma of an `rgb(r g b)` string, 0..255, or `null` if unparseable. */
+function lumaOf(colour: string): number | null {
+  const m = /rgb\(\s*(\d+)[\s,]+(\d+)[\s,]+(\d+)/.exec(colour);
+  if (!m) return null;
+  const [r, g, b] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/**
+ * Reduce a sampled accent pair to its lightness.
+ *
+ * The artwork accent and an achromatic palette are both things the user asked
+ * for, and they contradict each other. Blocking the switch would be the other
+ * answer, but it hides a working feature behind a palette choice; keeping the
+ * *brightness* of the cover while dropping its hue honours both — a dark album
+ * still gives a dark accent, and no colour reaches the interface.
+ *
+ * Returns the pair unchanged if it is not in the `rgb()` form the sampler
+ * produces, since a value we cannot read is one we must not mangle.
+ */
+export function desaturate(pair: {
+  brand: string;
+  brand2: string;
+}): { brand: string; brand2: string } {
+  const grey = (colour: string): string => {
+    const luma = lumaOf(colour);
+    if (luma === null) return colour;
+    const v = Math.round(luma);
+    return `rgb(${v} ${v} ${v})`;
+  };
+  return { brand: grey(pair.brand), brand2: grey(pair.brand2) };
+}

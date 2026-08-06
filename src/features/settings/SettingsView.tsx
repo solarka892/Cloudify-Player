@@ -17,7 +17,12 @@ import {
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { AudioSettings } from "./AudioSettings";
-import { useSettingsStore, type LayoutId } from "@/stores/useSettingsStore";
+import {
+  BUILTIN_PRESETS,
+  useSettingsStore,
+  type LayoutId,
+  type Preset,
+} from "@/stores/useSettingsStore";
 import {
   PALETTES,
   PALETTE_IDS,
@@ -25,7 +30,7 @@ import {
   ACCENTS,
   ACCENT_IDS,
 } from "@/theme/palettes";
-import { SKINS, SKIN_IDS } from "@/theme/skins";
+import { SKINS, SKIN_IDS, type SkinId } from "@/theme/skins";
 import { EFFECT_IDS } from "@/theme/particles";
 import type { Density, ThemeMode } from "@/theme/apply";
 import {
@@ -52,6 +57,7 @@ import {
 } from "@/features/apple/icons";
 import { useCompact } from "@/hooks/useCompact";
 import { scrollViewToTop } from "@/lib/scroll";
+import { hasWindowChrome } from "@/lib/window";
 import { cn } from "@/lib/utils";
 
 /**
@@ -68,10 +74,12 @@ export function SettingsView() {
   const backdrop = useSettingsStore((s) => s.backdrop);
   const presets = useSettingsStore((s) => s.presets);
   const unlocked = useSettingsStore((s) => s.unlocked);
+  const nativeFrame = useSettingsStore((s) => s.nativeFrame);
   const autoplayNext = useSettingsStore((s) => s.autoplayNext);
   const rememberVolume = useSettingsStore((s) => s.rememberVolume);
 
   const setLayout = useSettingsStore((s) => s.setLayout);
+  const setNativeFrame = useSettingsStore((s) => s.setNativeFrame);
   const setTheme = useSettingsStore((s) => s.setTheme);
   const setBackdrop = useSettingsStore((s) => s.setBackdrop);
   const setBackdropImage = useSettingsStore((s) => s.setBackdropImage);
@@ -186,6 +194,43 @@ export function SettingsView() {
 
       <div key={section} className="stack-lg view-enter">
       {section === "appearance" && (<>
+      {/* ── Ready-made looks ───────────────────────────────────────────── */}
+      {/* First, and the only place in Settings where the three axes appear under
+          one name. They compose freely and the sections below keep saying so —
+          but a designed look *is* a particular combination, and asking someone to
+          find four switches before Obsidian looks like Obsidian would hide the
+          design behind the architecture. Applying one leaves every switch it
+          touched still switchable. */}
+      <Group title={t.settings.builtin} hint={t.settings.builtinHint}>
+        <div className="flex flex-wrap gap-2 px-4 py-3">
+          {BUILTIN_PRESETS.map((preset) => {
+            const active =
+              theme.skin === preset.theme.skin &&
+              theme.palette === preset.theme.palette;
+            return (
+              <button
+                key={preset.id}
+                onClick={() => applyPreset(preset.id)}
+                className={cn(
+                  "flex items-center gap-3 rounded-[var(--radius-control)] border p-2 pr-3.5 text-left transition-colors duration-[var(--motion-fast)]",
+                  active
+                    ? "border-brand bg-accent"
+                    : "border-border hover:bg-accent/60",
+                )}
+              >
+                <PresetSwatch preset={preset} />
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium">{preset.name}</span>
+                  <span className="block text-xs text-muted-foreground">
+                    {t.settings.skinHints[preset.theme.skin]}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </Group>
+
       {/* ── Language ───────────────────────────────────────────────────── */}
       <Group title={t.settings.language} hint={t.settings.languageHint}>
         <Row label={t.settings.language}>
@@ -307,6 +352,10 @@ export function SettingsView() {
                 >
                   {theme.skin === id && <glyphs.check className="h-3 w-3" />}
                 </span>
+                {/* Drawn from the skin's own tokens, so it is the skin rather
+                    than a picture of it — a new skin gets a preview for free,
+                    and one that changes its radius changes here too. */}
+                <SkinSwatch id={id} />
                 <span className="min-w-0">
                   <span className="block text-sm font-medium">{skin.name}</span>
                   <span className="block text-xs text-muted-foreground">
@@ -459,14 +508,40 @@ export function SettingsView() {
 
         <Row
           label={t.settings.accentArtwork}
-          hint={t.settings.accentArtworkHint}
+          hint={
+            // The switch keeps working under an achromatic palette, but what it
+            // does there is different enough to say so: the cover's brightness is
+            // kept and its hue is dropped. Silently applying a magenta accent to
+            // a monochrome interface would be the alternative.
+            PALETTES[theme.palette]?.achromatic
+              ? t.settings.monoArtworkHint
+              : t.settings.accentArtworkHint
+          }
         >
           <Switch
             checked={theme.accentFromArtwork}
             onCheckedChange={(on) => setTheme({ accentFromArtwork: on })}
           />
         </Row>
+
+        <Row label={t.settings.monoArtwork} hint={t.settings.monoArtworkHint}>
+          <Switch
+            checked={theme.monoArtwork}
+            onCheckedChange={(on) => setTheme({ monoArtwork: on })}
+          />
+        </Row>
       </Group>
+
+      {/* ── Window ─────────────────────────────────────────────────────── */}
+      {/* Desktop only, and not because of layout: there is no window to frame on
+          a phone, and `TitleBar` is not rendered there at all. */}
+      {hasWindowChrome && (
+        <Group title={t.settings.window}>
+          <Row label={t.settings.nativeFrame} hint={t.settings.nativeFrameHint}>
+            <Switch checked={nativeFrame} onCheckedChange={setNativeFrame} />
+          </Row>
+        </Group>
+      )}
 
       {/* One switch, and which flag it holds follows the mode — exactly as
           `buildVars` reads them. Two would be a lie: in Apple mode the glass
@@ -771,6 +846,81 @@ export function SettingsView() {
       </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * A skin, at 36px.
+ *
+ * Form only, drawn from the skin's own `vars` — a page, a panel on it, and the
+ * ambient light if the skin has one. Colour comes from whatever palette is
+ * active, which is not a shortcut: the two axes really are independent, and a
+ * swatch that invented its own colours would be advertising a combination the
+ * user has not chosen.
+ *
+ * Shown as the skin *frosts*, using `glass.alpha` rather than the opaque pair in
+ * `vars`, because the difference between the four skins is mostly in how they
+ * frost and a row of four opaque squares says nothing.
+ */
+function SkinSwatch({ id }: { id: SkinId }) {
+  const skin = SKINS[id];
+  const glow = Number(skin.vars["--glow"]) || 0;
+  return (
+    <span
+      aria-hidden
+      className="relative block h-9 w-9 shrink-0 overflow-hidden border border-border bg-background"
+      style={{ borderRadius: skin.vars["--radius"] }}
+    >
+      {glow > 0 && <span className="swatch-arc" style={{ opacity: glow }} />}
+      <span
+        className="absolute inset-x-1 bottom-1 top-3.5 border border-border"
+        style={{
+          borderRadius: skin.vars["--radius-control"],
+          background: `color-mix(in srgb, var(--card) ${skin.glass.alpha}, transparent)`,
+          boxShadow: skin.vars["--shadow-1"],
+        }}
+      />
+    </span>
+  );
+}
+
+/**
+ * A built-in preset, at 44px.
+ *
+ * Unlike `SkinSwatch` this one *does* name its own colours: a preset is the one
+ * thing in Settings that legitimately fixes all three axes at once, so showing it
+ * in the palette it selects is showing what the button will actually do.
+ */
+function PresetSwatch({ preset }: { preset: Preset }) {
+  const skin = SKINS[preset.theme.skin] ?? SKINS.aurora;
+  const palette = PALETTES[preset.theme.palette] ?? PALETTES.midnight;
+  const shade = preset.theme.mode === "light" ? palette.light : palette.dark;
+  const glow = Number(skin.vars["--glow"]) || 0;
+  return (
+    <span
+      aria-hidden
+      className="relative block h-11 w-11 shrink-0 overflow-hidden"
+      style={{
+        borderRadius: skin.vars["--radius"],
+        background: shade.bg,
+        border: `1px solid ${shade.line}`,
+      }}
+    >
+      {glow > 0 && (
+        <span
+          className="swatch-arc"
+          style={{ opacity: glow, borderColor: shade.text }}
+        />
+      )}
+      <span
+        className="absolute inset-x-1.5 bottom-1.5 top-5"
+        style={{
+          borderRadius: skin.vars["--radius-control"],
+          background: `color-mix(in srgb, ${shade.surface} ${preset.theme.glass ? skin.glass.alpha : "100%"}, transparent)`,
+          border: `1px solid ${shade.line}`,
+        }}
+      />
+    </span>
   );
 }
 

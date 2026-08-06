@@ -162,7 +162,8 @@
     "skinHints": {
       "aurora": "Cristal, desenfoque y un brillo suave",
       "editorial": "Tipografía grande, líneas duras, sin sombras",
-      "studio": "Controles táctiles, profundidad sutil, onda"
+      "studio": "Controles táctiles, profundidad sutil, onda",
+      "obsidian": "Cristal negro, líneas finas, esquinas rectas"
     },
     "colour": "Color",
     "theme": "Tema",
@@ -213,6 +214,13 @@
     "glassHint": "Superficies translúcidas y desenfocadas",
     "glassOn": "Activar el cristal",
     "glassPerf": "Cuesta dibujarlo: desactívalo si la interfaz va lenta",
+    "monoArtwork": "Portadas en escala de grises",
+    "monoArtworkHint": "Solo tiene efecto en el skin Obsidian",
+    "window": "Ventana",
+    "nativeFrame": "Marco de ventana nativo",
+    "nativeFrameHint": "La barra de título la dibuja el sistema. Actívalo si arrastrar o redimensionar no funciona.",
+    "builtin": "Aspectos listos",
+    "builtinHint": "Skin, paleta y fondo con un toque. Después todos los ajustes siguen siendo tuyos.",
     "resetSection": "Restablecer",
     "custom": "Colores propios",
     "customHint": "Sustituyen la paleta; puedes borrarlos al lado",
@@ -327,5 +335,11 @@
     "share": "Compartir",
     "shareCopied": "Enlace copiado",
     "shareFailed": "No se pudo copiar el enlace"
+  },
+  "window": {
+    "minimize": "Minimizar",
+    "maximize": "Maximizar",
+    "restore": "Restaurar",
+    "close": "Cerrar"
   }
 }

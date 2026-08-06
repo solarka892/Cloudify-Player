@@ -1,5 +1,5 @@
 import { isApplePlatform } from "@/lib/platform";
-import type { Shade, SkinVars, ThemeVars } from "./tokens";
+import { SIGNATURE_OFF, type Shade, type SkinVars, type ThemeVars } from "./tokens";
 
 /**
  * Apple mode, as values.
@@ -143,6 +143,12 @@ export const APPLE_SKIN: SkinVars = {
   "--label-spacing": "-0.01em",
   "--motion-fast": "220ms",
   "--motion-slow": "420ms",
+  // iOS focus is a soft halo in the tint colour, not a hard rectangle.
+  "--focus-ring": "0 0 0 4px color-mix(in srgb, var(--brand) 30%, transparent)",
+  // The mode replaces the skin wholesale, so it has to answer for the axes a
+  // skin owns even where its answer is "as everyone else". Leaving them out
+  // would strand Obsidian's values on the document when switching modes.
+  ...SIGNATURE_OFF,
 };
 
 /**

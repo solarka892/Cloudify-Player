@@ -21,6 +21,7 @@ export type PaletteId =
   | "porcelain"
   | "carbon"
   | "noir"
+  | "obsidian"
   | "ocean"
   | "plum"
   | "forest"
@@ -33,6 +34,17 @@ export interface Palette {
   light: Shade;
   /** Hidden from the picker until unlocked. Some things are worth finding. */
   hidden?: boolean;
+  /**
+   * The palette rules colour out, not just tones it down.
+   *
+   * Every one of its eight values already has zero chroma — but so does `ink`,
+   * and the flag is not a description of them. It is what happens to colour that
+   * arrives from *outside* the palette: an accent sampled from the playing cover
+   * is reduced to its lightness instead of being applied as found. Without it,
+   * one switch in Settings puts a magenta play button on a monochrome interface
+   * and the palette has no say. See `desaturate` in `theme/artwork.ts`.
+   */
+  achromatic?: boolean;
 }
 
 export const PALETTES: Record<PaletteId, Palette> = {
@@ -288,6 +300,56 @@ export const PALETTES: Record<PaletteId, Palette> = {
       line: "oklch(0 0 0 / 14%)",
       brand: "oklch(0.45 0.06 260)",
       brand2: "oklch(0.4 0.12 285)",
+    },
+  },
+
+  /**
+   * True black, and nothing above it.
+   *
+   * Close enough to `ink` to be worth saying why both exist. `ink` is a
+   * high-contrast palette: pure white text, 18% dividers, a light `muted`. This
+   * one is the opposite instinct at the same black — text stops short of white
+   * (97%) so that white is left to mean *accent*, dividers fall to 8% so they
+   * read as hairlines rather than as rules, and `muted` drops to 55% so the
+   * hierarchy has somewhere to go. `ink` is built to be legible; this is built to
+   * be quiet, and against 8% lines the difference is the whole design.
+   *
+   * Paired with the Obsidian skin by the built-in preset, but it is an ordinary
+   * palette: it works under Editorial, and the skin works over `ink`.
+   */
+  obsidian: {
+    id: "obsidian",
+    name: "Obsidian",
+    achromatic: true,
+    dark: {
+      bg: "oklch(0 0 0)",
+      // Both surfaces sit close to the page on purpose: what separates a panel
+      // from the page is its hairline and the light behind it, not a step in
+      // fill. Tuned for `--surface-alpha: 26%`, where these land near 2% and 4%
+      // of white — see the skin's `--surface-sink` for the opaque case.
+      surface: "oklch(0.115 0 0)",
+      surface2: "oklch(0.17 0 0)",
+      text: "oklch(0.97 0 0)",
+      muted: "oklch(0.55 0 0)",
+      line: "oklch(1 0 0 / 8%)",
+      // The only solid white fill in the interface: the play button. Everything
+      // else that wants emphasis gets it from weight or from a 2px marker.
+      brand: "oklch(1 0 0)",
+      brand2: "oklch(0.55 0 0)",
+    },
+    // Not an afterthought: "follow the system" is a real setting, and a palette
+    // that only works after dark makes it a trap. Same reasoning inverted —
+    // near-black text rather than pure black, hairlines at 9%, and enough
+    // contrast in `muted` to clear 3:1 on white.
+    light: {
+      bg: "oklch(1 0 0)",
+      surface: "oklch(0.985 0 0)",
+      surface2: "oklch(0.935 0 0)",
+      text: "oklch(0.09 0 0)",
+      muted: "oklch(0.42 0 0)",
+      line: "oklch(0 0 0 / 9%)",
+      brand: "oklch(0 0 0)",
+      brand2: "oklch(0.38 0 0)",
     },
   },
 

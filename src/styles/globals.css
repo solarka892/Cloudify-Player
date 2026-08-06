@@ -59,8 +59,20 @@
   --font-display: var(--font-ui);
   --label-transform: none;
   --label-spacing: 0em;
+  --label-size: 0.6875rem;
   --motion-fast: 180ms;
   --motion-slow: 420ms;
+  --focus-ring: 0 0 0 2px color-mix(in srgb, var(--brand) 65%, transparent);
+  /* Cover art passes through this. `none` unless a skin rules colour out. */
+  --art-filter: none;
+  /* The app's own title bar. */
+  --chrome-height: 32px;
+  --chrome-alpha: 6%;
+  /* The skin's ambient light and film of grain; both off unless asked for. */
+  --glow: 0;
+  --grain: 0;
+  /* How far an opaque panel sinks toward the page — see tokens.ts. */
+  --surface-sink: 0%;
 
   /* metrics — user layer */
   --density: 1;
@@ -83,20 +95,15 @@
   --backdrop-saturate-scale: 1;
 }
 
-/* A blur radius is in CSS pixels and a phone is a quarter of a desktop window
-   wide, so what reads as soft lighting across 1600px arrives as two or three
-   enormous shapes across 412px — a square cover cropped to a tall portrait
-   viewport is only a few upscaled regions to begin with. Blurring further alone
-   just turns the shapes into fields of colour, bright magenta in one corner and
-   teal in another, so the veil goes up and the saturation comes down with it.
-   What is left is a tint off the artwork, which is what the layer is for. */
-@media (max-width: 767px) {
-  :root {
-    --backdrop-blur-scale: 2.5;
-    --backdrop-dim-boost: 0.3;
-    --backdrop-saturate-scale: 0.8;
-  }
-}
+/* These multipliers used to raise the blur to 2.5x and the veil by 0.3 on a
+   phone, on the theory that a cover cropped to a narrow viewport should be muted
+   into a plain tint. Measured on Android, that is what produced the "blob": the
+   veil crushed the dark half of the blurred gradient to black and left its
+   bright core standing with a hard, quantized edge, so the wallpaper read as one
+   arbitrary shape rather than as a cover. A phone now renders the backdrop with
+   exactly the desktop's numbers — the blur radius and the veil are the user's
+   settings and nothing scales them. Kept as variables because the layer's rules
+   reference them, and because a future per-viewport adjustment belongs here. */
 
 .dark {
   --background: oklch(0.145 0 0);
@@ -193,6 +200,12 @@
       animation-duration: 0.01ms !important;
       transition-duration: 0.01ms !important;
     }
+    /* The blanket rule above is wrong for an infinite alternating animation: a
+       0.01ms iteration does not stop it, it runs it thousands of times a second.
+       Anything that drifts forever has to be switched off rather than sped up. */
+    .app-glow-arc {
+      animation: none !important;
+    }
   }
 
   ::-webkit-scrollbar {
@@ -249,6 +262,114 @@
     opacity: min(1, calc(var(--backdrop-dim) + var(--backdrop-dim-boost)));
   }
 
+  /* ── The skin's ambient light ───────────────────────────────────────────
+   *
+   * A blurred elliptical arc of white, inside the window, under every panel.
+   * Frosted glass on true black has nothing to refract: without a light source
+   * behind it a 30px backdrop blur produces a flat grey rectangle, and the
+   * whole look collapses. So this is not decoration — it is what makes the
+   * glass read as glass.
+   *
+   * All CSS, and no work per frame: a border, a radius, a blur and a mask. The
+   * drift is one long `rotate`/`scale` keyframe the compositor owns; there is no
+   * canvas and no requestAnimationFrame. `border-radius: 50%` here is not a
+   * violation of the square-corner rule — this is light, not an element.
+   *
+   * `display: none` by default rather than `opacity: 0`: an invisible blurred
+   * layer still costs a composite, and three of the four skins have no light.
+   * The element is mounted unconditionally by `AppShell` so no component has to
+   * know which skin is on.
+   */
+  .app-glow {
+    display: none;
+  }
+  :root[data-skin="obsidian"] .app-glow {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .app-glow-arc,
+  .app-glow-haze {
+    position: absolute;
+    left: 52%;
+    top: 52%;
+    translate: -50% -50%;
+    border-radius: 50%;
+  }
+  /* The arc itself. Masked so only the lower-right sweep of the ellipse lights
+     up — a complete ring reads as a logo, a fragment reads as a reflection. */
+  .app-glow-arc {
+    width: min(1000px, 105%);
+    aspect-ratio: 1.5 / 1;
+    border: 2px solid var(--foreground);
+    filter: blur(30px);
+    rotate: -16deg;
+    opacity: var(--glow);
+    -webkit-mask-image: linear-gradient(155deg, transparent 40%, #000 82%);
+    mask-image: linear-gradient(155deg, transparent 40%, #000 82%);
+    animation: loupe-drift 52s cubic-bezier(0.2, 0.7, 0.3, 1) infinite alternate;
+  }
+  /* The spill around it. Without this the arc is a bright line on black; with
+     it, the black around the arc is lit and the panels have something to sit
+     on. Carried at a higher opacity than the arc because it is much softer. */
+  .app-glow-haze {
+    width: min(1300px, 135%);
+    aspect-ratio: 1.6 / 1;
+    filter: blur(60px);
+    opacity: calc(var(--glow) * 1.6);
+    background: radial-gradient(
+      ellipse at 58% 64%,
+      color-mix(in srgb, var(--foreground) 9%, transparent),
+      color-mix(in srgb, var(--foreground) 2.5%, transparent) 44%,
+      transparent 72%
+    );
+  }
+
+  /* A film of noise over the window. True black on an LCD reads as a hole in the
+     screen; a few percent of grain gives it the matte surface the reference
+     images have. One 140px SVG tile, repeated — no image file, no request. */
+  .app-grain {
+    display: none;
+  }
+  :root[data-skin="obsidian"] .app-grain {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: var(--grain);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* The ambient light, at swatch size, for the skin picker in Settings. Same
+     construction as `.app-glow-arc` — border, radius, blur, mask — scaled to a
+     36px box, so a preview of a skin with a light actually shows one. */
+  .swatch-arc {
+    position: absolute;
+    left: 55%;
+    top: 45%;
+    translate: -50% -50%;
+    width: 150%;
+    aspect-ratio: 1.5 / 1;
+    border: 1px solid var(--foreground);
+    border-radius: 50%;
+    filter: blur(3px);
+    rotate: -16deg;
+    pointer-events: none;
+    -webkit-mask-image: linear-gradient(155deg, transparent 38%, #000 84%);
+    mask-image: linear-gradient(155deg, transparent 38%, #000 84%);
+  }
+
+  /* Cover art. The single point every image of someone else's artwork passes
+     through, so a skin that rules out colour has one token to set rather than
+     twenty components to remember. */
+  .artwork {
+    filter: var(--art-filter);
+  }
+
   /* A surface. Translucency and blur come from the skin, so the same class is
      frosted glass in Aurora and a flat panel in Editorial.
 
@@ -265,6 +386,17 @@
   }
   :root[data-glass="1"] .panel {
     backdrop-filter: blur(var(--blur));
+  }
+
+  /* With glass off, `--surface-alpha` is 100% and the panel is the palette's
+     `surface` at full strength. For most palettes that is exactly right — it is
+     the colour they were drawn as. For one tuned to be read *through* 26% of
+     translucency it is three times too bright, so the skin says how far to pull
+     it back toward the page and the palette still supplies both ends. At the
+     default `--surface-sink: 0%` this mixes in none of the background and
+     resolves to `var(--card)`, unchanged. */
+  :root[data-glass="0"] .panel {
+    background: color-mix(in srgb, var(--card), var(--background) var(--surface-sink));
   }
 
   /* Liquid glass: a specular edge and a slow sheen across the surface. Only
@@ -380,6 +512,20 @@
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
+  }
+}
+
+/* The light's drift: one slow turn, alternating, so it never resets with a jump.
+   52s is long enough that it is never the thing you are looking at. Suppressed
+   entirely under `prefers-reduced-motion` by the blanket rule in `@layer base`. */
+@keyframes loupe-drift {
+  from {
+    rotate: -19deg;
+    scale: 1;
+  }
+  to {
+    rotate: -12deg;
+    scale: 1.04;
   }
 }
 
@@ -671,4 +817,85 @@
 .search-popover {
   background: var(--popover);
   backdrop-filter: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Obsidian: the rules a custom property cannot express.
+
+   Deliberately *unlayered*, for the same reason `apple.css` is: Tailwind's
+   utilities layer beats anything in `@layer components` no matter how specific,
+   and every one of these has to override a utility a component already carries
+   (`text-xs` on a label, `rounded-full` where a token cannot reach, the browser's
+   own scrollbar). Everything here is gated on `[data-skin="obsidian"]`, so the
+   other three skins never see it — which is what makes switching away from
+   Obsidian restore them exactly.
+
+   Written against `data-skin` rather than in components on purpose: no component
+   in the app knows which skin is on. See `applyTheme`.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Micro-caps. The tracking is the skin's; the size has to come with it, or 0.17em
+   of letter-spacing at 12px reads as a headline rather than as a caption. */
+:root[data-skin="obsidian"] .label,
+:root[data-skin="obsidian"] .group-title {
+  font-size: var(--label-size);
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+/* A visible square ring on every focusable thing, window buttons included. On
+   black, a ring flush against an element merges with its hairline border, so the
+   token carries an inner gap in the page colour. */
+:root[data-skin="obsidian"]
+  :is(
+    button,
+    a,
+    input,
+    select,
+    summary,
+    [role="button"],
+    [role="menuitem"],
+    [role="tab"],
+    [role="option"],
+    [tabindex]
+  ):focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Rectangular, thin, and brighter under the pointer. The default thumb is a
+   999px pill with a transparent border, which is the one shape this skin does
+   not have. */
+:root[data-skin="obsidian"] ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+:root[data-skin="obsidian"] ::-webkit-scrollbar-thumb {
+  border: 0;
+  border-radius: 0;
+  background: color-mix(in srgb, var(--foreground) 12%, transparent);
+}
+:root[data-skin="obsidian"] ::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--foreground) 26%, transparent);
+}
+
+/* The wallpaper is the blurred cover art, which is a full-window field of colour
+   — by far the easiest way for colour to get back into a mode that rules it out.
+   The built-in preset sets `saturate: 0` as a setting, and this holds the line for
+   anyone who picked the skin by hand or already had a saturation they liked. It
+   goes through the existing `--backdrop-saturate-scale` multiplier rather than
+   overwriting the user's own value, so turning the skin off gives it straight
+   back. Unlike `--art-filter`, this is *not* on the greyscale-artwork switch:
+   that setting is about the covers in the interface, and a wallpaper is not one. */
+:root[data-skin="obsidian"] {
+  --backdrop-saturate-scale: 0;
+}
+
+/* The window's outer edge. Without system decorations there is no frame and, on
+   Linux and Windows, no drop shadow either — so on a dark desktop the app has no
+   boundary at all. One hairline is enough to give it one; it is the window's
+   edge, not a panel's, and it is the only border in the mode that is brighter
+   than 8%. */
+:root[data-skin="obsidian"] .app-frame {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--foreground) 12%, transparent);
 }

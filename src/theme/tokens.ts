@@ -81,9 +81,96 @@ export interface SkinVars {
   /** Section labels: `none` or `uppercase`. */
   "--label-transform": string;
   "--label-spacing": string;
+  /**
+   * Section-label size.
+   *
+   * A skin that tracks its labels out to 0.17em also has to shrink them, or the
+   * two together read as a headline rather than as a caption. The other skins
+   * keep the size they always had, so this is a token they set rather than one
+   * that changes them.
+   */
+  "--label-size": string;
   "--motion-fast": string;
   "--motion-slow": string;
+  /**
+   * Filter applied to every piece of cover art in the app.
+   *
+   * Artwork is the one thing in the interface the app does not author, so a skin
+   * that rules out colour has to say what happens to it — otherwise a SoundCloud
+   * cover is the brightest, most saturated object on a monochrome screen. `none`
+   * everywhere else: this is opt-in, not a correction.
+   */
+  "--art-filter": string;
+  /** Height of the app's own title bar. `0px` disables the row entirely. */
+  "--chrome-height": string;
+  /** Title-bar surface opacity as a percentage of white over the page. */
+  "--chrome-alpha": string;
+  /**
+   * The focus indicator, as a `box-shadow` value.
+   *
+   * A shadow rather than an `outline` because a skin with square corners wants a
+   * ring that follows the element's radius, and `outline` does not offer one
+   * that also carries an inner gap.
+   */
+  "--focus-ring": string;
+  /**
+   * Opacity of the film of grain over the window, 0..1.
+   *
+   * True black on an LCD reads as a hole rather than as a surface; a few percent
+   * of noise gives it a matte texture. `0` in every skin that does not ask.
+   */
+  "--grain": string;
+  /**
+   * Opacity of the skin's ambient light layer, 0..1.
+   *
+   * `0` hides it; the layer itself is `display: none` unless a skin turns it on,
+   * so this is the dimmer, not the switch — see `--glow` in `globals.css`.
+   */
+  "--glow": string;
+  /**
+   * How far an *opaque* panel sinks toward the page background, as a percentage.
+   *
+   * Only meaningful with glass off, when `--surface-alpha` is forced to 100%: a
+   * palette whose surfaces are tuned to be barely visible *through* 26% of
+   * translucency is far too light at full strength. Rather than give the skin a
+   * second set of colours — which it is not allowed to have — it says how far to
+   * pull the surface back toward the page, and the palette underneath still
+   * decides what both of those colours are. `0%` leaves panels exactly as the
+   * palette drew them, which is what every skin but Obsidian wants.
+   */
+  "--surface-sink": string;
 }
+
+/**
+ * The Obsidian-specific axes, in their off state.
+ *
+ * Every skin has to answer for these, and all but one answers "nothing". Spelling
+ * that out beats letting the properties go missing: `applyTheme` only removes a
+ * property it is given as an empty string, so a skin silent about `--art-filter`
+ * would inherit Obsidian's greyscale from whatever was on `<html>` before it.
+ *
+ * `--focus-ring` is not here — every skin has an opinion about its own.
+ */
+export const SIGNATURE_OFF: Pick<
+  SkinVars,
+  | "--label-size"
+  | "--art-filter"
+  | "--chrome-height"
+  | "--chrome-alpha"
+  | "--grain"
+  | "--glow"
+  | "--surface-sink"
+> = {
+  "--label-size": "0.6875rem",
+  // The app's own title bar is a window-level feature, not a skin's, so its
+  // height is the same in all of them; only its finish differs.
+  "--chrome-height": "32px",
+  "--chrome-alpha": "6%",
+  "--art-filter": "none",
+  "--grain": "0",
+  "--glow": "0",
+  "--surface-sink": "0%",
+};
 
 /** Layout tokens — density, scale. Driven by user settings, not by the skin. */
 export interface MetricVars {

@@ -162,7 +162,8 @@
     "skinHints": {
       "aurora": "Vetro, sfocatura e un bagliore morbido",
       "editorial": "Tipografia grande, linee nette, senza ombre",
-      "studio": "Controlli tattili, profondità misurata, onda"
+      "studio": "Controlli tattili, profondità misurata, onda",
+      "obsidian": "Vetro nero, filetti sottili, spigoli vivi"
     },
     "colour": "Colore",
     "theme": "Tema",
@@ -213,6 +214,13 @@
     "glassHint": "Superfici translucide e sfocate",
     "glassOn": "Attiva il vetro",
     "glassPerf": "Costoso da disegnare: disattivalo se l’interfaccia è lenta",
+    "monoArtwork": "Copertine in scala di grigi",
+    "monoArtworkHint": "Ha effetto solo nello skin Obsidian",
+    "window": "Finestra",
+    "nativeFrame": "Cornice di sistema",
+    "nativeFrameHint": "La barra del titolo la disegna il sistema. Attivala se trascinare o ridimensionare non funziona.",
+    "builtin": "Aspetti pronti",
+    "builtinHint": "Skin, tavolozza e sfondo con un tocco. Dopo, ogni impostazione resta tua.",
     "resetSection": "Ripristina",
     "custom": "Colori personalizzati",
     "customHint": "Sostituiscono la palette; puoi azzerarli qui accanto",
@@ -327,5 +335,11 @@
     "share": "Condividi",
     "shareCopied": "Link copiato",
     "shareFailed": "Impossibile copiare il link"
+  },
+  "window": {
+    "minimize": "Riduci a icona",
+    "maximize": "Ingrandisci",
+    "restore": "Ripristina",
+    "close": "Chiudi"
   }
 }

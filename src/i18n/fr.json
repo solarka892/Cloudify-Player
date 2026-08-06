@@ -162,7 +162,8 @@
     "skinHints": {
       "aurora": "Verre, flou et lueur douce",
       "editorial": "Grande typographie, lignes nettes, sans ombres",
-      "studio": "Contrôles tactiles, profondeur discrète, onde"
+      "studio": "Contrôles tactiles, profondeur discrète, onde",
+      "obsidian": "Verre noir, filets fins, angles vifs"
     },
     "colour": "Couleur",
     "theme": "Thème",
@@ -213,6 +214,13 @@
     "glassHint": "Surfaces translucides et floutées",
     "glassOn": "Activer le verre",
     "glassPerf": "Coûteux à afficher — désactivez-le si l’interface rame",
+    "monoArtwork": "Pochettes en niveaux de gris",
+    "monoArtworkHint": "N’a d’effet que dans le skin Obsidian",
+    "window": "Fenêtre",
+    "nativeFrame": "Cadre de fenêtre natif",
+    "nativeFrameHint": "La barre de titre est dessinée par le système. À activer si le déplacement ou le redimensionnement ne fonctionne pas.",
+    "builtin": "Apparences prêtes à l’emploi",
+    "builtinHint": "Skin, palette et fond en un clic. Tous les réglages restent les vôtres ensuite.",
     "resetSection": "Réinitialiser",
     "custom": "Couleurs personnalisées",
     "customHint": "Remplacent la palette ; effaçables juste à côté",
@@ -327,5 +335,11 @@
     "share": "Partager",
     "shareCopied": "Lien copié",
     "shareFailed": "Impossible de copier le lien"
+  },
+  "window": {
+    "minimize": "Réduire",
+    "maximize": "Agrandir",
+    "restore": "Restaurer",
+    "close": "Fermer"
   }
 }
