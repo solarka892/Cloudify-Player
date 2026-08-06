@@ -25,6 +25,7 @@ import { toast } from "@/stores/useToastStore";
 import { t } from "@/i18n";
 import { scrollViewToTop } from "@/lib/scroll";
 import { artwork, cn } from "@/lib/utils";
+import { ArtFallback } from "@/components/ArtFallback";
 
 type SectionId =
   | "likes"
@@ -530,15 +531,17 @@ function StationCard({
         <img
           src={art}
           alt=""
-          className={cn(
+          className={cn("artwork", 
             "h-11 w-11 shrink-0 object-cover",
             round ? "rounded-[var(--radius-round)]" : "rounded-[var(--radius-control)]",
           )}
         />
       ) : (
-        <span
+        <ArtFallback
+          seed={title}
+          Glyph={Radio}
           className={cn(
-            "h-11 w-11 shrink-0 bg-secondary",
+            "h-11 w-11 shrink-0",
             round ? "rounded-[var(--radius-round)]" : "rounded-[var(--radius-control)]",
           )}
         />

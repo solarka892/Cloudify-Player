@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronUp, Download, ListMusic, Mic2, Music } from "lucide-react";
+import { ChevronUp, Download, ListMusic, Mic2 } from "lucide-react";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
 import { useNavStore } from "@/stores/useNavStore";
@@ -23,6 +23,7 @@ import { useCompact } from "@/hooks/useCompact";
 import type { Track } from "@/lib/tauri";
 import { t } from "@/i18n";
 import { artwork, cn } from "@/lib/utils";
+import { ArtFallback } from "@/components/ArtFallback";
 
 type Panel = "none" | "queue" | "lyrics";
 
@@ -98,12 +99,14 @@ export function PlayerBar() {
                 <img
                   src={art}
                   alt=""
-                  className="h-12 w-12 rounded-[var(--radius-control)] object-cover"
+                  className="artwork h-12 w-12 rounded-[var(--radius-control)] object-cover"
                 />
               ) : (
-                <span className="flex h-12 w-12 items-center justify-center rounded-[var(--radius-control)] bg-secondary">
-                  <Music className="h-5 w-5 text-muted-foreground" />
-                </span>
+                <ArtFallback
+                  seed={current.id}
+                  className="h-12 w-12 rounded-[var(--radius-control)]"
+                  glyphClassName="h-5 w-5"
+                />
               )}
               <span className="absolute inset-0 flex items-center justify-center rounded-[var(--radius-control)] art-overlay opacity-0 transition-opacity duration-[var(--motion-fast)] group-hover/art:opacity-100">
                 <ChevronUp className="h-5 w-5" />
@@ -226,12 +229,14 @@ function CompactBar({ track, onExpand }: { track: Track; onExpand: () => void })
             <img
               src={art}
               alt=""
-              className="h-11 w-11 shrink-0 rounded-[var(--radius-control)] object-cover"
+              className="artwork h-11 w-11 shrink-0 rounded-[var(--radius-control)] object-cover"
             />
           ) : (
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-secondary">
-              <Music className="h-5 w-5 text-muted-foreground" />
-            </span>
+            <ArtFallback
+              seed={track.id}
+              className="h-11 w-11 shrink-0 rounded-[var(--radius-control)]"
+              glyphClassName="h-5 w-5"
+            />
           )}
           <span className="flex min-w-0 flex-col">
             <span className="truncate text-sm font-medium">{track.title}</span>

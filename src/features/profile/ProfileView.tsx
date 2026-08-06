@@ -215,14 +215,14 @@ export function ProfileView({
         {banner ? (
           <div
             aria-hidden
-            className="absolute inset-x-0 top-0 h-40 bg-cover bg-center"
+            className="artwork absolute inset-x-0 top-0 h-40 bg-cover bg-center"
             style={{ backgroundImage: `url("${banner}")` }}
           />
         ) : (
           avatar && (
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-0 scale-125 bg-cover bg-center opacity-25 blur-2xl"
+              className="artwork pointer-events-none absolute inset-0 scale-125 bg-cover bg-center opacity-25 blur-2xl"
               style={{ backgroundImage: `url("${avatar}")` }}
             />
           )
@@ -253,7 +253,7 @@ export function ProfileView({
             <img
               src={avatar}
               alt=""
-              className="h-20 w-20 shrink-0 rounded-[var(--radius-round)] object-cover shadow-[var(--shadow-2)] sm:h-28 sm:w-28"
+              className="artwork h-20 w-20 shrink-0 rounded-[var(--radius-round)] object-cover shadow-[var(--shadow-2)] sm:h-28 sm:w-28"
             />
           ) : (
             <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-[var(--radius-round)] bg-secondary sm:h-28 sm:w-28">

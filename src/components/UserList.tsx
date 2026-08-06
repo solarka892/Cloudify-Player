@@ -40,7 +40,7 @@ export function UserList({ users }: { users: User[] }) {
                   alt=""
                   loading="lazy"
                   decoding="async"
-                  className="h-10 w-10 shrink-0 rounded-[var(--radius-round)] object-cover"
+                  className="artwork h-10 w-10 shrink-0 rounded-[var(--radius-round)] object-cover"
                 />
               ) : (
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-round)] bg-secondary">

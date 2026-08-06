@@ -154,7 +154,7 @@ export function Comments({
                       src={avatar}
                       alt=""
                       loading="lazy"
-                      className="h-7 w-7 rounded-[var(--radius-round)] object-cover"
+                      className="artwork h-7 w-7 rounded-[var(--radius-round)] object-cover"
                     />
                   ) : (
                     <span className="flex h-7 w-7 items-center justify-center rounded-[var(--radius-round)] bg-secondary">

@@ -4,7 +4,6 @@ import {
   Download,
   ExternalLink,
   ListPlus,
-  Music,
   Pause,
   Play,
   ShoppingBag,
@@ -41,6 +40,7 @@ import { toast } from "@/stores/useToastStore";
 import { openExternal } from "@/lib/open";
 import { artwork, cn } from "@/lib/utils";
 import { t } from "@/i18n";
+import { ArtFallback } from "@/components/ArtFallback";
 
 /** Compact number formatting: 12500 → 12.5K. */
 function formatCount(n: number | null | undefined): string {
@@ -220,7 +220,7 @@ export function TrackView({ trackId, meId }: { trackId: number; meId: number }) 
         {cover && (
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-0 scale-125 bg-cover bg-center opacity-20 blur-2xl"
+            className="artwork pointer-events-none absolute inset-0 scale-125 bg-cover bg-center opacity-20 blur-2xl"
             style={{ backgroundImage: `url("${cover}")` }}
           />
         )}
@@ -230,12 +230,14 @@ export function TrackView({ trackId, meId }: { trackId: number; meId: number }) 
             <img
               src={cover}
               alt=""
-              className="h-36 w-36 shrink-0 rounded-[var(--radius)] object-cover shadow-[var(--shadow-2)]"
+              className="artwork h-36 w-36 shrink-0 rounded-[var(--radius)] object-cover shadow-[var(--shadow-2)]"
             />
           ) : (
-            <div className="flex h-36 w-36 shrink-0 items-center justify-center rounded-[var(--radius)] bg-secondary">
-              <Music className="h-10 w-10 text-muted-foreground" />
-            </div>
+            <ArtFallback
+              seed={track.id}
+              className="h-36 w-36 shrink-0 rounded-[var(--radius)]"
+              glyphClassName="h-10 w-10"
+            />
           )}
 
           <div className="flex min-w-0 flex-1 flex-col gap-2">

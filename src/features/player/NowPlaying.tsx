@@ -33,6 +33,7 @@ import { useCompact } from "@/hooks/useCompact";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { t } from "@/i18n";
 import { artwork, cn } from "@/lib/utils";
+import { ArtFallback } from "@/components/ArtFallback";
 
 type Side = "none" | "lyrics" | "queue";
 
@@ -92,7 +93,7 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
       {art && (
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 scale-125 bg-cover bg-center opacity-40 blur-3xl"
+          className="artwork pointer-events-none absolute inset-0 scale-125 bg-cover bg-center opacity-40 blur-3xl"
           style={{ backgroundImage: `url("${art}")` }}
         />
       )}
@@ -152,10 +153,14 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
               <img
                 src={art}
                 alt=""
-                className="aspect-square w-full rounded-[var(--radius-hero)] object-cover shadow-[var(--shadow-2)]"
+                className="artwork aspect-square w-full rounded-[var(--radius-hero)] object-cover shadow-[var(--shadow-2)]"
               />
             ) : (
-              <div className="aspect-square w-full rounded-[var(--radius-hero)] bg-secondary" />
+              <ArtFallback
+                seed={current.id}
+                className="aspect-square w-full rounded-[var(--radius-hero)]"
+                glyphClassName="h-12 w-12"
+              />
             )}
           </div>
 

@@ -1,5 +1,5 @@
 import { memo, useState } from "react";
-import { Download, ListPlus, MoreVertical, Music, Pause, Play } from "lucide-react";
+import { Download, ListPlus, MoreVertical, Pause, Play } from "lucide-react";
 import type { Track } from "@/lib/tauri";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
@@ -16,6 +16,7 @@ import { useSettingsStore } from "@/stores/useSettingsStore";
 import type { Density } from "@/theme/apply";
 import { artwork, cn } from "@/lib/utils";
 import { t } from "@/i18n";
+import { ArtFallback } from "./ArtFallback";
 
 /**
  * Row height in px, per density setting.
@@ -149,12 +150,13 @@ const TrackRow = memo(function TrackRow({
               decoding="async"
               width={40}
               height={40}
-              className="h-10 w-10 rounded-[var(--radius-control)] object-cover"
+              className="artwork h-10 w-10 rounded-[var(--radius-control)] object-cover"
             />
           ) : (
-            <div className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-control)] bg-secondary">
-              <Music className="h-4 w-4 text-muted-foreground" />
-            </div>
+            <ArtFallback
+              seed={track.id}
+              className="h-10 w-10 rounded-[var(--radius-control)]"
+            />
           )}
           <span className="absolute inset-0 flex items-center justify-center rounded-[var(--radius-control)] art-overlay opacity-0 transition-opacity duration-[var(--motion-fast)] group-hover:opacity-100">
             {isCurrent && isPlaying ? (

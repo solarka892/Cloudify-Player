@@ -148,7 +148,7 @@ export function NotificationsView() {
                       src={avatar}
                       alt=""
                       loading="lazy"
-                      className="h-9 w-9 rounded-[var(--radius-round)] object-cover"
+                      className="artwork h-9 w-9 rounded-[var(--radius-round)] object-cover"
                     />
                   ) : (
                     <span className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-round)] bg-secondary">
@@ -218,7 +218,7 @@ export function NotificationsView() {
                     src={cover}
                     alt=""
                     loading="lazy"
-                    className="h-9 w-9 rounded-[var(--radius-control)] object-cover"
+                    className="artwork h-9 w-9 rounded-[var(--radius-control)] object-cover"
                   />
                 </button>
               )}

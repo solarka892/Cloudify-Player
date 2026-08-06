@@ -5,6 +5,7 @@ import { ShareButton } from "./ShareButton";
 import { useIncremental } from "@/hooks/useIncremental";
 import { t } from "@/i18n";
 import { artwork } from "@/lib/utils";
+import { ArtFallback } from "./ArtFallback";
 
 /** Playlists and albums; a click drills into the playlist's tracks. */
 export function PlaylistList({ playlists }: { playlists: Playlist[] }) {
@@ -35,12 +36,14 @@ export function PlaylistList({ playlists }: { playlists: Playlist[] }) {
                   alt=""
                   loading="lazy"
                   decoding="async"
-                  className="h-10 w-10 shrink-0 rounded-[var(--radius-control)] object-cover"
+                  className="artwork h-10 w-10 shrink-0 rounded-[var(--radius-control)] object-cover"
                 />
               ) : (
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-secondary">
-                  <ListMusic className="h-4 w-4 text-muted-foreground" />
-                </div>
+                <ArtFallback
+                  seed={playlist.id}
+                  Glyph={ListMusic}
+                  className="h-10 w-10 shrink-0 rounded-[var(--radius-control)]"
+                />
               )}
               <div className="flex min-w-0 flex-col">
                 <span className="truncate text-sm font-medium">

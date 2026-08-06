@@ -179,7 +179,7 @@ export function Waveform({
                   src={artwork(comment.user.avatar_url, "t50x50") ?? undefined}
                   alt=""
                   loading="lazy"
-                  className="h-4 w-4 rounded-[var(--radius-round)] object-cover ring-1 ring-border"
+                  className="artwork h-4 w-4 rounded-[var(--radius-round)] object-cover ring-1 ring-border"
                 />
               ) : (
                 <span className="block h-2 w-2 rounded-[var(--radius-round)] bg-brand" />

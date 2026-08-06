@@ -3,6 +3,7 @@ import { GripVertical, Trash2, X } from "lucide-react";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { t } from "@/i18n";
 import { artwork, cn } from "@/lib/utils";
+import { ArtFallback } from "@/components/ArtFallback";
 
 /**
  * The play queue, reorderable by dragging.
@@ -107,10 +108,14 @@ export function QueuePanel({ onClose }: { onClose?: () => void }) {
                   <img
                     src={art}
                     alt=""
-                    className="h-8 w-8 shrink-0 rounded-[calc(var(--radius-control)/1.5)] object-cover"
+                    className="artwork h-8 w-8 shrink-0 rounded-[calc(var(--radius-control)/1.5)] object-cover"
                   />
                 ) : (
-                  <span className="h-8 w-8 shrink-0 rounded-[calc(var(--radius-control)/1.5)] bg-secondary" />
+                  <ArtFallback
+                    seed={track.id}
+                    className="h-8 w-8 shrink-0 rounded-[calc(var(--radius-control)/1.5)]"
+                    glyphClassName="h-3.5 w-3.5"
+                  />
                 )}
                 <span className="min-w-0">
                   <span

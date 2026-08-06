@@ -4,6 +4,7 @@ import type { Playlist, Track } from "@/lib/tauri";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useNavStore } from "@/stores/useNavStore";
 import { AddToPlaylistDialog } from "./AddToPlaylistDialog";
+import { ArtFallback } from "./ArtFallback";
 import { TrackContextMenu, type MenuTarget } from "./TrackContextMenu";
 import { t } from "@/i18n";
 import { artwork, cn } from "@/lib/utils";
@@ -17,6 +18,7 @@ import { artwork, cn } from "@/lib/utils";
 
 function Shell({
   art,
+  seed,
   title,
   subtitle,
   rounded,
@@ -28,6 +30,8 @@ function Shell({
   onMenu,
 }: {
   art: string | null;
+  /** The item's id, for the missing-cover mark. See `ArtFallback`. */
+  seed: string | number;
   title: string;
   subtitle: string | null;
   rounded: "square" | "circle";
@@ -89,7 +93,7 @@ function Shell({
             src={art}
             alt=""
             loading="lazy"
-            className={cn(
+            className={cn("artwork", 
               "h-full w-full object-cover shadow-[var(--shadow-1)]",
               rounded === "circle"
                 ? "rounded-[var(--radius-round)]"
@@ -97,16 +101,17 @@ function Shell({
             )}
           />
         ) : (
-          <div
+          <ArtFallback
+            seed={seed}
+            Glyph={Fallback}
+            glyphClassName="h-8 w-8"
             className={cn(
-              "flex h-full w-full items-center justify-center bg-secondary",
+              "h-full w-full",
               rounded === "circle"
                 ? "rounded-[var(--radius-round)]"
                 : "rounded-[var(--radius-control)]",
             )}
-          >
-            <Fallback className="h-8 w-8 text-muted-foreground" />
-          </div>
+          />
         )}
 
         <span
@@ -183,6 +188,7 @@ export function TrackTile({
     <>
       <Shell
         art={artwork(track.artwork_url, "t300x300")}
+        seed={track.id}
         title={track.title}
         subtitle={track.artist}
         rounded="square"
@@ -221,6 +227,7 @@ export function PlaylistTile({
   return (
     <Shell
       art={artwork(playlist.artwork_url, "t300x300")}
+      seed={playlist.id}
       title={playlist.title}
       subtitle={playlist.owner}
       rounded="square"

@@ -378,6 +378,70 @@
     filter: var(--art-filter);
   }
 
+  /* ── Missing-cover marks ────────────────────────────────────────────────
+   *
+   * Six gestures for `ArtFallback`, one per missing cover, chosen by track id.
+   * All gradients over `--foreground`, so they follow the palette and are dark
+   * marks on a light theme rather than white ones. Hidden by default: this is an
+   * Obsidian idea, and the other three skins keep the note glyph they had. The
+   * pair is switched in CSS so no component asks which skin is on.
+   */
+  .art-gesture {
+    position: absolute;
+    inset: 0;
+    display: none;
+  }
+  :root[data-skin="obsidian"] .art-gesture {
+    display: block;
+  }
+  :root[data-skin="obsidian"] .art-fallback-glyph {
+    display: none;
+  }
+  /* Horizontal rule set. The quietest, and the fallback for an unreadable id. */
+  .art-gesture-0 {
+    background: repeating-linear-gradient(
+      0deg,
+      color-mix(in srgb, var(--foreground) 7%, transparent) 0 1px,
+      transparent 1px 5px
+    );
+  }
+  /* A single raking highlight, as if light crossed the sleeve. */
+  .art-gesture-1 {
+    background: linear-gradient(
+      115deg,
+      transparent 44%,
+      color-mix(in srgb, var(--foreground) 14%, transparent) 50%,
+      transparent 56%
+    );
+  }
+  /* An inset square: the mark that reads most deliberately as a mark. */
+  .art-gesture-2 {
+    inset: 28%;
+    border: 1px solid color-mix(in srgb, var(--foreground) 22%, transparent);
+  }
+  /* Vertical rule set, finer than the horizontal one. */
+  .art-gesture-3 {
+    background: repeating-linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--foreground) 5%, transparent) 0 1px,
+      transparent 1px 4px
+    );
+  }
+  /* A band along the bottom third. */
+  .art-gesture-4 {
+    inset: auto 0 0 0;
+    height: 34%;
+    background: color-mix(in srgb, var(--foreground) 10%, transparent);
+  }
+  /* A wedge of light from one corner — the loudest of the six. */
+  .art-gesture-5 {
+    background: conic-gradient(
+      from 210deg at 60% 55%,
+      color-mix(in srgb, var(--foreground) 16%, transparent),
+      transparent 38%
+    );
+  }
+
   /* The veil behind a modal. Dark in both appearances, on purpose — a scrim is
      "the app has stepped back", and a white sheet over a light theme reads as a
      flash rather than as depth. A token rather than `bg-black/50` in six

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { analyser, graphBlock } from "@/audio/engine";
+import { THEME_EVENT } from "@/theme/particles";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
@@ -42,9 +43,23 @@ export function Visualizer({
     if (!ctx) return;
 
     let raf = 0;
-    const styles = getComputedStyle(document.documentElement);
-    const brand = styles.getPropertyValue("--brand").trim() || "#f60";
-    const brand2 = styles.getPropertyValue("--brand-2").trim() || brand;
+
+    // A canvas cannot inherit a custom property, so the two accent colours are
+    // read out of the document — and re-read when the theme changes. Reading them
+    // once at mount was wrong in a way that only showed up with an achromatic
+    // palette: switch to Obsidian while a track is playing and the interface goes
+    // monochrome around a visualizer still drawing in orange. `getComputedStyle`
+    // is far too expensive to call per frame, so it is called on the event the
+    // theme engine already fires for exactly this.
+    let brand = "";
+    let brand2 = "";
+    function readAccent() {
+      const styles = getComputedStyle(document.documentElement);
+      brand = styles.getPropertyValue("--brand").trim() || "#f60";
+      brand2 = styles.getPropertyValue("--brand-2").trim() || brand;
+    }
+    readAccent();
+    window.addEventListener(THEME_EVENT, readAccent);
 
     function draw() {
       raf = requestAnimationFrame(draw);
@@ -113,7 +128,10 @@ export function Visualizer({
     }
 
     draw();
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener(THEME_EVENT, readAccent);
+    };
   }, [mode, height, isPlaying]);
 
   // The canvas stays mounted either way: the draw loop lives off it, and it is

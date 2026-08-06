@@ -250,7 +250,7 @@ function Avatar({ url, size = "md" }: { url: string | null; size?: "sm" | "md" }
       src={url}
       alt=""
       loading="lazy"
-      className={cn(box, "shrink-0 rounded-[var(--radius-round)] object-cover")}
+      className={cn("artwork", box, "shrink-0 rounded-[var(--radius-round)] object-cover")}
     />
   ) : (
     <span
@@ -408,7 +408,7 @@ function Bubble({
               <img
                 src={artwork(track.artwork_url, "t50x50") ?? undefined}
                 alt=""
-                className="h-8 w-8 shrink-0 rounded-[var(--radius-control)] object-cover"
+                className="artwork h-8 w-8 shrink-0 rounded-[var(--radius-control)] object-cover"
               />
             ) : null}
             <span className="min-w-0">
