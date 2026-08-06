@@ -1003,3 +1003,166 @@
 [data-window-button]:active {
   transform: none;
 }
+
+/* ── Obsidian, screen by screen ────────────────────────────────────────────
+ *
+ * Still unlayered, still gated on `[data-skin="obsidian"]`, and still nothing a
+ * component knows about. Each rule below replaces a *decoration* the other skins
+ * want with the quieter thing this one wants: a marker instead of a pill, a
+ * hairline instead of a card, weight instead of boldness.
+ */
+
+/* Navigation. A 2px bar at the edge the nav sits on, and no fill at all — a
+   filled pill is the single most "app-like" shape in the interface and the one
+   furthest from this mode. The marker element is rendered by every nav
+   arrangement and hidden everywhere else, so this is a swap, not an addition. */
+.nav-marker {
+  display: none;
+}
+:root[data-skin="obsidian"] [data-nav-item][aria-current] {
+  background-color: color-mix(in srgb, var(--foreground) 4%, transparent);
+}
+:root[data-skin="obsidian"] [data-nav-item][aria-current] .nav-marker {
+  display: block;
+  position: absolute;
+  background: var(--foreground);
+}
+:root[data-skin="obsidian"] [data-nav-item="side"][aria-current] .nav-marker {
+  inset: 0 auto 0 0;
+  width: 2px;
+}
+:root[data-skin="obsidian"] [data-nav-item="top"][aria-current] .nav-marker {
+  inset: auto 0 0 0;
+  height: 2px;
+}
+/* The phone's tab bar marks the top edge: the bottom one is where the gesture
+   bar is, and a 2px line there reads as part of the system rather than the app. */
+:root[data-skin="obsidian"] [data-nav-item="bottom"][aria-current] .nav-marker {
+  inset: 0 0 auto 0;
+  height: 2px;
+}
+
+/* Screen headings. Weight is the only thing carrying the hierarchy here, so the
+   contrast has to be large: 200 against the 600 of the micro-caps above it.
+   Stopping short of pure white leaves white to mean *accent* — it is the play
+   button's fill and nothing else's. Mixed with the background rather than made
+   translucent, so it does not thin out over the wallpaper. */
+:root[data-skin="obsidian"] h1,
+:root[data-skin="obsidian"] h2 {
+  font-weight: 200;
+  letter-spacing: -0.03em;
+  color: color-mix(in srgb, var(--foreground) 94%, var(--background));
+}
+
+/* Lists. No outline around them and no rule between rows: what separates one row
+   from the next is the hover highlight and nothing else, which is only legible
+   because the rows themselves are transparent. The playing row gets the same 2px
+   edge marker the nav does — an `inset` shadow rather than a border, so it does
+   not move the row's contents by two pixels. */
+:root[data-skin="obsidian"] .list-card {
+  border-color: transparent;
+}
+:root[data-skin="obsidian"] .bg-row {
+  background: transparent;
+  border-bottom-color: transparent;
+}
+:root[data-skin="obsidian"] [data-current] {
+  box-shadow: inset 2px 0 0 var(--foreground);
+}
+
+/* The search field is a hole in the page here, not a box on it: one hairline
+   underneath, brightening to full white when focused. */
+:root[data-skin="obsidian"] .search-field {
+  background: transparent;
+  border-color: transparent;
+  border-bottom: 1px solid color-mix(in srgb, var(--foreground) 15%, transparent);
+}
+:root[data-skin="obsidian"] .search-field:focus {
+  border-bottom-color: var(--foreground);
+}
+
+/* One accent, and it is flat. The gradient is a colour effect — with an
+   achromatic palette it is a white-to-grey ramp, which reads as a smudge rather
+   than as a fill. `--brand` is pure white here, and the play button is the only
+   solid white surface in the interface. */
+:root[data-skin="obsidian"] .brand-gradient {
+  background-image: none;
+  background-color: var(--brand);
+}
+
+/* The scrubber: a 2px rule with a 2×8 rectangle for a handle. A round handle is
+   the one control shape that cannot be squared off by a radius token, because it
+   is drawn by the browser. */
+:root[data-skin="obsidian"] .seek-track {
+  height: 2px;
+}
+:root[data-skin="obsidian"] input[type="range"]::-webkit-slider-thumb {
+  width: 2px;
+  height: 8px;
+  border-radius: 0;
+  background: var(--foreground);
+}
+
+/* Volume as twelve rectangles rather than a slider.
+ *
+ * Entirely background and mask: the filled bar is one gradient clipped to
+ * `--level`, the empty track is another behind it, and a repeating mask cuts both
+ * into 3px columns. The alternative was twelve elements and a click handler in
+ * every skin, to be hidden again in three of them. The handle goes; the whole
+ * strip is the target, which is what the native input already gives us.
+ */
+:root[data-skin="obsidian"] .volume-slider {
+  appearance: none;
+  height: 13px;
+  cursor: pointer;
+  background-image:
+    linear-gradient(var(--foreground), var(--foreground)),
+    linear-gradient(
+      color-mix(in srgb, var(--foreground) 16%, transparent),
+      color-mix(in srgb, var(--foreground) 16%, transparent)
+    );
+  background-repeat: no-repeat, no-repeat;
+  background-size: calc(var(--level, 0) * 100%) 100%, 100% 100%;
+  -webkit-mask-image: repeating-linear-gradient(
+    90deg,
+    #000 0 3px,
+    transparent 3px 6px
+  );
+  mask-image: repeating-linear-gradient(90deg, #000 0 3px, transparent 3px 6px);
+}
+:root[data-skin="obsidian"] .volume-slider::-webkit-slider-thumb {
+  width: 0;
+  height: 0;
+  appearance: none;
+}
+
+/* Motion. Everything that appears does so by fading: no rise, no scale, no
+   travel. A panel with hard edges that also slides is two ideas at once, and at
+   90ms the translation is only ever seen as a flicker. */
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+:root[data-skin="obsidian"] .pop-in,
+:root[data-skin="obsidian"] .view-enter,
+:root[data-skin="obsidian"] .rise-in,
+:root[data-skin="obsidian"] .nav-in-x,
+:root[data-skin="obsidian"] .nav-in-y {
+  animation-name: fade-in;
+}
+:root[data-skin="obsidian"] .pop-out,
+:root[data-skin="obsidian"] .view-exit {
+  animation-name: fade-out;
+}
+
+/* No lift and no press. `hover:-translate-y-0.5` on a tile and `active:scale`
+   on every button are Aurora's idea of tactility; here the only thing that
+   changes under the pointer is brightness. */
+:root[data-skin="obsidian"] button:not(:disabled):active,
+:root[data-skin="obsidian"] [role="button"]:not([aria-disabled="true"]):active {
+  transform: none;
+}

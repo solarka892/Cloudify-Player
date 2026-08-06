@@ -15,6 +15,13 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no"
     />
+    <!--
+      Only the dev server and `vite preview` ever show this: a packaged Tauri
+      window has no tab and takes its icon from `src-tauri/icons`. It is here so
+      that the one place the app appears in a browser is not the generic globe.
+      Same master image as the app icon — see `assets/icon-master.svg`.
+    -->
+    <link rel="icon" type="image/png" href="/favicon.png" />
     <title>cloudify</title>
   </head>
 

@@ -278,7 +278,11 @@ export function VolumeControl() {
         value={muted ? 0 : volume}
         onChange={(e) => setVolume(Number(e.currentTarget.value))}
         aria-label={t.player.volume}
-        className="h-1 flex-1 cursor-pointer accent-[var(--brand)]"
+        // The level, published as a custom property. Obsidian draws the volume as
+        // twelve rectangular segments rather than a slider, and a range input
+        // cannot show its own fill — but a background can, given the number.
+        style={{ "--level": muted ? 0 : volume } as React.CSSProperties}
+        className="volume-slider h-1 flex-1 cursor-pointer accent-[var(--brand)]"
       />
     </div>
   );

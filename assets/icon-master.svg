@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!--
+    The app icon master. Rasterise it and hand it to `pnpm tauri icon` — see
+    docs/design-obsidian.md.
+
+    Black square, white waveform, no gradients and no rounded corners. Square
+    because every platform that wants rounded corners masks them itself, and one
+    that does not cannot un-round a bitmap.
+
+    The waveform is the app's own mark (see components/Logo.tsx) reduced to the
+    one gesture that survives being 32 pixels wide: six bars on a rule. Behind it
+    is the arc of light the whole interface is built on — masked to its lower
+    sweep, exactly as in the window, because a complete ring reads as a logo and a
+    fragment reads as a reflection.
+  -->
+  <defs>
+    <radialGradient id="lift" cx="50%" cy="40%" r="64%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.09"/>
+      <stop offset="55%" stop-color="#ffffff" stop-opacity="0.025"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <!-- Only the lower-right of the ellipse lights up. -->
+    <linearGradient id="sweep" x1="0" y1="0" x2="0.75" y2="1">
+      <stop offset="35%" stop-color="#000000"/>
+      <stop offset="85%" stop-color="#ffffff"/>
+    </linearGradient>
+    <mask id="arc-mask">
+      <rect width="1024" height="1024" fill="url(#sweep)"/>
+    </mask>
+    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="30"/>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" fill="#000000"/>
+  <rect width="1024" height="1024" fill="url(#lift)"/>
+
+  <g mask="url(#arc-mask)">
+    <g filter="url(#soft)" opacity="0.62">
+      <ellipse cx="512" cy="530" rx="378" ry="252"
+               fill="none" stroke="#ffffff" stroke-width="30"
+               transform="rotate(-16 512 530)"/>
+    </g>
+  </g>
+
+  <!-- Six bars on a rule. 44 wide on a 99 pitch, so the gaps hold at 32px. -->
+  <g fill="#ffffff">
+    <rect x="242" y="690" width="540" height="28"/>
+    <rect x="242" y="576" width="44" height="114"/>
+    <rect x="341" y="462" width="44" height="228"/>
+    <rect x="440" y="376" width="44" height="314"/>
+    <rect x="539" y="519" width="44" height="171"/>
+    <rect x="638" y="433" width="44" height="257"/>
+    <rect x="738" y="605" width="44" height="85"/>
+  </g>
+</svg>

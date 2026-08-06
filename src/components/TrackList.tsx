@@ -132,6 +132,10 @@ const TrackRow = memo(function TrackRow({
     >
       <button
         onClick={() => void playTrack(track, queue)}
+        // A hook rather than a style: Obsidian marks the playing row with a 2px
+        // bar at its left edge instead of a fill, and `bg-accent` is a utility a
+        // stylesheet cannot sensibly select on.
+        data-current={isCurrent || undefined}
         className={cn(
           // `bg-row` stays on regardless: the current row's `bg-accent` only
           // sets a background *colour*, so it wins over the row fill without

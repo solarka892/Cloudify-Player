@@ -86,6 +86,11 @@ function RailItem({
     <button
       onClick={() => onNavigate(id)}
       title={label}
+      // `aria-current` is what a stylesheet grabs hold of to restyle the active
+      // item as a set — Obsidian replaces the filled pill with a 2px marker at
+      // the edge — and it is the right thing for a screen reader either way.
+      aria-current={active ? "page" : undefined}
+      data-nav-item="side"
       className={cn(
         "relative flex h-10 shrink-0 items-center gap-3 rounded-[var(--radius)] px-2.5 text-sm",
         active
@@ -93,6 +98,7 @@ function RailItem({
           : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
       )}
     >
+      <span className="nav-marker" aria-hidden />
       <span className="relative shrink-0">
         <Icon className="h-[18px] w-[18px]" />
         {/* Pinned to the icon rather than the row: the rail widens on hover,
@@ -155,13 +161,16 @@ function TopItem({
   return (
     <button
       onClick={() => onNavigate(id)}
+      aria-current={active ? "page" : undefined}
+      data-nav-item="top"
       className={cn(
-        "flex items-center gap-2 rounded-[var(--radius)] px-3 py-1.5 text-sm transition-colors duration-[var(--motion-fast)]",
+        "relative flex items-center gap-2 rounded-[var(--radius)] px-3 py-1.5 text-sm transition-colors duration-[var(--motion-fast)]",
         active
           ? "bg-accent text-foreground"
           : "text-muted-foreground hover:text-foreground",
       )}
     >
+      <span className="nav-marker" aria-hidden />
       <Icon className="h-4 w-4" />
       <span className="label">{label}</span>
       <Badge count={badge} />
@@ -258,11 +267,13 @@ export function NavBottom({ view, onNavigate }: NavProps) {
           key={id}
           onClick={() => onNavigate(id)}
           aria-current={view === id ? "page" : undefined}
+          data-nav-item="bottom"
           className={cn(
-            "flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-1.5 transition-colors duration-[var(--motion-fast)]",
+            "relative flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-1.5 transition-colors duration-[var(--motion-fast)]",
             view === id ? "text-foreground" : "text-muted-foreground",
           )}
         >
+          <span className="nav-marker" aria-hidden />
           <Icon className="h-[22px] w-[22px] shrink-0" />
           <span className="label w-full truncate text-center text-[10px] leading-tight">
             {label}
@@ -331,13 +342,16 @@ function SidebarItem({
   return (
     <button
       onClick={() => onNavigate(id)}
+      aria-current={active ? "page" : undefined}
+      data-nav-item="side"
       className={cn(
-        "flex h-9 items-center gap-3 rounded-[var(--radius)] px-2.5 text-sm transition-colors duration-[var(--motion-fast)]",
+        "relative flex h-9 items-center gap-3 rounded-[var(--radius)] px-2.5 text-sm transition-colors duration-[var(--motion-fast)]",
         active
           ? "bg-accent text-foreground"
           : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
       )}
     >
+      <span className="nav-marker" aria-hidden />
       <Icon className="h-[18px] w-[18px]" />
       <span className="label">{label}</span>
       <Badge count={badge} className="ml-auto" />

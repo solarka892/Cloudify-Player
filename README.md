@@ -31,11 +31,46 @@ _Coming soon._
 - **Search** — find tracks across SoundCloud.
 - **Player** — play/pause, seek, volume, and a queue: whatever list you played
   from becomes the queue, with autoplay, skip and a jump-to-track panel.
-- **Appearance** — dark / light / follow-the-system theme, six accent colours.
+- **Appearance** — four skins, fourteen palettes, three layouts, and a window
+  frame the app draws itself. See [Looks](#looks).
 - **Sign-in** — reuses your existing SoundCloud web session (see below).
 
 Not there yet: playlists, followings, downloads, HLS-only tracks, users and
 playlists in search results.
+
+## Looks
+
+Appearance is three independent axes, and every combination of them is valid:
+
+- **Layout** — icon rail, top tabs or a wide sidebar.
+- **Skin** — form only: corner radius, blur, shadows, type and motion.
+- **Palette** — colour only, fourteen of them, dark and light variants each.
+
+Four skins ship:
+
+| Skin | |
+|------|--|
+| **Aurora Glass** | Glass, blur and a soft glow. The default. |
+| **Editorial** | Large type, hard lines, no shadows. |
+| **Studio** | Tactile controls, careful depth, a waveform. |
+| **Obsidian** | Black glass, hairlines, hard edges. |
+
+**Obsidian** is the one that goes furthest. True black, panels barely two percent
+lighter than the page, a corner radius of exactly zero on everything —
+buttons, covers, avatars, the progress handle — and no colour anywhere, cover art
+included: it is desaturated to a single tone so a bright album is texture rather
+than a colour cast. The app draws its own 32px title bar instead of the system's,
+and one blurred arc of white light behind the interface is the only thing lighting
+the glass. Settings → Appearance → **Ready-made looks** sets it up in one press.
+
+<!-- TODO: docs/screenshots/obsidian.png — the window on a dark desktop, glass on.
+![Obsidian](docs/screenshots/obsidian.png)
+-->
+
+Design notes and the reasoning behind Obsidian:
+[docs/design-obsidian.md](docs/design-obsidian.md). The custom window frame,
+including how to get the system one back if your compositor dislikes it:
+[docs/window-chrome.md](docs/window-chrome.md).
 
 ## Install
 
