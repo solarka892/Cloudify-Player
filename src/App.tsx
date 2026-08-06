@@ -12,11 +12,13 @@ import {
 import { isAndroid } from "@/lib/platform";
 import { useNativeMediaSession } from "@/hooks/useNativeMediaSession";
 import { AppShell } from "@/components/shell/AppShell";
+import { TitleBar } from "@/components/shell/TitleBar";
 import { AppleShell } from "@/features/apple/AppleShell";
 import { ApplePlayerBar } from "@/features/apple/ApplePlayerBar";
 import { Toaster } from "@/components/Toaster";
 import { ConfirmHost } from "@/components/ConfirmHost";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { SkinLight } from "@/components/Ambient";
 import { LogoMark } from "@/components/Logo";
 import { HotkeyHelp } from "@/components/HotkeyHelp";
 import { useHotkeys } from "@/hooks/useHotkeys";
@@ -140,11 +142,12 @@ function App() {
   }, []);
 
   if (auth.state === "unknown") {
-    return <div className="h-full w-full bg-background" />;
+    return <Chrome><div className="h-full w-full bg-background" /></Chrome>;
   }
 
   if (auth.state !== "loggedIn") {
     return (
+      <Chrome>
       <LoginView
         status={auth}
         onLogin={async () => {
@@ -172,6 +175,7 @@ function App() {
           }
         }}
       />
+      </Chrome>
     );
   }
 
@@ -179,9 +183,10 @@ function App() {
   const Shell = apple ? AppleShell : AppShell;
 
   return (
-    // Keyed on the language: `t` is a live binding, but memoised subtrees would
-    // otherwise keep strings they rendered before the switch. Keying here and
-    // not higher up means the session survives a language change.
+    <Chrome>
+    {/* Keyed on the language: `t` is a live binding, but memoised subtrees would
+        otherwise keep strings they rendered before the switch. Keying here and
+        not higher up means the session survives a language change. */}
     <Shell
       key={locale}
       view={view}
@@ -230,6 +235,33 @@ function App() {
       </ErrorBoundary>
       </div>
     </Shell>
+    </Chrome>
+  );
+}
+
+/**
+ * The window, around whatever the app is currently showing.
+ *
+ * Wraps all three of `App`'s branches, including the pre-auth screen and the
+ * blank frame shown while the session is being checked: the window launches
+ * undecorated, so a title bar that only appeared once signed in would leave no
+ * way to close the app before signing in.
+ *
+ * A flex column rather than the title bar floating over the content, because the
+ * bar takes real height from the shells below it — both of them are `h-full`, and
+ * a fixed bar would have put 32px of the interface underneath itself.
+ *
+ * `.app-frame` is the window's outer hairline. Without system decorations there
+ * is no frame and, on Linux and Windows, no drop shadow either, so on a dark
+ * desktop the app would have no visible edge at all. Only the skins that ask for
+ * it draw one — see `globals.css`.
+ */
+function Chrome({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="app-frame relative flex h-full w-full flex-col overflow-hidden">
+      <TitleBar />
+      <div className="relative min-h-0 flex-1">{children}</div>
+    </div>
   );
 }
 
@@ -278,6 +310,7 @@ function LoginView({
       {useSettingsStore.getState().backdrop.mode !== "none" && (
         <div className="app-backdrop" aria-hidden />
       )}
+      <SkinLight />
       <div className="panel panel-raised relative z-10 flex w-full max-w-md flex-col items-center gap-5 rounded-[var(--radius-hero)] p-8">
         <div className="flex flex-col items-center gap-2">
           <LogoMark className="h-16 w-24" />

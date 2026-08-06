@@ -14,6 +14,34 @@ import { cn } from "@/lib/utils";
  * Always `pointer-events-none`: this is scenery, and it must never eat a click
  * meant for what is underneath.
  */
+/**
+ * The skin's own light, and the film of grain over it.
+ *
+ * A blurred elliptical arc of white inside the window, under every panel. Not
+ * decoration: frosted glass on true black has nothing to refract, so without a
+ * light source behind them a 30px backdrop blur produces flat grey rectangles and
+ * the whole look collapses. The grain is the other half of the same idea — true
+ * black on an LCD reads as a hole in the screen rather than as a surface.
+ *
+ * Both are pure CSS (`globals.css`), cost nothing per frame, and are `display:
+ * none` unless the active skin asks for them — which is why this can be mounted
+ * unconditionally and why no component has to know which skin is on. Rendered
+ * rather than made a pseudo-element of the backdrop layer because that layer is
+ * not mounted at all when the wallpaper is off, and the light is not the
+ * wallpaper.
+ */
+export function SkinLight() {
+  return (
+    <>
+      <div className="app-glow" aria-hidden>
+        <div className="app-glow-haze" />
+        <div className="app-glow-arc" />
+      </div>
+      <div className="app-grain" aria-hidden />
+    </>
+  );
+}
+
 export function Ambient({ className }: { className?: string }) {
   const effect = useSettingsStore((s) => s.backdrop.effect);
   const intensity = useSettingsStore((s) => s.backdrop.effectIntensity);

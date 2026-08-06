@@ -989,3 +989,17 @@
 :root[data-skin="obsidian"] .app-frame {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--foreground) 12%, transparent);
 }
+
+/* ── The app's own window frame ─────────────────────────────────────────────
+ *
+ * Unlayered for the same reason as the block above: these have to beat utilities
+ * the components already carry. Not gated on the skin — a title bar belongs to
+ * the window rather than to the look, and all four skins get the same one.
+ */
+
+/* The window buttons opt out of the app-wide press scale. A full-height square
+   that shrinks under the pointer reads as a bug on a frame, where every desktop's
+   buttons only ever change colour. */
+[data-window-button]:active {
+  transform: none;
+}

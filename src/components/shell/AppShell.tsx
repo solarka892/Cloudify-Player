@@ -3,7 +3,7 @@ import { useSettingsStore } from "@/stores/useSettingsStore";
 import { useNavStore } from "@/stores/useNavStore";
 import { setViewScroller, scrollViewToTop } from "@/lib/scroll";
 import { useWheelStep } from "@/hooks/useWheelStep";
-import { Ambient } from "@/components/Ambient";
+import { Ambient, SkinLight } from "@/components/Ambient";
 import { useCompact } from "@/hooks/useCompact";
 import {
   NavBottom,
@@ -74,6 +74,9 @@ export function AppShell({
   return (
     <div className="relative flex h-full w-full flex-col overflow-hidden bg-background text-foreground">
       {showBackdrop && <div className="app-backdrop" aria-hidden />}
+      {/* Above the wallpaper, below the panels — the light is what the glass has
+          to refract, so it has to be behind the glass and inside the window. */}
+      <SkinLight />
       {/* Between the wallpaper and the content: the weather falls behind the
           interface, never over it. */}
       <Ambient className="fixed z-[1]" />
