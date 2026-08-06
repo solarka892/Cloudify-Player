@@ -983,11 +983,21 @@
 
 /* The window's outer edge. Without system decorations there is no frame and, on
    Linux and Windows, no drop shadow either — so on a dark desktop the app has no
-   boundary at all. One hairline is enough to give it one; it is the window's
-   edge, not a panel's, and it is the only border in the mode that is brighter
-   than 8%. */
-:root[data-skin="obsidian"] .app-frame {
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--foreground) 12%, transparent);
+   boundary at all. One hairline is enough to give it one; it is the window's edge,
+   not a panel's, and it is the only border in the mode brighter than 8%.
+
+   An overlay rather than an `inset` box-shadow: an inset shadow paints under the
+   element's content, and the wallpaper layer is a fixed element covering the whole
+   viewport — so the hairline would be behind it and invisible exactly when it is
+   most needed. Above everything, and pointer-transparent so it never eats a click
+   meant for the resize strips underneath. */
+:root[data-skin="obsidian"] .app-frame::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  pointer-events: none;
+  border: 1px solid color-mix(in srgb, var(--foreground) 12%, transparent);
 }
 
 /* ── The app's own window frame ─────────────────────────────────────────────
@@ -1066,7 +1076,7 @@
   background: transparent;
   border-bottom-color: transparent;
 }
-:root[data-skin="obsidian"] [data-current] {
+:root[data-skin="obsidian"] .bg-row[data-current] {
   box-shadow: inset 2px 0 0 var(--foreground);
 }
 
