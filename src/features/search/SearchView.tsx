@@ -313,13 +313,13 @@ export function SearchView() {
           placeholder={t.search.placeholder}
           spellCheck={false}
           autoComplete="off"
-          className="search-field w-full rounded-md border border-border py-2 pl-9 pr-9 text-sm text-card-foreground outline-none focus:ring-1 focus:ring-ring"
+          className="search-field w-full rounded-[var(--radius)] border border-border py-2 pl-9 pr-9 text-sm text-card-foreground outline-none focus:ring-1 focus:ring-ring"
         />
         {query && (
           <button
             onClick={() => setQuery("")}
             aria-label={t.search.clear}
-            className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-[var(--radius-control)] p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <X className="h-4 w-4" />
           </button>
@@ -476,7 +476,7 @@ export function SearchView() {
             <button
               onClick={loadMore}
               disabled={state.loadingMore}
-              className="self-center rounded-md border border-border bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-accent disabled:opacity-50"
+              className="self-center rounded-[var(--radius)] border border-border bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-accent disabled:opacity-50"
             >
               {state.loadingMore ? t.search.loading : t.search.loadMore}
             </button>
@@ -631,7 +631,7 @@ function ChipRow<T extends string>({
           key={option.id}
           onClick={() => onSelect(selected === option.id ? undefined : option.id)}
           className={cn(
-            "rounded-full border px-2.5 py-1 text-xs transition-colors duration-[var(--motion-fast)]",
+            "rounded-[var(--radius-round)] border px-2.5 py-1 text-xs transition-colors duration-[var(--motion-fast)]",
             selected === option.id
               ? "border-brand text-brand"
               : "border-border text-muted-foreground hover:text-foreground",

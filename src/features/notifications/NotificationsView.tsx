@@ -148,15 +148,15 @@ export function NotificationsView() {
                       src={avatar}
                       alt=""
                       loading="lazy"
-                      className="h-9 w-9 rounded-full object-cover"
+                      className="h-9 w-9 rounded-[var(--radius-round)] object-cover"
                     />
                   ) : (
-                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-round)] bg-secondary">
                       <UserIcon className="h-4 w-4 text-muted-foreground" />
                     </span>
                   )}
                 </button>
-                <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-card ring-1 ring-border">
+                <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-[var(--radius-round)] bg-card ring-1 ring-border">
                   <Icon className="h-2.5 w-2.5 text-brand" />
                 </span>
               </span>

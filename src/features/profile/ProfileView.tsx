@@ -253,10 +253,10 @@ export function ProfileView({
             <img
               src={avatar}
               alt=""
-              className="h-20 w-20 shrink-0 rounded-full object-cover shadow-[var(--shadow-2)] sm:h-28 sm:w-28"
+              className="h-20 w-20 shrink-0 rounded-[var(--radius-round)] object-cover shadow-[var(--shadow-2)] sm:h-28 sm:w-28"
             />
           ) : (
-            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-secondary sm:h-28 sm:w-28">
+            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-[var(--radius-round)] bg-secondary sm:h-28 sm:w-28">
               <UserIcon className="h-10 w-10 text-muted-foreground" />
             </div>
           )}

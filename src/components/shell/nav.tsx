@@ -38,7 +38,7 @@ function Badge({ count, className }: { count: number; className?: string }) {
   return (
     <span
       className={cn(
-        "brand-gradient flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold leading-none text-brand-foreground",
+        "brand-gradient flex h-4 min-w-4 items-center justify-center rounded-[var(--radius-round)] px-1 text-[10px] font-semibold leading-none text-brand-foreground",
         className,
       )}
     >
@@ -87,7 +87,7 @@ function RailItem({
       onClick={() => onNavigate(id)}
       title={label}
       className={cn(
-        "relative flex h-10 shrink-0 items-center gap-3 rounded-md px-2.5 text-sm",
+        "relative flex h-10 shrink-0 items-center gap-3 rounded-[var(--radius)] px-2.5 text-sm",
         active
           ? "bg-accent text-foreground"
           : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
@@ -129,7 +129,7 @@ export function NavTop({ view, onNavigate }: NavProps) {
         onClick={() => onNavigate("settings")}
         title={t.nav.settings}
         className={cn(
-          "ml-auto rounded-md p-2 transition-colors duration-[var(--motion-fast)]",
+          "ml-auto rounded-[var(--radius)] p-2 transition-colors duration-[var(--motion-fast)]",
           view === "settings"
             ? "bg-accent text-foreground"
             : "text-muted-foreground hover:text-foreground",
@@ -156,7 +156,7 @@ function TopItem({
     <button
       onClick={() => onNavigate(id)}
       className={cn(
-        "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors duration-[var(--motion-fast)]",
+        "flex items-center gap-2 rounded-[var(--radius)] px-3 py-1.5 text-sm transition-colors duration-[var(--motion-fast)]",
         active
           ? "bg-accent text-foreground"
           : "text-muted-foreground hover:text-foreground",
@@ -304,7 +304,7 @@ export function NavSidebar({ view, onNavigate }: NavProps) {
               <li key={playlist.id}>
                 <button
                   onClick={() => openPlaylist(playlist)}
-                  className="w-full truncate rounded-md px-2.5 py-1.5 text-left text-sm text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent/60 hover:text-foreground"
+                  className="w-full truncate rounded-[var(--radius)] px-2.5 py-1.5 text-left text-sm text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent/60 hover:text-foreground"
                 >
                   {playlist.title}
                 </button>
@@ -332,7 +332,7 @@ function SidebarItem({
     <button
       onClick={() => onNavigate(id)}
       className={cn(
-        "flex h-9 items-center gap-3 rounded-md px-2.5 text-sm transition-colors duration-[var(--motion-fast)]",
+        "flex h-9 items-center gap-3 rounded-[var(--radius)] px-2.5 text-sm transition-colors duration-[var(--motion-fast)]",
         active
           ? "bg-accent text-foreground"
           : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",

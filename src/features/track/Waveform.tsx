@@ -47,7 +47,7 @@ function Bars({ heights, played }: { heights: number[]; played: boolean }) {
           key={i}
           style={{ height: `${h * 100}%` }}
           className={cn(
-            "min-w-px flex-1 rounded-full",
+            "min-w-px flex-1 rounded-[var(--radius-round)]",
             played ? "bg-brand" : "bg-muted-foreground/35",
           )}
         />
@@ -106,10 +106,10 @@ export function Waveform({
         aria-valuenow={Math.round(positionMs / 1000)}
         onClick={(e) => onSeek((fractionAt(e.clientX) * durationMs) / 1000)}
         ref={ref}
-        className="relative h-2 w-full cursor-pointer overflow-hidden rounded-full bg-muted-foreground/25"
+        className="relative h-2 w-full cursor-pointer overflow-hidden rounded-[var(--radius-round)] bg-muted-foreground/25"
       >
         <div
-          className="h-full rounded-full bg-brand"
+          className="h-full rounded-[var(--radius-round)] bg-brand"
           style={{ width: `${progress * 100}%` }}
         />
       </div>
@@ -179,10 +179,10 @@ export function Waveform({
                   src={artwork(comment.user.avatar_url, "t50x50") ?? undefined}
                   alt=""
                   loading="lazy"
-                  className="h-4 w-4 rounded-full object-cover ring-1 ring-border"
+                  className="h-4 w-4 rounded-[var(--radius-round)] object-cover ring-1 ring-border"
                 />
               ) : (
-                <span className="block h-2 w-2 rounded-full bg-brand" />
+                <span className="block h-2 w-2 rounded-[var(--radius-round)] bg-brand" />
               )}
             </button>
           ))}

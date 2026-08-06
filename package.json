@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "dev:app": "GDK_BACKEND=x11 WEBKIT_DISABLE_DMABUF_RENDERER=1 tauri dev",
-    "lint": "eslint .",
+    "lint": "eslint . && node scripts/check-tokens.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"

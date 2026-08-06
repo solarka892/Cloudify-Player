@@ -24,7 +24,7 @@ import {
  *     window with the wallpaper visible all the way around them, not strips
  *     welded to its edges. There is no hairline anywhere, because nothing
  *     touches anything.
- *   - On a wide window the content is its own rounded pane beside or below the
+ *   - On a wide window the content is its own rounded-[var(--radius-control)] pane beside or below the
  *     chrome, which is what Tahoe does; on a narrow one it runs full-bleed and
  *     scrolls *behind* the floating dock and player, which is what iOS 26 does.
  *     The reserved padding at the bottom is what keeps the last row reachable.
@@ -90,10 +90,19 @@ export function AppleShell({
             {/* The bottom padding reserves the floating chrome's height plus
                 its gaps. Content scrolls under the glass, which is the whole
                 effect; without the reserve the last row would sit under it
-                permanently instead of passing behind it. */}
+                permanently instead of passing behind it.
+
+                The top is the same problem at the other edge, and unlike the
+                bottom there is no floating chrome to hide it: this mode has no
+                top bar on a phone, so the first row of a view is the first
+                thing under the status bar. A bare `pt-4` put it beneath the
+                clock. `--safe-top` rather than `pt-safe` because the gap above
+                the content is wanted *in addition* to the inset, and the
+                utility would replace it. */}
             <div
-              className="mx-auto w-full max-w-3xl px-4 pt-4"
+              className="mx-auto w-full max-w-3xl px-4"
               style={{
+                paddingTop: "calc(1rem + var(--safe-top))",
                 paddingBottom: `calc(${player ? "10.5rem" : "6.5rem"} + var(--safe-bottom))`,
               }}
             >

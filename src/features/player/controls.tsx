@@ -54,7 +54,7 @@ export function PlayPauseButton({
       data-transport="play"
       aria-label={isPlaying ? t.player.pause : t.player.play}
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-full transition-[opacity,transform,background-color] duration-[var(--motion-fast)] hover:opacity-90 disabled:opacity-50",
+        "flex shrink-0 items-center justify-center rounded-[var(--radius-round)] transition-[opacity,transform,background-color] duration-[var(--motion-fast)] hover:opacity-90 disabled:opacity-50",
         plain
           ? "h-11 w-11 text-foreground hover:bg-accent active:scale-90"
           : "bg-primary text-primary-foreground hover:scale-105",
@@ -92,7 +92,7 @@ export function PrevButton({ size = "md" }: { size?: "md" | "lg" }) {
       data-transport="prev"
       aria-label={t.player.prev}
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-full text-muted-foreground transition-[color,background-color,transform] duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground active:scale-90",
+        "flex shrink-0 items-center justify-center rounded-[var(--radius-round)] text-muted-foreground transition-[color,background-color,transform] duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground active:scale-90",
         size === "lg" ? "h-10 w-10" : "h-8 w-8",
       )}
     >
@@ -119,7 +119,7 @@ export function NextButton({ size = "md" }: { size?: "md" | "lg" }) {
       data-transport="next"
       aria-label={t.player.next}
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-full text-muted-foreground transition-[color,background-color,transform] duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground active:scale-90 disabled:opacity-30 disabled:hover:bg-transparent",
+        "flex shrink-0 items-center justify-center rounded-[var(--radius-round)] text-muted-foreground transition-[color,background-color,transform] duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground active:scale-90 disabled:opacity-30 disabled:hover:bg-transparent",
         size === "lg" ? "h-10 w-10" : "h-8 w-8",
       )}
     >
@@ -139,7 +139,7 @@ export function ShuffleButton() {
       aria-label={t.player.shuffle}
       title={t.player.shuffle}
       className={cn(
-        "flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors duration-[var(--motion-fast)] hover:bg-accent",
+        "flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-round)] transition-colors duration-[var(--motion-fast)] hover:bg-accent",
         shuffle ? "text-brand" : "text-muted-foreground hover:text-foreground",
       )}
     >
@@ -166,7 +166,7 @@ export function RepeatButton() {
       aria-label={label}
       title={label}
       className={cn(
-        "flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors duration-[var(--motion-fast)] hover:bg-accent",
+        "flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-round)] transition-colors duration-[var(--motion-fast)] hover:bg-accent",
         repeat === "off"
           ? "text-muted-foreground hover:text-foreground"
           : "text-brand",
@@ -213,9 +213,9 @@ export function SeekBar({ compact = false }: { compact?: boolean }) {
             two class names are styling hooks — Apple mode thickens the track
             on hover and repaints the fill, neither of which it could reach
             through the utilities. */}
-        <div className="seek-track pointer-events-none absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 overflow-hidden rounded-full bg-secondary">
+        <div className="seek-track pointer-events-none absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 overflow-hidden rounded-[var(--radius-round)] bg-secondary">
           <div
-            className="seek-fill brand-gradient h-full rounded-full"
+            className="seek-fill brand-gradient h-full rounded-[var(--radius-round)]"
             style={{
               width: `${progress}%`,
               transitionDuration: scrubbing ? "0ms" : undefined,
@@ -238,7 +238,7 @@ export function SeekBar({ compact = false }: { compact?: boolean }) {
           aria-label={t.player.seek}
           className="relative h-4 w-full cursor-pointer appearance-none bg-transparent
             [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3
-            [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full
+            [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-[var(--radius-round)]
             [&::-webkit-slider-thumb]:bg-foreground [&::-webkit-slider-thumb]:opacity-0
             [&::-webkit-slider-thumb]:transition-opacity
             group-hover/seek:[&::-webkit-slider-thumb]:opacity-100"

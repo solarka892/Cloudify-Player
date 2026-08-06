@@ -27,7 +27,7 @@ export function ConfirmHost() {
 
   return (
     <div
-      className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-6"
+      className="fixed inset-0 z-[95] flex items-center justify-center scrim p-6"
       onClick={() => answer(false)}
       role="alertdialog"
       aria-modal="true"
@@ -51,7 +51,7 @@ export function ConfirmHost() {
             className={cn(
               "rounded-[var(--radius-control)] px-3 py-1.5 text-sm font-semibold transition-opacity duration-[var(--motion-fast)] hover:opacity-90",
               pending.destructive
-                ? "bg-destructive text-white"
+                ? "bg-destructive text-destructive-foreground"
                 : "brand-gradient text-brand-foreground",
             )}
           >

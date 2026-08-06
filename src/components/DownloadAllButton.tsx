@@ -60,7 +60,7 @@ export function DownloadAllButton({
         className="flex shrink-0 items-center gap-1.5 rounded-[var(--radius-control)] border border-destructive px-2.5 py-1.5 text-xs text-destructive"
       >
         <Square className="h-3.5 w-3.5 fill-current" />
-        {t.downloads.stop}
+        <span className="hidden md:inline">{t.downloads.stop}</span>
         {inFlight > 0 && <span className="tabular-nums opacity-70">·</span>}
       </button>
     );
@@ -71,12 +71,18 @@ export function DownloadAllButton({
       onClick={() => void run()}
       disabled={pending.length === 0}
       title={t.downloads.all}
+      aria-label={t.downloads.all}
       className={cn(
         "flex shrink-0 items-center gap-1.5 rounded-[var(--radius-control)] border border-border px-2.5 py-1.5 text-xs text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground disabled:opacity-40",
       )}
     >
       <DownloadCloud className="h-4 w-4" />
-      {label ?? `${t.downloads.all}${pending.length > 0 ? ` (${pending.length})` : ""}`}
+      {/* Icon only on a phone. "Download all (1207)" is the widest control in
+          every toolbar it appears in, and the count it carries is already shown
+          beside it by the section header. */}
+      <span className="hidden md:inline">
+        {label ?? `${t.downloads.all}${pending.length > 0 ? ` (${pending.length})` : ""}`}
+      </span>
     </button>
   );
 }

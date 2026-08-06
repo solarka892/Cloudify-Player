@@ -45,7 +45,7 @@ export function LikeButton({
       aria-label={liked ? t.track.unlike : t.track.like}
       title={liked ? t.track.unlike : t.track.like}
       className={cn(
-        "shrink-0 rounded-full p-1.5 transition-[color,transform] duration-[var(--motion-fast)] hover:scale-110 active:scale-90",
+        "shrink-0 rounded-[var(--radius-round)] p-1.5 transition-[color,transform] duration-[var(--motion-fast)] hover:scale-110 active:scale-90",
         liked ? "text-brand" : "text-muted-foreground hover:text-foreground",
         className,
       )}

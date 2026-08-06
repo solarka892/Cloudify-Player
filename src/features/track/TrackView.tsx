@@ -302,7 +302,7 @@ export function TrackView({ trackId, meId }: { trackId: number; meId: number }) 
                 onClick={() => setAddTo(track)}
                 title={t.track.addToPlaylist}
                 aria-label={t.track.addToPlaylist}
-                className="rounded-full p-1.5 text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:text-foreground"
+                className="rounded-[var(--radius-round)] p-1.5 text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:text-foreground"
               >
                 <ListPlus className="h-5 w-5" />
               </button>
@@ -311,7 +311,7 @@ export function TrackView({ trackId, meId }: { trackId: number; meId: number }) 
                 onClick={() => void startDownload(track)}
                 title={t.track.download}
                 aria-label={t.track.download}
-                className="rounded-full p-1.5 text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:text-foreground"
+                className="rounded-[var(--radius-round)] p-1.5 text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:text-foreground"
               >
                 <Download className="h-5 w-5" />
               </button>
@@ -389,7 +389,7 @@ export function TrackView({ trackId, meId }: { trackId: number; meId: number }) 
             <button
               key={tag}
               onClick={() => openSearch(tag)}
-              className="rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:border-brand hover:text-brand"
+              className="rounded-[var(--radius-round)] border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:border-brand hover:text-brand"
             >
               #{tag}
             </button>

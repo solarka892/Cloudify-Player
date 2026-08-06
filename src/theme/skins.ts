@@ -142,6 +142,9 @@ export const SKINS: Record<SkinId, Skin> = {
       "--radius": "0px",
       "--radius-control": "0px",
       "--radius-hero": "0px",
+      // Including the things that are round everywhere else. A square avatar and
+      // a rectangular slider handle are the mode's loudest tells.
+      "--radius-round": "0px",
       "--border-width": "1px",
       "--blur": "0px",
       "--surface-alpha": "100%",

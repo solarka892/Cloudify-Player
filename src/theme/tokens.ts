@@ -69,6 +69,17 @@ export interface SkinVars {
   "--radius-control": string;
   /** Hero blocks, artwork tiles. */
   "--radius-hero": string;
+  /**
+   * Things that are round rather than rounded: avatars, badges, slider handles,
+   * the play button.
+   *
+   * A separate token because "as round as it goes" is not a size — it is a
+   * shape, and collapsing it onto `--radius-control` would make an avatar a
+   * 10px-cornered square in Aurora, which is nobody's idea of an avatar. Every
+   * skin but one keeps it at `9999px`; Obsidian takes it to `0`, and a square
+   * avatar is the single loudest thing about the mode.
+   */
+  "--radius-round": string;
   "--border-width": string;
   /** Backdrop blur behind panels; `0px` for opaque skins. */
   "--blur": string;
@@ -153,6 +164,7 @@ export interface SkinVars {
  */
 export const SIGNATURE_OFF: Pick<
   SkinVars,
+  | "--radius-round"
   | "--label-size"
   | "--art-filter"
   | "--chrome-height"
@@ -161,6 +173,7 @@ export const SIGNATURE_OFF: Pick<
   | "--glow"
   | "--surface-sink"
 > = {
+  "--radius-round": "9999px",
   "--label-size": "0.6875rem",
   // The app's own title bar is a window-level feature, not a skin's, so its
   // height is the same in all of them; only its finish differs.

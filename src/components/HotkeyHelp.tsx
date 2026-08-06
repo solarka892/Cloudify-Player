@@ -26,7 +26,7 @@ function keyRows(): [string, string][] {
 export function HotkeyHelp({ onClose }: { onClose: () => void }) {
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-8"
+      className="fixed inset-0 z-[70] flex items-center justify-center scrim p-8"
       onClick={onClose}
     >
       <div
@@ -38,7 +38,7 @@ export function HotkeyHelp({ onClose }: { onClose: () => void }) {
           <button
             onClick={onClose}
             aria-label={t.player.close}
-            className="ml-auto rounded p-1 text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground"
+            className="ml-auto rounded-[var(--radius-control)] p-1 text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground"
           >
             <X className="h-4 w-4" />
           </button>

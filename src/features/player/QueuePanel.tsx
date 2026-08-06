@@ -47,7 +47,7 @@ export function QueuePanel({ onClose }: { onClose?: () => void }) {
           <button
             onClick={onClose}
             aria-label={t.player.close}
-            className="rounded p-1 text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground"
+            className="rounded-[var(--radius-control)] p-1 text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground"
           >
             <X className="h-4 w-4" />
           </button>
@@ -133,7 +133,7 @@ export function QueuePanel({ onClose }: { onClose?: () => void }) {
                 <button
                   onClick={() => removeAt(orderPos)}
                   aria-label={t.player.removeFromQueue}
-                  className="shrink-0 rounded p-1 text-muted-foreground opacity-0 transition-opacity duration-[var(--motion-fast)] hover:text-foreground group-hover/row:opacity-100"
+                  className="shrink-0 rounded-[var(--radius-control)] p-1 text-muted-foreground opacity-0 transition-opacity duration-[var(--motion-fast)] hover:text-foreground group-hover/row:opacity-100"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>

@@ -89,7 +89,7 @@ function AppleBadge({ count, className }: { count: number; className?: string })
   return (
     <span
       className={cn(
-        "flex h-[17px] min-w-[17px] items-center justify-center rounded-full px-[5px] text-[11px] font-semibold leading-none text-white",
+        "flex h-[17px] min-w-[17px] items-center justify-center rounded-[var(--radius-round)] px-[5px] text-[11px] font-semibold leading-none text-white",
         className,
       )}
       style={{ background: "var(--ios-red)" }}
@@ -328,7 +328,7 @@ export function AppleDock({ view, onNavigate }: NavProps) {
             onClick={() => onNavigate(id)}
             aria-current={view === id ? "page" : undefined}
             className={cn(
-              "flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 rounded-full px-1",
+              "flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 rounded-[var(--radius-round)] px-1",
               view === id ? "text-brand" : "text-[var(--ios-label-2)]",
             )}
           >

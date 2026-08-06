@@ -92,7 +92,7 @@ function Shell({
             className={cn(
               "h-full w-full object-cover shadow-[var(--shadow-1)]",
               rounded === "circle"
-                ? "rounded-full"
+                ? "rounded-[var(--radius-round)]"
                 : "rounded-[var(--radius-control)]",
             )}
           />
@@ -101,7 +101,7 @@ function Shell({
             className={cn(
               "flex h-full w-full items-center justify-center bg-secondary",
               rounded === "circle"
-                ? "rounded-full"
+                ? "rounded-[var(--radius-round)]"
                 : "rounded-[var(--radius-control)]",
             )}
           >
@@ -111,7 +111,7 @@ function Shell({
 
         <span
           className={cn(
-            "brand-gradient absolute bottom-2 right-2 flex h-10 w-10 translate-y-1 items-center justify-center rounded-full text-brand-foreground opacity-0 shadow-[var(--shadow-2)] transition-all duration-[var(--motion-fast)] group-hover/tile:translate-y-0 group-hover/tile:opacity-100",
+            "brand-gradient absolute bottom-2 right-2 flex h-10 w-10 translate-y-1 items-center justify-center rounded-[var(--radius-round)] text-brand-foreground opacity-0 shadow-[var(--shadow-2)] transition-all duration-[var(--motion-fast)] group-hover/tile:translate-y-0 group-hover/tile:opacity-100",
             active && "translate-y-0 opacity-100",
           )}
         >
@@ -154,7 +154,7 @@ function Shell({
             onMenu(box.right, box.bottom);
           }}
           aria-label={t.track.more}
-          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-background/70 text-foreground backdrop-blur-sm transition-[opacity,background-color] duration-[var(--motion-fast)] hover:bg-background md:opacity-0 md:focus-visible:opacity-100 md:group-hover/tile:opacity-100"
+          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-[var(--radius-round)] bg-background/70 text-foreground backdrop-blur-sm transition-[opacity,background-color] duration-[var(--motion-fast)] hover:bg-background md:opacity-0 md:focus-visible:opacity-100 md:group-hover/tile:opacity-100"
         >
           <MoreVertical className="h-4 w-4" />
         </button>

@@ -344,9 +344,9 @@ export function SettingsView() {
               >
                 <span
                   className={cn(
-                    "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
+                    "flex h-5 w-5 shrink-0 items-center justify-center rounded-[var(--radius-round)] border",
                     theme.skin === id
-                      ? "border-brand bg-brand text-white"
+                      ? "border-brand bg-brand text-brand-foreground"
                       : "border-border",
                   )}
                 >
@@ -416,7 +416,7 @@ export function SettingsView() {
                   title={PALETTES[id].name}
                   aria-label={PALETTES[id].name}
                   className={cn(
-                    "h-8 w-8 overflow-hidden rounded-full border-2 transition-transform duration-[var(--motion-fast)] hover:scale-110",
+                    "h-8 w-8 overflow-hidden rounded-[var(--radius-round)] border-2 transition-transform duration-[var(--motion-fast)] hover:scale-110",
                     theme.palette === id ? "border-foreground" : "border-transparent",
                   )}
                   // The accent is a *dot*, not a wedge.
@@ -459,7 +459,7 @@ export function SettingsView() {
                 onClick={() => setTheme({ accent: id, accentFromArtwork: false })}
                 aria-label={id}
                 className={cn(
-                  "h-7 w-7 rounded-full border-2 transition-transform duration-[var(--motion-fast)] hover:scale-110",
+                  "h-7 w-7 rounded-[var(--radius-round)] border-2 transition-transform duration-[var(--motion-fast)] hover:scale-110",
                   theme.accent === id && !theme.accentFromArtwork
                     ? "border-foreground"
                     : "border-transparent",
@@ -824,7 +824,7 @@ export function SettingsView() {
                 <button
                   onClick={() => deletePreset(preset.id)}
                   aria-label={t.settings.remove}
-                  className="rounded p-1.5 text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground"
+                  className="rounded-[var(--radius-control)] p-1.5 text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground"
                 >
                   <glyphs.trash className="h-4 w-4" />
                 </button>

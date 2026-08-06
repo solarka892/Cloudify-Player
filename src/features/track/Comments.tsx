@@ -154,10 +154,10 @@ export function Comments({
                       src={avatar}
                       alt=""
                       loading="lazy"
-                      className="h-7 w-7 rounded-full object-cover"
+                      className="h-7 w-7 rounded-[var(--radius-round)] object-cover"
                     />
                   ) : (
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-secondary">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-[var(--radius-round)] bg-secondary">
                       <UserIcon className="h-3.5 w-3.5 text-muted-foreground" />
                     </span>
                   )}
@@ -174,7 +174,7 @@ export function Comments({
                     {comment.timestamp != null && (
                       <button
                         onClick={() => onSeek((comment.timestamp ?? 0) / 1000)}
-                        className="shrink-0 rounded-full bg-secondary px-1.5 py-0.5 font-mono text-[10px] tabular-nums text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:text-brand"
+                        className="shrink-0 rounded-[var(--radius-round)] bg-secondary px-1.5 py-0.5 font-mono text-[10px] tabular-nums text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:text-brand"
                       >
                         {formatTime((comment.timestamp ?? 0) / 1000)}
                       </button>
@@ -190,7 +190,7 @@ export function Comments({
                     onClick={() => void remove(comment)}
                     aria-label={t.trackPage.deleteComment}
                     title={t.trackPage.deleteComment}
-                    className="shrink-0 rounded p-1 text-muted-foreground opacity-0 transition-[opacity,color] duration-[var(--motion-fast)] hover:text-destructive group-hover:opacity-100"
+                    className="shrink-0 rounded-[var(--radius-control)] p-1 text-muted-foreground opacity-0 transition-[opacity,color] duration-[var(--motion-fast)] hover:text-destructive group-hover:opacity-100"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>

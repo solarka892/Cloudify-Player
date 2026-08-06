@@ -40,10 +40,10 @@ export function UserList({ users }: { users: User[] }) {
                   alt=""
                   loading="lazy"
                   decoding="async"
-                  className="h-10 w-10 shrink-0 rounded-full object-cover"
+                  className="h-10 w-10 shrink-0 rounded-[var(--radius-round)] object-cover"
                 />
               ) : (
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-round)] bg-secondary">
                   <UserIcon className="h-4 w-4 text-muted-foreground" />
                 </div>
               )}

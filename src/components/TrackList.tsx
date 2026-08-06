@@ -156,11 +156,11 @@ const TrackRow = memo(function TrackRow({
               <Music className="h-4 w-4 text-muted-foreground" />
             </div>
           )}
-          <span className="absolute inset-0 flex items-center justify-center rounded-[var(--radius-control)] bg-black/40 opacity-0 transition-opacity duration-[var(--motion-fast)] group-hover:opacity-100">
+          <span className="absolute inset-0 flex items-center justify-center rounded-[var(--radius-control)] art-overlay opacity-0 transition-opacity duration-[var(--motion-fast)] group-hover:opacity-100">
             {isCurrent && isPlaying ? (
-              <Pause className="h-4 w-4 text-white" />
+              <Pause className="h-4 w-4" />
             ) : (
-              <Play className="h-4 w-4 translate-x-[1px] text-white" />
+              <Play className="h-4 w-4 translate-x-[1px]" />
             )}
           </span>
         </div>

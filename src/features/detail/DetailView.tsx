@@ -87,7 +87,7 @@ function PlaylistDetail({ detail }: { detail: Detail }) {
         <button
           onClick={back}
           aria-label={t.nav.back}
-          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="rounded-[var(--radius)] p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
@@ -108,7 +108,7 @@ function PlaylistDetail({ detail }: { detail: Detail }) {
             onClick={() => setEditing(true)}
             aria-label={t.playlistEdit.edit}
             title={t.playlistEdit.edit}
-            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="rounded-[var(--radius)] p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <Pencil className="h-4 w-4" />
           </button>
@@ -124,7 +124,7 @@ function PlaylistDetail({ detail }: { detail: Detail }) {
               const first = tracks[0];
               if (first) void playTrack(first, tracks);
             }}
-            className="flex shrink-0 items-center gap-1.5 rounded-md bg-gradient-to-r from-brand to-brand-2 px-3 py-1.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+            className="flex shrink-0 items-center gap-1.5 rounded-[var(--radius)] brand-gradient px-3 py-1.5 text-sm font-semibold text-brand-foreground transition-opacity hover:opacity-90"
           >
             <Play className="h-3.5 w-3.5 translate-x-[1px]" />
             {t.detail.playAll}

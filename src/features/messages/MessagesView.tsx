@@ -157,7 +157,7 @@ export function MessagesView() {
                         </span>
                         {conversation.unread && (
                           <span
-                            className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand"
+                            className="h-1.5 w-1.5 shrink-0 rounded-[var(--radius-round)] bg-brand"
                             aria-label={t.messages.unread}
                           />
                         )}
@@ -183,7 +183,7 @@ export function MessagesView() {
                           ? t.messages.markRead
                           : t.messages.markUnread
                       }
-                      className="rounded p-1 text-muted-foreground hover:text-foreground"
+                      className="rounded-[var(--radius-control)] p-1 text-muted-foreground hover:text-foreground"
                     >
                       {conversation.unread ? (
                         <MailOpen className="h-3.5 w-3.5" />
@@ -206,7 +206,7 @@ export function MessagesView() {
                         });
                       }}
                       title={t.messages.delete}
-                      className="rounded p-1 text-muted-foreground hover:text-destructive"
+                      className="rounded-[var(--radius-control)] p-1 text-muted-foreground hover:text-destructive"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -250,13 +250,13 @@ function Avatar({ url, size = "md" }: { url: string | null; size?: "sm" | "md" }
       src={url}
       alt=""
       loading="lazy"
-      className={cn(box, "shrink-0 rounded-full object-cover")}
+      className={cn(box, "shrink-0 rounded-[var(--radius-round)] object-cover")}
     />
   ) : (
     <span
       className={cn(
         box,
-        "flex shrink-0 items-center justify-center rounded-full bg-secondary",
+        "flex shrink-0 items-center justify-center rounded-[var(--radius-round)] bg-secondary",
       )}
     >
       <UserIcon className="h-4 w-4 text-muted-foreground" />
@@ -311,7 +311,7 @@ function Thread({ user, onBack }: { user: User; onBack?: () => void }) {
           <button
             onClick={onBack}
             aria-label={t.nav.back}
-            className="rounded p-1 text-muted-foreground hover:text-foreground"
+            className="rounded-[var(--radius-control)] p-1 text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
@@ -402,13 +402,13 @@ function Bubble({
           <button
             onClick={() => void playTrack(track, [track])}
             onDoubleClick={() => openTrack(track)}
-            className="flex items-center gap-2 rounded-[var(--radius-control)] bg-black/20 p-1.5 text-left"
+            className="flex items-center gap-2 rounded-[var(--radius-control)] bg-secondary p-1.5 text-left"
           >
             {artwork(track.artwork_url, "t50x50") ? (
               <img
                 src={artwork(track.artwork_url, "t50x50") ?? undefined}
                 alt=""
-                className="h-8 w-8 shrink-0 rounded object-cover"
+                className="h-8 w-8 shrink-0 rounded-[var(--radius-control)] object-cover"
               />
             ) : null}
             <span className="min-w-0">
@@ -472,7 +472,7 @@ function NewMessageDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-[70] flex items-center justify-center scrim p-4"
       onClick={onClose}
     >
       <div
@@ -484,7 +484,7 @@ function NewMessageDialog({
           <button
             onClick={onClose}
             aria-label={t.search.clear}
-            className="rounded p-1 text-muted-foreground hover:text-foreground"
+            className="rounded-[var(--radius-control)] p-1 text-muted-foreground hover:text-foreground"
           >
             <X className="h-4 w-4" />
           </button>

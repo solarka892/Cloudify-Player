@@ -191,7 +191,7 @@ export function ApplePlayerBar() {
               <AppleDownload className="h-4 w-4" />
               {progress != null && (
                 <span
-                  className="absolute inset-x-1.5 bottom-1 h-0.5 rounded-full bg-brand"
+                  className="absolute inset-x-1.5 bottom-1 h-0.5 rounded-[var(--radius-round)] bg-brand"
                   style={{ width: `${Math.max(4, progress)}%` }}
                 />
               )}
@@ -244,7 +244,7 @@ function CompactBar({ track, onExpand }: { track: Track; onExpand: () => void })
       <button
         onClick={onExpand}
         aria-label={t.player.expand}
-        className="flex min-h-12 min-w-0 flex-1 items-center gap-3 rounded-full px-1 text-left"
+        className="flex min-h-12 min-w-0 flex-1 items-center gap-3 rounded-[var(--radius-round)] px-1 text-left"
       >
         {art ? (
           <img

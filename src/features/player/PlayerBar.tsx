@@ -105,8 +105,8 @@ export function PlayerBar() {
                   <Music className="h-5 w-5 text-muted-foreground" />
                 </span>
               )}
-              <span className="absolute inset-0 flex items-center justify-center rounded-[var(--radius-control)] bg-black/50 opacity-0 transition-opacity duration-[var(--motion-fast)] group-hover/art:opacity-100">
-                <ChevronUp className="h-5 w-5 text-white" />
+              <span className="absolute inset-0 flex items-center justify-center rounded-[var(--radius-control)] art-overlay opacity-0 transition-opacity duration-[var(--motion-fast)] group-hover/art:opacity-100">
+                <ChevronUp className="h-5 w-5" />
               </span>
             </button>
 
@@ -145,7 +145,7 @@ export function PlayerBar() {
                 <Download className="h-4 w-4" />
                 {progress != null && (
                   <span
-                    className="absolute inset-x-1 bottom-0.5 h-0.5 rounded-full bg-brand"
+                    className="absolute inset-x-1 bottom-0.5 h-0.5 rounded-[var(--radius-round)] bg-brand"
                     style={{ width: `${Math.max(4, progress)}%` }}
                   />
                 )}

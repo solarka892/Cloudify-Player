@@ -35,6 +35,11 @@
   --accent: oklch(0.955 0 0);
   --accent-foreground: oklch(0.185 0 0);
   --destructive: oklch(0.577 0.245 27.325);
+  /* Text on a `--destructive` fill. Fixed rather than derived: the destructive
+     colour is a warning red in both appearances, and white is legible on it. */
+  --destructive-foreground: oklch(1 0 0);
+  /* The veil behind a modal — see `.scrim`. */
+  --scrim: oklch(0 0 0 / 50%);
   --border: oklch(0 0 0 / 10%);
   --input: oklch(0 0 0 / 10%);
   --ring: oklch(0.708 0 0);
@@ -48,6 +53,8 @@
   --radius: 1rem;
   --radius-control: 0.625rem;
   --radius-hero: 1.5rem;
+  /* Avatars, badges, slider handles — round rather than rounded. */
+  --radius-round: 9999px;
   --border-width: 1px;
   --blur: 24px;
   --surface-alpha: 55%;
@@ -145,6 +152,7 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -368,6 +376,24 @@
      twenty components to remember. */
   .artwork {
     filter: var(--art-filter);
+  }
+
+  /* The veil behind a modal. Dark in both appearances, on purpose — a scrim is
+     "the app has stepped back", and a white sheet over a light theme reads as a
+     flash rather than as depth. A token rather than `bg-black/50` in six
+     components so a skin can deepen it, which Obsidian does. */
+  .scrim {
+    background: var(--scrim);
+  }
+
+  /* A control laid over cover art: the hover play button on a row, the expander
+     on the player's thumbnail. The one place a fixed black-and-white pair is
+     right rather than lazy — what is underneath is a photograph the app did not
+     choose, so no palette colour is guaranteed to be legible on it. Obsidian
+     leaves these alone: they are already achromatic. */
+  .art-overlay {
+    background: oklch(0 0 0 / 45%);
+    color: oklch(1 0 0);
   }
 
   /* A surface. Translucency and blur come from the skin, so the same class is

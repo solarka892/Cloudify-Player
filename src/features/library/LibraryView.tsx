@@ -90,10 +90,14 @@ function ShufflePlayButton({ tracks }: { tracks: Track[] }) {
       }}
       disabled={tracks.length === 0}
       title={t.library.shufflePlay}
+      aria-label={t.library.shufflePlay}
       className="flex shrink-0 items-center gap-1.5 rounded-[var(--radius-control)] border border-border px-2.5 py-1.5 text-xs text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground disabled:opacity-40"
     >
       <Shuffle className="h-4 w-4" />
-      {t.library.shufflePlay}
+      {/* Icon only on a phone: this row also holds the filter box, and three
+          labelled buttons squeezed it down to the width of its own magnifier.
+          The `title` and `aria-label` above carry the meaning either way. */}
+      <span className="hidden md:inline">{t.library.shufflePlay}</span>
     </button>
   );
 }
@@ -109,7 +113,10 @@ function FilterBox({
   placeholder: string;
 }) {
   return (
-    <div className="relative min-w-0 flex-1">
+    // A floor as well as a share of the row: `flex-1` alone let the buttons
+    // beside it shrink the field until only its own magnifier fitted. Below the
+    // floor it wraps onto its own line instead, which is still usable.
+    <div className="relative min-w-[9rem] flex-1">
       <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
       <input
         value={value}
@@ -132,7 +139,13 @@ export function LibraryView({ userId }: { userId: number }) {
 
   return (
     <div className="flex w-full flex-col gap-3">
-      <nav className="flex gap-4 overflow-x-auto border-b border-border">
+      {/* Eight sections do not fit across a phone, and scrolling them sideways
+          hides the ones that do not fit behind a gesture nothing advertises —
+          the user has to know they are there. Wrapping shows all eight at once,
+          which is worth two rows of a screen this tall. The container's own
+          border goes with the single row: an underlined tab in the first of two
+          rows sits above it, and the two lines read as a mistake. */}
+      <nav className="flex flex-wrap gap-x-4 gap-y-1 border-border max-md:pb-1 md:flex-nowrap md:border-b">
         {SECTIONS.map((s) => (
           <button
             key={s.id}
@@ -519,14 +532,14 @@ function StationCard({
           alt=""
           className={cn(
             "h-11 w-11 shrink-0 object-cover",
-            round ? "rounded-full" : "rounded-[var(--radius-control)]",
+            round ? "rounded-[var(--radius-round)]" : "rounded-[var(--radius-control)]",
           )}
         />
       ) : (
         <span
           className={cn(
             "h-11 w-11 shrink-0 bg-secondary",
-            round ? "rounded-full" : "rounded-[var(--radius-control)]",
+            round ? "rounded-[var(--radius-round)]" : "rounded-[var(--radius-control)]",
           )}
         />
       )}
@@ -588,10 +601,12 @@ function DownloadsSection() {
                 toast(`${t.downloads.cleared}: ${n}`, "success"),
               );
             }}
+            title={t.downloads.clearAll}
+            aria-label={t.downloads.clearAll}
             className="flex shrink-0 items-center gap-1.5 rounded-[var(--radius-control)] border border-border px-2.5 py-1.5 text-xs text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:border-destructive hover:text-destructive"
           >
             <Trash2 className="h-3.5 w-3.5" />
-            {t.downloads.clearAll}
+            <span className="hidden md:inline">{t.downloads.clearAll}</span>
           </button>
         )}
         <button
@@ -625,7 +640,7 @@ function DownloadsSection() {
                     <button
                       onClick={() => dismiss(job.trackId)}
                       aria-label={t.downloads.dismiss}
-                      className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground"
+                      className="shrink-0 rounded-[var(--radius-control)] p-0.5 text-muted-foreground hover:text-foreground"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
@@ -638,10 +653,10 @@ function DownloadsSection() {
                     {job.error}
                   </p>
                 )}
-                <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-secondary">
+                <div className="mt-1.5 h-1 overflow-hidden rounded-[var(--radius-round)] bg-secondary">
                   <div
                     className={cn(
-                      "h-full rounded-full transition-[width] duration-[var(--motion-fast)]",
+                      "h-full rounded-[var(--radius-round)] transition-[width] duration-[var(--motion-fast)]",
                       "progress-fill",
                       job.error ? "bg-destructive" : "brand-gradient",
                     )}

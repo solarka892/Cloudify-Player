@@ -145,10 +145,16 @@ export function AppleNowPlaying({ onClose }: { onClose: () => void }) {
         could not be clicked at all. Taking the button out of the flow removes
         both the overlap and the negative margin that caused it.
       */}
+      {/* Inset out of the status bar for the same reason the shell's content is:
+          this view is `fixed inset-0` over an edge-to-edge window, so `top-4`
+          alone left a 36px button spanning 16–52px on a phone whose status bar
+          is taller than that — the one control that closes the view, sitting
+          under the clock. */}
       <button
         onClick={dismiss}
         aria-label={t.player.collapse}
-        className="lg-chip absolute left-4 top-4 z-30 h-9 w-9"
+        className="lg-chip absolute left-4 z-30 h-9 w-9"
+        style={{ top: "calc(1rem + var(--safe-top))" }}
       >
         <AppleChevronDown className="h-5 w-5" />
       </button>
@@ -418,9 +424,9 @@ function Scrubber() {
   return (
     <div className="w-full">
       <div className="group/seek relative">
-        <div className="seek-track pointer-events-none absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 overflow-hidden rounded-full bg-[var(--ios-fill-3)]">
+        <div className="seek-track pointer-events-none absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 overflow-hidden rounded-[var(--radius-round)] bg-[var(--ios-fill-3)]">
           <div
-            className="seek-fill h-full rounded-full bg-[var(--foreground)]"
+            className="seek-fill h-full rounded-[var(--radius-round)] bg-[var(--foreground)]"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -434,7 +440,7 @@ function Scrubber() {
           aria-label={t.player.seek}
           className="relative h-5 w-full cursor-pointer appearance-none bg-transparent
             [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3
-            [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full
+            [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-[var(--radius-round)]
             [&::-webkit-slider-thumb]:bg-[var(--foreground)] [&::-webkit-slider-thumb]:opacity-0"
         />
       </div>

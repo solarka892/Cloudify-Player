@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
  *
  * `chrome` is for a floating bar that carries controls over moving content —
  * more body, so a transport stays legible while artwork scrolls behind it.
- * `capsule` is the dock geometry: fully rounded rather than a 28pt card.
+ * `capsule` is the dock geometry: fully rounded-[var(--radius-control)] rather than a 28pt card.
  */
 export function Glass({
   chrome = false,

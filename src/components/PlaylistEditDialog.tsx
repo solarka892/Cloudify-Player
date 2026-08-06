@@ -111,7 +111,7 @@ export function PlaylistEditDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[75] flex items-center justify-center bg-black/50 p-8"
+      className="fixed inset-0 z-[75] flex items-center justify-center scrim p-8"
       onClick={onClose}
     >
       <div
@@ -124,7 +124,7 @@ export function PlaylistEditDialog({
           <button
             onClick={onClose}
             aria-label={t.player.close}
-            className="ml-auto rounded p-1 text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground"
+            className="ml-auto rounded-[var(--radius-control)] p-1 text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground"
           >
             <X className="h-4 w-4" />
           </button>
@@ -200,7 +200,7 @@ export function PlaylistEditDialog({
                       onClick={() => move(index, index - 1)}
                       disabled={index === 0}
                       aria-label={t.playlistEdit.moveUp}
-                      className="rounded p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                      className="rounded-[var(--radius-control)] p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
                     >
                       <ChevronUp className="h-3.5 w-3.5" />
                     </button>
@@ -208,14 +208,14 @@ export function PlaylistEditDialog({
                       onClick={() => move(index, index + 1)}
                       disabled={index === order.length - 1}
                       aria-label={t.playlistEdit.moveDown}
-                      className="rounded p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                      className="rounded-[var(--radius-control)] p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
                     >
                       <ChevronDown className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={() => drop(index)}
                       aria-label={t.playlistEdit.removeTrack}
-                      className="rounded p-1 text-muted-foreground hover:text-destructive"
+                      className="rounded-[var(--radius-control)] p-1 text-muted-foreground hover:text-destructive"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
