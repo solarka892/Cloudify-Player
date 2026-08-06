@@ -315,7 +315,10 @@ export function NavSidebar({ view, onNavigate }: NavProps) {
               <li key={playlist.id}>
                 <button
                   onClick={() => openPlaylist(playlist)}
-                  className="w-full truncate rounded-[var(--radius)] px-2.5 py-1.5 text-left text-sm text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent/60 hover:text-foreground"
+                  // `nav-sub` is the stylesheet's handle on this list, the way
+                  // `label` is on the nav items above it: the only rows in the
+                  // sidebar carrying user text rather than our own.
+                  className="nav-sub w-full truncate rounded-[var(--radius)] px-2.5 py-1.5 text-left text-sm text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent/60 hover:text-foreground"
                 >
                   {playlist.title}
                 </button>

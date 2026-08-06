@@ -933,6 +933,43 @@
   line-height: 1.6;
 }
 
+/* The wordmark. `font-bold tracking-tight` is how a logo sits on a product page;
+   it is also the loudest piece of type in the interface, and this mode carries
+   hierarchy by weight — 200 headings against 600 micro-caps — so a 700 with
+   negative tracking reads as something that was never restyled.
+   Thin and widely tracked instead, and the mark beside it stays as it is: the
+   glyph is the identity, the word is a caption to it.
+
+   The gradient goes with the weight. On an achromatic palette it is a
+   white-to-grey ramp, and across 200-weight strokes that is not a fill, it is
+   the word fading out halfway — the same reason `.brand-gradient` is flat here.
+   Stops short of pure white for the reason the headings do: white is the play
+   button's fill and nothing else's. */
+:root[data-skin="obsidian"] .brand-text {
+  background-image: none;
+  color: color-mix(in srgb, var(--foreground) 94%, var(--background));
+  font-weight: 200;
+  /* Enough tracking to read as a wordmark rather than as body text, and no
+     more: at 0.26em the eight letters stopped being one word. The trailing
+     letter-space after the final "y" is real width, so it is given back as a
+     negative margin — otherwise the word sits visibly left of centre in every
+     row that centres it. */
+  letter-spacing: 0.12em;
+  margin-right: -0.12em;
+}
+
+/* The sidebar's playlist index. `text-sm` at default weight is what every list
+   in the app uses, but this one sits directly under a micro-caps heading and a
+   column of tracked-out nav labels, which is what makes it look borrowed from
+   another skin. It gets the tracking without the rest: these are user titles,
+   often long and often Cyrillic, and micro-caps would cost more width than the
+   mode gains — the point of the treatment is that our words shout and theirs
+   do not. */
+:root[data-skin="obsidian"] .nav-sub {
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+}
+
 /* A visible square ring on every focusable thing, window buttons included. On
    black, a ring flush against an element merges with its hairline border, so the
    token carries an inner gap in the page colour. */

@@ -144,11 +144,18 @@ because this is an Obsidian idea rather than an improvement to them.
   gain. What did ship is the *form*: a 2px rule and a 2×8 rectangular handle.
 - **A colour-accent block.** `accentFromArtwork` still works under this palette;
   it is achromatised rather than disabled. Documented above.
-- **The in-app logo.** Checked first, as the brief asked. `Logo.tsx` fills the
-  mark with `--brand` → `--brand-2`, both achromatic in this palette, and the
+- **The in-app logo's *mark*.** Checked first, as the brief asked. `Logo.tsx`
+  fills it with `--brand` → `--brand-2`, both achromatic in this palette, and the
   bars take `--card`. It already works; nothing was changed. Its bars keep their
   1px round tops — that is the logo's own shape, and the exception for radii
   inside SVG glyphs covers it.
+
+  The *wordmark* beside it was missed, and later fixed: `font-bold
+  tracking-tight` in a mode whose hierarchy is 200 against 600 reads as type
+  nobody restyled, and its white-to-grey gradient breaks up across thin strokes.
+  It is now 200 at 0.12em, flat, at the headings' 94% white. Same for the
+  sidebar's playlist index (`.nav-sub`) — tracking only, no micro-caps: those are
+  user titles, and the mode's rule is that our words shout and theirs do not.
 - **A `persist` version bump.** Every new field is additive and `fillDefaults`
   already supplies it, so there is nothing to migrate. Bumping the version to
   write an empty migration would be the risky option, not the safe one.
