@@ -37,18 +37,36 @@ crashes at window creation with:
 Gdk-Message: Error 71 (Protocol error) dispatching to Wayland display.
 ```
 
-This is a GTK/WebKitGTK ↔ NVIDIA/Wayland incompatibility, not an app bug. Fix —
-run GTK through XWayland and disable the DMABUF renderer:
+This is a GTK/WebKitGTK ↔ NVIDIA/Wayland incompatibility, not an app bug. The
+fix is to run GTK through XWayland, and **the binary applies it itself** — see
+`src-tauri/src/platform.rs`, which sets `GDK_BACKEND=x11` when it finds NVIDIA
+on a Wayland session and leaves an explicit choice alone. Nothing to type:
+`pnpm dev:app` and `pnpm tauri dev` are now the same command.
+
+#### ⚠️ Do not set `WEBKIT_DISABLE_DMABUF_RENDERER=1`
+
+The old advice here (and the old `dev:app` script, and `platform.rs` itself)
+paired the X11 fallback with that variable. **It is what made the app crawl on
+Linux while Windows, macOS and Android were smooth.**
+
+Since WebKitGTK 2.44 the DMA-BUF renderer is the only accelerated backing store
+left — the older Wayland and X11 ones were removed — so disabling it does not
+pick a different GPU path, it picks none. All compositing, every `filter` and
+every `backdrop-filter` is then rasterised on the CPU on the web process's main
+thread: measured here at ~95% of a core for as long as the window was visible,
+in an idle app. WebKit reads only whether the variable is *set*, so `=0` does
+not undo it — the variable has to be absent.
+
+If some driver stack ever does need it back, run with `CLOUDIFY_DISABLE_DMABUF=1`;
+that is the app's own opt-out and it sets WebKit's variable for you.
+
+Symptoms worth recognising, since they look like an app bug: the whole window
+janky at a low frame rate, one core pinned by `WebKitWebProcess`, and both
+stopping the moment the window is covered up. Check with:
 
 ```fish
-env GDK_BACKEND=x11 WEBKIT_DISABLE_DMABUF_RENDERER=1 pnpm tauri dev
+top -b -H -n 2 -d 2 -p (pgrep -f WebKitWebProcess | head -1)
 ```
-
-The `pnpm dev:app` script bakes both env vars in, so just use that. These vars
-are **Linux/NVIDIA-only workarounds** — they are intentionally NOT set globally
-(GDK_BACKEND=x11 system-wide would force every GTK app onto XWayland) and are
-not needed for Windows/macOS builds, so plain `pnpm tauri dev` stays the
-cross-platform entry point.
 
 First `tauri dev` compiles the whole Rust/Tauri tree (~1 min). Subsequent runs
 are incremental (seconds).

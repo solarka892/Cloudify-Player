@@ -41,10 +41,29 @@ mod linux {
     use std::path::Path;
 
     pub fn prepare() {
-        // The DMA-BUF renderer is the specific part that breaks; disabling it
-        // costs little and helps on several driver stacks, so it is applied on
-        // Wayland regardless of vendor.
-        if is_wayland() && std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
+        // `WEBKIT_DISABLE_DMABUF_RENDERER=1` used to be set here on every
+        // Wayland session, on the theory that it "costs little". It costs the
+        // GPU.
+        //
+        // Since WebKitGTK 2.44 the DMA-BUF renderer is the *only* accelerated
+        // backing store there is — the older Wayland and X11 ones were removed
+        // — so turning it off does not select a different GPU path, it selects
+        // no GPU path at all. Every composite, every blur and every animated
+        // frame is then rasterised on the CPU, on the web process's main
+        // thread. Measured on this laptop (RTX 4060, WebKitGTK 2.52): that
+        // thread sat at ~95% of a core for as long as the window was on screen,
+        // which is the whole of "it lags on Linux but not on Windows, macOS or
+        // Android" — those three run engines that were never crippled this way.
+        //
+        // The crash this file exists for is the NVIDIA-on-Wayland one below,
+        // and the X11 fallback is what actually fixes it. Left as an opt-out
+        // for a driver stack where the renderer itself misbehaves; the escape
+        // hatch is ours rather than WebKit's variable, because WebKit reads
+        // only whether that one is *set* — `=0` would disable it just as `=1`
+        // does, so a user could not turn the accelerated path back on.
+        if std::env::var_os("CLOUDIFY_DISABLE_DMABUF").is_some()
+            && std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none()
+        {
             // SAFETY: single-threaded startup, before any GUI or worker thread.
             unsafe { std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1") };
         }
