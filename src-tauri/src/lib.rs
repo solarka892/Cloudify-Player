@@ -43,6 +43,15 @@ pub fn run() {
                 use tauri::Manager;
                 if let Some(window) = app.get_webview_window("main") {
                     let _ = window.with_webview(platform::tame_wheel_scrolling);
+
+                    // Tell the stylesheet that every pixel here costs CPU time,
+                    // so the one effect that repaints forever can stand still.
+                    // An `eval` rather than an init script because the window is
+                    // declared in `tauri.conf.json`; it lands well before the
+                    // theme engine paints anything.
+                    if platform::is_software_rendering() {
+                        let _ = window.eval("document.documentElement.dataset.render = 'software'");
+                    }
                 }
             }
             let _ = app;

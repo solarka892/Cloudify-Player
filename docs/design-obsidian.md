@@ -101,6 +101,32 @@ is not a violation of the square-corner rule — this is light, not an element.
 stylesheet's blanket `animation-duration: 0.01ms`: a 0.01ms iteration does not
 stop an `infinite alternate` animation, it runs it thousands of times a second.
 
+### "the compositor owns it" is a claim about the compositor
+
+Where there is one. On WebKitGTK with NVIDIA the DMA-BUF renderer cannot
+allocate, the app falls back to software rendering (`dev-setup.md`), and then
+the drift is not a transform of a cached layer — it is a full-window re-blur on
+the web process's main thread, sixty times a second, for as long as the window
+is on screen.
+
+Measured on the release build, idle, nothing playing:
+
+| skin | drift | `WebKitWebProcess` |
+|---|---|---|
+| obsidian | running | 98–100% of a core |
+| obsidian | stopped | 0% |
+| aurora (no light) | — | 0% |
+
+Neither the wallpaper blur nor `glass` moved that number; the light was all of
+it. So `platform.rs` puts `data-render="software"` on `<html>` when it is on
+that path, and the drift stops there — the light itself stays, because it is
+what makes the glass legible. Nothing else in the mode had to change, and on
+every other target the animation runs as designed.
+
+The general rule this leaves behind: on the software renderer, *anything* that
+never stops animating costs a core. Before adding one, ask what it looks like
+standing still.
+
 ## Why artwork is desaturated
 
 Because it is the loudest colour in the window and the app did not choose it. A

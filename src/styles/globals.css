@@ -320,6 +320,24 @@
     mask-image: linear-gradient(155deg, transparent 40%, #000 82%);
     animation: loupe-drift 52s cubic-bezier(0.2, 0.7, 0.3, 1) infinite alternate;
   }
+  /* Except where there is no compositor to own it.
+   *
+   * The comment above is true of every target but one: WebKitGTK on a driver
+   * stack that cannot give it a DMA-BUF buffer paints in software, and then a
+   * `rotate`/`scale` over a 30px-blurred ellipse is not a transform of a cached
+   * layer, it is a full-window re-blur on the main thread, sixty times a second,
+   * forever. Measured on this laptop: 98–100% of a core with the drift running,
+   * 0% with it stopped, and nothing else in the interface moving either way.
+   * That is the whole of "it lags on Linux but not on Windows, macOS or
+   * Android" — and it was the skin, not the platform: Aurora, which has no
+   * light, measured 0% in the same software renderer.
+   *
+   * The light itself stays. What goes is only its travel, which is the part
+   * nobody can see happening at 52 seconds a turn. `platform.rs` sets the
+   * attribute; nothing in the frontend decides this. */
+  :root[data-render="software"] .app-glow-arc {
+    animation: none;
+  }
   /* The spill around it. Without this the arc is a bright line on black; with
      it, the black around the arc is lit and the panels have something to sit
      on. Carried at a higher opacity than the arc because it is much softer. */

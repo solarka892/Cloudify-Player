@@ -43,30 +43,45 @@ fix is to run GTK through XWayland, and **the binary applies it itself** — see
 on a Wayland session and leaves an explicit choice alone. Nothing to type:
 `pnpm dev:app` and `pnpm tauri dev` are now the same command.
 
-#### ⚠️ Do not set `WEBKIT_DISABLE_DMABUF_RENDERER=1`
+#### There is no GPU here, and the app knows it
 
-The old advice here (and the old `dev:app` script, and `platform.rs` itself)
-paired the X11 fallback with that variable. **It is what made the app crawl on
-Linux while Windows, macOS and Android were smooth.**
+`platform.rs` also sets `WEBKIT_DISABLE_DMABUF_RENDERER=1` on NVIDIA, and that
+one is not optional. Since WebKitGTK 2.44 the DMA-BUF renderer is the only
+accelerated backing store left — the older Wayland and X11 ones were removed —
+so the variable does not pick a different GPU path, it picks none at all.
+Leaving the renderer enabled on this machine gets
 
-Since WebKitGTK 2.44 the DMA-BUF renderer is the only accelerated backing store
-left — the older Wayland and X11 ones were removed — so disabling it does not
-pick a different GPU path, it picks none. All compositing, every `filter` and
-every `backdrop-filter` is then rasterised on the CPU on the web process's main
-thread: measured here at ~95% of a core for as long as the window was visible,
-in an idle app. WebKit reads only whether the variable is *set*, so `=0` does
-not undo it — the variable has to be absent.
+```
+Failed to create GBM buffer of size 1100x720: Invalid argument
+```
 
-If some driver stack ever does need it back, run with `CLOUDIFY_DISABLE_DMABUF=1`;
-that is the app's own opt-out and it sets WebKit's variable for you.
+and an **empty window**. NVIDIA's GBM will not hand WebKit the buffer it wants,
+there is no second GPU in this laptop to ask instead, and neither
+`WEBKIT_DMABUF_RENDERER_USE_GBM=0` nor the native Wayland backend changes it.
+Software rendering is the only configuration that draws.
 
-Symptoms worth recognising, since they look like an app bug: the whole window
-janky at a low frame rate, one core pinned by `WebKitWebProcess`, and both
-stopping the moment the window is covered up. Check with:
+WebKit reads only whether that variable is *set*, so `=0` does not undo it. The
+one thing worth keeping straight: it is applied **only on NVIDIA**. An AMD or
+Intel machine on Wayland keeps its GPU — the old code disabled the renderer for
+everybody.
+
+Because a CPU-painted window makes any never-ending animation expensive, the app
+tells the frontend which path it is on: `platform::is_software_rendering()` puts
+`data-render="software"` on `<html>`, and `globals.css` stops Obsidian's light
+from drifting under that attribute. See `design-obsidian.md`.
+
+Symptoms worth recognising, since they look like a driver problem rather than an
+app bug: the whole window janky at a low frame rate, one core pinned by
+`WebKitWebProcess`, and both stopping the moment the window is covered up (a
+hidden window is not painted, so the cost vanishes with it). Check with:
 
 ```fish
 top -b -H -n 2 -d 2 -p (pgrep -f WebKitWebProcess | head -1)
 ```
+
+If that shows a pinned core again, the thing to look for is a CSS animation or a
+`requestAnimationFrame` loop that never ends — on this renderer each frame is a
+full repaint, and one of them is enough to saturate a core.
 
 First `tauri dev` compiles the whole Rust/Tauri tree (~1 min). Subsequent runs
 are incremental (seconds).

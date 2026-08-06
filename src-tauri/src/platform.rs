@@ -16,6 +16,29 @@ pub fn prepare() {
     linux::prepare();
 }
 
+/// Whether the web view is painting on the CPU rather than the GPU.
+///
+/// True exactly when WebKit's DMA-BUF renderer is disabled, which since 2.44
+/// means there is no accelerated backing store at all — see `linux::prepare`.
+/// The variable is read rather than remembered, so a user who sets it by hand
+/// gets the same answer as the machine the app switches it on for.
+///
+/// The frontend is told, because the difference is not academic: a CSS
+/// animation over a blurred layer is a compositor's job on every other target
+/// and a full-window CPU repaint here. Measured on this laptop with the
+/// Obsidian light drifting, the web process's main thread sat at 98–100% of a
+/// core for as long as the window was visible; with the drift stopped, 0%.
+pub fn is_software_rendering() -> bool {
+    #[cfg(target_os = "linux")]
+    {
+        std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_some()
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        false
+    }
+}
+
 /// Turn off WebKitGTK's own wheel-scroll animation.
 ///
 /// `WebKitSettings:enable-smooth-scrolling` defaults to on, and it animates
@@ -41,27 +64,31 @@ mod linux {
     use std::path::Path;
 
     pub fn prepare() {
-        // `WEBKIT_DISABLE_DMABUF_RENDERER=1` used to be set here on every
-        // Wayland session, on the theory that it "costs little". It costs the
-        // GPU.
-        //
         // Since WebKitGTK 2.44 the DMA-BUF renderer is the *only* accelerated
         // backing store there is — the older Wayland and X11 ones were removed
-        // — so turning it off does not select a different GPU path, it selects
-        // no GPU path at all. Every composite, every blur and every animated
-        // frame is then rasterised on the CPU, on the web process's main
-        // thread. Measured on this laptop (RTX 4060, WebKitGTK 2.52): that
-        // thread sat at ~95% of a core for as long as the window was on screen,
-        // which is the whole of "it lags on Linux but not on Windows, macOS or
-        // Android" — those three run engines that were never crippled this way.
+        // — so `WEBKIT_DISABLE_DMABUF_RENDERER=1` does not select a different
+        // GPU path, it selects none: every composite, every blur and every
+        // animated frame is then rasterised on the CPU, on the web process's
+        // main thread. It is an expensive variable, and it used to be set here
+        // on *every* Wayland session on the grounds that it "costs little".
         //
-        // The crash this file exists for is the NVIDIA-on-Wayland one below,
-        // and the X11 fallback is what actually fixes it. Left as an opt-out
-        // for a driver stack where the renderer itself misbehaves; the escape
-        // hatch is ours rather than WebKit's variable, because WebKit reads
-        // only whether that one is *set* — `=0` would disable it just as `=1`
-        // does, so a user could not turn the accelerated path back on.
-        if std::env::var_os("CLOUDIFY_DISABLE_DMABUF").is_some()
+        // On NVIDIA it is nonetheless required. Measured on this laptop (RTX
+        // 4060, driver 610, WebKitGTK 2.52) with the renderer left enabled, the
+        // web process logs
+        //
+        //     Failed to create GBM buffer of size 1100x720: Invalid argument
+        //
+        // and the window comes up empty. NVIDIA's GBM will not give WebKit the
+        // buffer it asks for, and there is no second GPU on this machine to ask
+        // instead; neither `WEBKIT_DMABUF_RENDERER_USE_GBM=0` nor the native
+        // Wayland backend changes it (that one is the Error 71 crash below).
+        // Software rendering is the only configuration that draws at all here.
+        //
+        // Narrowed to the same vendor check the X11 fallback uses, so that an
+        // AMD or Intel laptop on Wayland stops paying NVIDIA's bill. What this
+        // costs on the machines that do need it is measured in `dev-setup.md`.
+        if is_wayland()
+            && has_nvidia()
             && std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none()
         {
             // SAFETY: single-threaded startup, before any GUI or worker thread.
