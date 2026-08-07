@@ -160,19 +160,36 @@ Logs: `adb logcat -s Cloudify:V chromium:V RustStdoutStderr:V`.
   desktop window wants the same layout, a landscape tablet does not.
 - The full-screen `NowPlaying` view is the only place seeking, shuffle, repeat,
   queue and lyrics appear on a phone; the compact bar is a launcher for it.
-- **Safe areas are applied once, to the whole app** (`.safe-inset` on
-  `.app-frame`, `globals.css`), since `MainActivity` draws edge to edge — and
-  from targetSdk 35 the platform enforces edge to edge regardless.
+- **Safe areas: the top is the app's, the bottom is the last bar's.** They are
+  not the same problem, and treating them as one is a bug in each direction.
 
-  It used to be per component (`pt-safe` on the compact header, `pb-safe` on the
-  tab bar), which was a rule every new screen had to remember and which only the
-  phone layout ever did: the rail, the sidebar, the top bar and every
-  full-screen overlay ran under the camera. In landscape, where the cutout is on
-  a *side* edge, all four layouts did. One padded box cannot be forgotten. The
-  wallpaper deliberately stays outside it — `.app-backdrop` is `fixed`, so it
-  still runs under the status bar; only the interface is inset. The two
-  `fixed` full-screen players carry `.safe-inset` themselves, because `fixed`
-  measures against the viewport rather than the frame.
+  The **top and sides** are applied once, to the whole app (`.app-frame` in
+  `globals.css`), since `MainActivity` draws edge to edge — and from targetSdk 35
+  the platform enforces edge to edge regardless. This used to be per component
+  (`pt-safe` on the compact header only), which was a rule every new screen had
+  to remember and which only the phone layout ever did: the rail, the sidebar,
+  the top bar and every full-screen overlay ran under the camera. In landscape,
+  where the cutout is on a *side* edge, all four layouts did.
+
+  The **bottom** stays with whatever chrome is last — `pb-safe` on `NavBottom`,
+  and a `--safe-bottom` term in the Apple shell's floating stack. The gesture bar
+  is translucent and the bar is meant to run underneath it with only its content
+  lifted clear. Padding the frame at the bottom as well looked right in the
+  abstract and wrong on the screen: it ended the tab bar 24px early and left a
+  band of bare window below it, in a slightly different black (measured:
+  `oklch(0 0 0)` frame against a `srgb(0.017)` bar).
+
+  The wallpaper deliberately stays outside all of it — `.app-backdrop` is
+  `fixed`, so it still runs under the status bar; only the interface is inset.
+  The two `fixed` full-screen players carry `.safe-inset` (all four edges)
+  themselves, because `fixed` measures against the viewport rather than the
+  frame, and because they paint their own background edge to edge.
+
+- **The bottom chrome is one surface, not two.** The player bar and the tab bar
+  touch, so both are built from `panel panel-chrome`. `NavBottom` used to carry
+  `bg-card/80 backdrop-blur-lg` — a translucency hardcoded outside the theme
+  engine — so it blurred whether or not the user had asked for blur, while the
+  player above it obeyed the setting. Two greys with a seam.
 
   **`env(safe-area-inset-*)` is not sufficient here.** Android's webview fills it
   from the display *cutout* and nothing else: measured in the emulator, the top

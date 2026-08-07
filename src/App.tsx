@@ -266,15 +266,16 @@ function App() {
  * desktop the app would have no visible edge at all. Only the skins that ask for
  * it draw one — see `globals.css`.
  *
- * `.safe-inset` is what keeps the whole interface — every layout, not just the
- * two edges the phone shell happens to draw — clear of the camera cutout, the
- * status bar and the gesture bar. One box, applied here, instead of a rule each
- * new screen has to remember; see `globals.css`. It is 0px everywhere but
- * Android.
+ * `.app-frame` also carries the safe-area inset for the top and the sides, which
+ * is what keeps every layout — not just the two edges the phone shell happens to
+ * draw — clear of the camera cutout and the status bar. The bottom is
+ * deliberately not here: a bottom bar is meant to run *under* the translucent
+ * gesture bar with only its content lifted clear, so that inset belongs to
+ * whatever chrome is last. See `globals.css`. All of it is 0px off Android.
  */
 function Chrome({ children }: { children: React.ReactNode }) {
   return (
-    <div className="app-frame safe-inset relative flex h-full w-full flex-col overflow-hidden">
+    <div className="app-frame relative flex h-full w-full flex-col overflow-hidden">
       <TitleBar />
       <div className="relative min-h-0 flex-1">{children}</div>
     </div>

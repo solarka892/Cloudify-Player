@@ -92,13 +92,14 @@ export function AppleShell({
                 effect; without the reserve the last row would sit under it
                 permanently instead of passing behind it.
 
-                Neither figure carries a safe-area term any more: `.safe-inset`
-                on the app frame means these are measured from the safe area
-                already, and adding one here would inset the content twice. */}
+                The top carries no safe-area term: the app frame is already inset
+                out of the status bar, so one here would count it twice. The
+                bottom still does, because the floating stack below reaches the
+                physical edge of the screen — see its own padding. */}
             <div
               className="mx-auto w-full max-w-3xl px-4 pt-4"
               style={{
-                paddingBottom: player ? "10.5rem" : "6.5rem",
+                paddingBottom: `calc(${player ? "10.5rem" : "6.5rem"} + var(--safe-bottom))`,
               }}
             >
               {children}
@@ -106,8 +107,13 @@ export function AppleShell({
           </main>
 
           {/* One stack, so the player and the dock keep a single gap between
-              them and a single inset from the window. */}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex flex-col gap-2 px-3 pb-3">
+              them and a single inset from the window. The gesture bar is added
+              to the gap rather than replacing it: the dock floats *above* the
+              bar, it does not sit under it like the other shell's tabs. */}
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex flex-col gap-2 px-3"
+            style={{ paddingBottom: "calc(0.75rem + var(--safe-bottom))" }}
+          >
             {player && <div className="pointer-events-auto">{player}</div>}
             <div className="pointer-events-auto">
               <AppleDock view={view} onNavigate={onNavigate} />

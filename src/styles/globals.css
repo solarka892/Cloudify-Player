@@ -982,6 +982,11 @@
  *
  * Costs nothing off Android: every one of these is 0px on a desktop.
  */
+/*
+ * All four edges. For a surface that owns the whole screen and paints its own
+ * background edge to edge — the two full-screen players — where insetting the
+ * *content* is the whole requirement.
+ */
 .safe-inset {
   padding-top: var(--safe-top);
   padding-bottom: var(--safe-bottom);
@@ -989,11 +994,32 @@
   padding-right: var(--safe-right);
 }
 
+/*
+ * Top and sides, and deliberately **not** the bottom.
+ *
+ * The two edges are not the same problem. At the top the interface has to move
+ * out of the way of the cutout, so the whole app shifts down and the strip above
+ * it is window. At the bottom the gesture bar is *translucent* — the chrome is
+ * meant to run underneath it with only its content lifted clear, which is what
+ * every Android app does and what the tab bar did on its own with `pb-safe`.
+ *
+ * Padding the frame at the bottom too looked right in the abstract and wrong on
+ * the screen: it cut the tab bar short and left a 24px band of bare window under
+ * it, in a slightly different black. So the bottom inset belongs to whatever
+ * chrome is last — `NavBottom`, and the floating stack in Apple mode.
+ */
 .app-frame {
+  padding-top: var(--safe-top);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
   /* The strip the padding exposes is window, not page: without this it is
      whatever `body` happens to be, which is a different colour from the shell
      under every palette that tints its surfaces. */
   background: var(--background);
+}
+
+@utility pb-safe {
+  padding-bottom: var(--safe-bottom);
 }
 
 /*

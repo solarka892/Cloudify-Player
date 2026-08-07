@@ -257,8 +257,10 @@ function HeaderIcon({
  * them so five tabs fit across a narrow screen, and the touch targets stay at the
  * 48px Android asks for even though the labels are small.
  *
- * The gesture bar is `.safe-inset`'s job on the app frame, not this
- * component's — see `globals.css`.
+ * `pb-safe` rather than an inset on the app frame: the bar's *background* has to
+ * reach the bottom of the screen and run under the translucent gesture bar, and
+ * only its labels lift clear of it. Padding the frame instead ended the bar 24px
+ * early and left a band of bare window below it.
  *
  * Built from `panel panel-chrome`, the same surface the player bar above it
  * uses, and not from utilities of its own. It used to carry `bg-card/80
@@ -273,7 +275,7 @@ function HeaderIcon({
  */
 export function NavBottom({ view, onNavigate }: NavProps) {
   return (
-    <nav className="nav-in-y panel panel-chrome flex shrink-0 items-stretch rounded-none border-x-0 border-b-0">
+    <nav className="nav-in-y panel panel-chrome pb-safe flex shrink-0 items-stretch rounded-none border-x-0 border-b-0">
       {COMPACT_NAV_ITEMS.map(({ id, label, Icon }) => (
         <button
           key={id}
