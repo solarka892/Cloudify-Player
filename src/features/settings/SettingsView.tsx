@@ -881,6 +881,22 @@ export function SettingsView() {
  * `vars`, because the difference between the four skins is mostly in how they
  * frost and a row of four opaque squares says nothing.
  */
+/**
+ * How far a swatch's card is lifted away from its page.
+ *
+ * **A swatch is a diagram, not a screenshot.** Drawn faithfully it is unreadable:
+ * every palette this app ships is near-black, the gap between the page and a
+ * panel is about two per cent, and at 36px that is a black square inside a black
+ * square — which is exactly what these were, and why all six looked like the
+ * same broken tile.
+ *
+ * So the *separation* is exaggerated until it is legible while the *colours*
+ * stay entirely the palette's own — lifted toward the palette's own text colour,
+ * so a light palette darkens and a dark one lightens without either being told
+ * what colour to be. Nothing here is a literal colour; that rule still holds.
+ */
+const SWATCH_LIFT = "16%";
+
 function SkinSwatch({ id }: { id: SkinId }) {
   const skin = SKINS[id];
   const glow = Number(skin.vars["--glow"]) || 0;
@@ -895,7 +911,10 @@ function SkinSwatch({ id }: { id: SkinId }) {
         className="absolute inset-x-1 bottom-1 top-3.5 border border-border"
         style={{
           borderRadius: skin.vars["--radius-control"],
-          background: `color-mix(in srgb, var(--card) ${skin.glass.alpha}, transparent)`,
+          // The skin's own frost, over a card lifted far enough to see. What
+          // this tile is for is the *shape* — the radius, the hairline, the
+          // shadow — and none of that is visible on an invisible card.
+          background: `color-mix(in srgb, color-mix(in srgb, var(--card), var(--foreground) ${SWATCH_LIFT}) ${skin.glass.alpha}, transparent)`,
           boxShadow: skin.vars["--shadow-1"],
         }}
       />
@@ -921,7 +940,10 @@ function PresetSwatch({ preset }: { preset: Preset }) {
       className="relative block h-11 w-11 shrink-0 overflow-hidden"
       style={{
         borderRadius: skin.vars["--radius"],
-        background: shade.bg,
+        // A gradient rather than a flat fill, the same way the palette dots are
+        // drawn — it is what stops a near-black page from reading as a dead
+        // rectangle, and it uses two colours the palette already supplies.
+        backgroundImage: `linear-gradient(140deg, ${shade.bg} 0%, ${shade.surface2} 100%)`,
         border: `1px solid ${shade.line}`,
       }}
     >
@@ -931,11 +953,18 @@ function PresetSwatch({ preset }: { preset: Preset }) {
           style={{ opacity: glow, borderColor: shade.text }}
         />
       )}
+      {/* The accent, as a dot. Three near-black looks are told apart by their
+          one colour far faster than by their radius, and for the palette that
+          rules colour out the dot is white — which is itself the answer. */}
+      <span
+        className="absolute right-1 top-1 h-1.5 w-1.5 rounded-[var(--radius-round)]"
+        style={{ background: shade.brand }}
+      />
       <span
         className="absolute inset-x-1.5 bottom-1.5 top-5"
         style={{
           borderRadius: skin.vars["--radius-control"],
-          background: `color-mix(in srgb, ${shade.surface} ${preset.theme.glass ? skin.glass.alpha : "100%"}, transparent)`,
+          background: `color-mix(in srgb, color-mix(in srgb, ${shade.surface}, ${shade.text} ${SWATCH_LIFT}) ${preset.theme.glass ? skin.glass.alpha : "100%"}, transparent)`,
           border: `1px solid ${shade.line}`,
         }}
       />
