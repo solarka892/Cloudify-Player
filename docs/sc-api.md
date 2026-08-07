@@ -81,9 +81,21 @@ Returns the full object (`kind` = `track` | `user` | `playlist`).
 | `hls` | `audio/mp4` (aac) | `aac_160k` | sq |
 | `hls` | `audio/mp4` (aac) | `aac_96k` | lq |
 
-Playback plan:
-- **`progressive` mp3** → easiest; direct `<audio>`/Web Audio, no HLS needed.
-- **`hls` variants** → need `hls.js`. Prefer for adaptive / when progressive absent.
+Playback plan — **implemented 2026-08-08**, `sc_api::stream::get_stream_url`
+returns `{ url, protocol, mimeType }` rather than a bare string:
+- **`progressive` mp3** → first choice always; direct `<audio>`/Web Audio.
+- **`hls` variants** → `src/audio/hls.ts` (hls.js, imported on demand). Used
+  whenever there is no progressive transcoding at all, which is a large and
+  growing share of the catalogue. Before this the resolver returned `NoStream`
+  for those and they read to the user as tracks that simply would not play.
+- **anything `encrypted`** → filtered out on both protocols. There is no key
+  exchange here, so offering one back is a track that loads and then plays
+  nothing.
+
+Downloads follow the same split (`downloads::fetch_hls`): an `audio/mpeg` HLS
+playlist is a list of raw MP3 frames and its segments are concatenated into the
+file as-is. An opus or AAC playlist would need a muxer, so it is refused with
+`DownloadError::NotDownloadable` — the track still streams.
 
 ### Resolving a transcoding to a playable URL ✅ verified (2026-07-27)
 
@@ -321,6 +333,21 @@ DELETE /me/followings/{user_id}                    unfollow
 
 All need `Authorization: OAuth <token>` + `client_id`, and a body — even an
 empty `{}` — because a bodyless `PUT` comes back `415`.
+
+**Updated 2026-08-08**, after "likes come off fine but will not go on":
+
+- These routes now get the same **one forced retry with a fresh `client_id`**
+  that every read route has had. Without it a rotated key broke writes for the
+  rest of the session, and the asymmetry with reads made it look like the
+  *adding* half of a like was specifically broken.
+- They also send `Origin: https://soundcloud.com` and `Referer:
+  https://soundcloud.com/`. The write routes sit behind a bot filter the read
+  routes do not (see the DataDome note below), and a request with neither header
+  is the easiest thing in the world for one to single out. Unverified as a fix —
+  it costs nothing and removes the most obvious difference from what the web app
+  sends.
+- The status now reaches the UI: `LikeButton` shows the error rather than a
+  generic "could not like this".
 
 **How these were verified without an account.** Unauthenticated, a route that
 exists answers `401`/`403` while one that does not answers `404`, which is

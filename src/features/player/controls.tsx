@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import {
   Repeat,
   Repeat1,
@@ -8,6 +8,7 @@ import {
   VolumeX,
 } from "lucide-react";
 import { usePlayerStore } from "@/stores/usePlayerStore";
+import { el } from "@/audio/engine";
 import { TransportIcons } from "./transport-icons";
 import { formatTime } from "./time";
 import { t } from "@/i18n";
@@ -41,42 +42,53 @@ export function PlayPauseButton({
   size?: "md" | "lg";
   variant?: "solid" | "plain";
 }) {
-  const isPlaying = usePlayerStore((s) => s.isPlaying);
+  /**
+   * The glyph follows *intent*, not the element.
+   *
+   * It used to follow `isPlaying`, which is only true once audio is actually
+   * coming out — so on any track that took a moment to resolve, the button
+   * stayed on "play" after being pressed and the press read as ignored. Pressing
+   * it again then paused a track that had not started. Intent flips
+   * synchronously, and the ring below says the sound is still on its way.
+   */
+  const wantsPlay = usePlayerStore((s) => s.wantsPlay);
   const isLoading = usePlayerStore((s) => s.isLoading);
   const togglePlay = usePlayerStore((s) => s.togglePlay);
   const { Play: PlayGlyph, Pause: PauseGlyph } = useContext(TransportIcons);
   const plain = variant === "plain";
+  const glyph = size === "lg" || plain ? "h-6 w-6" : "h-5 w-5";
 
   return (
     <button
       onClick={togglePlay}
-      disabled={isLoading}
+      // Never disabled. A control that goes dead exactly when the app is slow is
+      // the one that gets pressed hardest, and every one of those presses used
+      // to be swallowed — including the one that meant "stop waiting".
       data-transport="play"
-      aria-label={isPlaying ? t.player.pause : t.player.play}
+      data-busy={isLoading ? "1" : undefined}
+      aria-label={wantsPlay ? t.player.pause : t.player.play}
+      aria-busy={isLoading}
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-[var(--radius-round)] transition-[opacity,transform,background-color] duration-[var(--motion-fast)] hover:opacity-90 disabled:opacity-50",
+        "relative flex shrink-0 items-center justify-center rounded-[var(--radius-round)] transition-[opacity,transform,background-color] duration-[var(--motion-fast)] hover:opacity-90",
         plain
           ? "h-11 w-11 text-foreground hover:bg-accent active:scale-90"
           : "bg-primary text-primary-foreground hover:scale-105",
         !plain && (size === "lg" ? "h-14 w-14" : "h-10 w-10"),
       )}
     >
+      {/* Buffering, drawn around the button rather than replacing the glyph:
+          the control has to stay legible as a transport while it waits, and a
+          spinner in place of the icon loses which way it is about to go. */}
+      {isLoading && <span className="transport-busy" aria-hidden />}
       {/* Keyed on the state, so React replaces the glyph rather than swapping
           its `d` attribute — a remount is what lets the new one animate in.
           Without it the most-pressed control in the app is the only one that
           changes without moving. */}
-      <span key={isPlaying ? "pause" : "play"} className="pop-in flex">
-        {isPlaying ? (
-          <PauseGlyph
-            className={size === "lg" || plain ? "h-6 w-6" : "h-5 w-5"}
-          />
+      <span key={wantsPlay ? "pause" : "play"} className="pop-in flex">
+        {wantsPlay ? (
+          <PauseGlyph className={glyph} />
         ) : (
-          <PlayGlyph
-            className={cn(
-              "translate-x-[1px]",
-              size === "lg" || plain ? "h-6 w-6" : "h-5 w-5",
-            )}
-          />
+          <PlayGlyph className={cn("translate-x-[1px]", glyph)} />
         )}
       </span>
     </button>
@@ -181,60 +193,135 @@ export function RepeatButton() {
   );
 }
 
-/** Scrubber with elapsed/remaining labels. */
+/**
+ * Scrubber with elapsed/remaining labels.
+ *
+ * ## Why the fill is not driven by React state
+ *
+ * It used to be: the store's `position` (fed by `timeupdate`, coalesced to about
+ * four times a second) set the width, and a 220ms CSS transition smoothed the
+ * steps out. That transition is also what made seeking feel broken — a drag
+ * released at the far end left the bar sliding there for a fifth of a second
+ * after the audio had already jumped, and a tap somewhere new *animated* to it,
+ * so the one interaction that should feel instant was the slowest thing in the
+ * player.
+ *
+ * Reading the element per frame and writing the width straight onto the node
+ * fixes both ends at once: continuous during playback with no transition to lag
+ * behind, and exactly where you put it the moment you put it there. It costs one
+ * property read and one style write per frame, and none of it re-renders React.
+ */
 export function SeekBar({ compact = false }: { compact?: boolean }) {
-  const position = usePlayerStore((s) => s.position);
   const duration = usePlayerStore((s) => s.duration);
   const current = usePlayerStore((s) => s.current);
   const seek = usePlayerStore((s) => s.seek);
-  /**
-   * True between pressing and releasing the scrubber.
-   *
-   * `.seek-fill` carries a 220ms width transition so that the once-a-tick
-   * advance during playback does not visibly step. Dragging feeds it a new
-   * width many times a second, and the fill spends the whole drag chasing the
-   * thumb from 220ms behind — the thumb tracks the pointer, the bar trails it
-   * by a third of the track. So the transition is switched off while scrubbing
-   * and restored on release, where it is doing useful work again.
-   */
-  const [scrubbing, setScrubbing] = useState(false);
+  const buffered = usePlayerStore((s) => s.buffered);
 
   // Fall back to the metadata duration (ms → s) until the audio reports its own.
   const total = duration || (current ? current.duration / 1000 : 0);
-  const progress = total > 0 ? (Math.min(position, total) / total) * 100 : 0;
+
+  const fillRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const elapsedRef = useRef<HTMLSpanElement>(null);
+  /** True between pressing and releasing the scrubber — the thumb wins then. */
+  const scrubbing = useRef(false);
+  const [displayTotal, setDisplayTotal] = useState(total);
+
+  useEffect(() => setDisplayTotal(total), [total]);
+
+  useEffect(() => {
+    // Nothing loaded is nothing to animate; a frame loop that runs on an idle
+    // player keeps the whole app awake for a bar that cannot move.
+    if (!current) return;
+
+    let frame = 0;
+    let lastText = "";
+
+    function tick() {
+      frame = requestAnimationFrame(tick);
+      if (scrubbing.current) return;
+
+      const a = el();
+      const length = Number.isFinite(a.duration) && a.duration > 0 ? a.duration : total;
+      if (length <= 0) return;
+      const at = Math.min(a.currentTime, length);
+
+      const fill = fillRef.current;
+      if (fill) fill.style.width = `${(at / length) * 100}%`;
+      // The range input is uncontrolled here for the same reason: a `value` prop
+      // would re-render this component sixty times a second to move a thumb the
+      // browser can move itself.
+      if (inputRef.current) inputRef.current.value = String(at);
+
+      // The clock only changes once a second, so it is compared before it is
+      // written — a text node rewritten every frame is a layout every frame.
+      const text = formatTime(at);
+      if (text !== lastText && elapsedRef.current) {
+        lastText = text;
+        elapsedRef.current.textContent = text;
+      }
+    }
+
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [total, current]);
+
+  const bufferedPercent =
+    displayTotal > 0
+      ? Math.min(100, (Math.min(buffered, displayTotal) / displayTotal) * 100)
+      : 0;
 
   return (
     <div className="flex w-full items-center gap-2">
-      <span className="w-10 shrink-0 text-right font-mono text-xs tabular-nums text-muted-foreground">
-        {formatTime(position)}
+      <span
+        ref={elapsedRef}
+        className="w-10 shrink-0 text-right font-mono text-xs tabular-nums text-muted-foreground"
+      >
+        {formatTime(0)}
       </span>
       <div className="group/seek relative flex-1">
         {/* Painted track: the native range is kept for interaction only. The
-            two class names are styling hooks — Apple mode thickens the track
-            on hover and repaints the fill, neither of which it could reach
+            class names are styling hooks — Apple mode thickens the track on
+            hover and repaints the fill, neither of which it could reach
             through the utilities. */}
         <div className="seek-track pointer-events-none absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 overflow-hidden rounded-[var(--radius-round)] bg-secondary">
+          {/* How much of the track is actually here. SoundCloud streams
+              progressively, so seeking past this edge is the difference
+              between an instant jump and a wait — worth being able to see. */}
           <div
-            className="seek-fill brand-gradient h-full rounded-[var(--radius-round)]"
-            style={{
-              width: `${progress}%`,
-              transitionDuration: scrubbing ? "0ms" : undefined,
-            }}
+            className="seek-buffer absolute inset-y-0 left-0 rounded-[var(--radius-round)]"
+            style={{ width: `${bufferedPercent}%` }}
+            aria-hidden
+          />
+          <div
+            ref={fillRef}
+            className="seek-fill brand-gradient relative h-full rounded-[var(--radius-round)]"
+            style={{ width: "0%" }}
           />
         </div>
         <input
+          ref={inputRef}
           type="range"
           min={0}
-          max={total || 0}
-          step={0.5}
-          value={Math.min(position, total || 0)}
-          onChange={(e) => seek(Number(e.currentTarget.value))}
-          onPointerDown={() => setScrubbing(true)}
+          max={displayTotal || 0}
+          step={0.25}
+          defaultValue={0}
+          onChange={(e) => {
+            const to = Number(e.currentTarget.value);
+            // Paint the drag immediately: the frame loop is standing down while
+            // scrubbing, so nothing else is going to move the fill.
+            if (fillRef.current && displayTotal > 0) {
+              fillRef.current.style.width = `${(to / displayTotal) * 100}%`;
+            }
+            if (elapsedRef.current) elapsedRef.current.textContent = formatTime(to);
+            seek(to);
+          }}
+          onPointerDown={() => (scrubbing.current = true)}
           // `pointercancel` too: a drag that leaves the window never gets an up.
-          onPointerUp={() => setScrubbing(false)}
-          onPointerCancel={() => setScrubbing(false)}
-          onKeyDown={() => setScrubbing(true)}
-          onKeyUp={() => setScrubbing(false)}
+          onPointerUp={() => (scrubbing.current = false)}
+          onPointerCancel={() => (scrubbing.current = false)}
+          onKeyDown={() => (scrubbing.current = true)}
+          onKeyUp={() => (scrubbing.current = false)}
           aria-label={t.player.seek}
           className="relative h-4 w-full cursor-pointer appearance-none bg-transparent
             [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3
@@ -246,7 +333,7 @@ export function SeekBar({ compact = false }: { compact?: boolean }) {
       </div>
       {!compact && (
         <span className="w-10 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
-          {formatTime(total)}
+          {formatTime(displayTotal)}
         </span>
       )}
     </div>

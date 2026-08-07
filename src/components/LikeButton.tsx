@@ -40,12 +40,22 @@ export function LikeButton({
     <button
       onClick={(e) => {
         e.stopPropagation();
-        void toggleLike(track).catch(() => toast(t.track.likeFailed, "error"));
+        void toggleLike(track).catch((error) =>
+          // The reason, not just "it failed". A like can be refused for a dead
+          // session, a rotated key or a rate limit, and those want three
+          // different responses from the user — see `sc_api::actions`.
+          toast(`${t.track.likeFailed}: ${error}`, "error"),
+        );
       }}
       aria-label={liked ? t.track.unlike : t.track.like}
       title={liked ? t.track.unlike : t.track.like}
       className={cn(
-        "shrink-0 rounded-[var(--radius-round)] p-1.5 transition-[color,transform] duration-[var(--motion-fast)] hover:scale-110 active:scale-90",
+        // Tight to the glyph. Every other icon button in a track row can afford
+        // a generous target; this one cannot, because it is the only one whose
+        // misfire changes the account — a stray tap beside the artist's name
+        // silently liked the track. `p-1` is a 24px target around a 16px heart,
+        // which is small on purpose.
+        "shrink-0 rounded-[var(--radius-round)] p-1 transition-[color,transform] duration-[var(--motion-fast)] hover:scale-110 active:scale-90",
         liked ? "text-brand" : "text-muted-foreground hover:text-foreground",
         className,
       )}

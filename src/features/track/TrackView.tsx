@@ -33,6 +33,7 @@ import { ShareButton } from "@/components/ShareButton";
 import { AddToPlaylistDialog } from "@/components/AddToPlaylistDialog";
 import { Waveform } from "./Waveform";
 import { Comments } from "./Comments";
+import { LyricsPanel } from "@/features/player/Lyrics";
 import { useNavStore } from "@/stores/useNavStore";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
@@ -62,7 +63,17 @@ function asTrack(detail: TrackDetail): Track {
   };
 }
 
-type Side = "comments" | "related" | "playlists" | "likers" | "reposters";
+type Side =
+  | "comments"
+  // Lyrics live on the track page as well as inside the full-screen player.
+  // The player is an overlay you have to be listening to something to reach,
+  // which made the words the one piece of a track you could not simply look up
+  // — and the reason people concluded the app had no lyrics at all.
+  | "lyrics"
+  | "related"
+  | "playlists"
+  | "likers"
+  | "reposters";
 
 /**
  * A track page: waveform, timed comments, stats, and everything that hangs off
@@ -206,6 +217,7 @@ export function TrackView({ trackId, meId }: { trackId: number; meId: number }) 
 
   const tabs: { id: Side; label: string; count?: number | null }[] = [
     { id: "comments", label: t.trackPage.comments, count: detail.comment_count },
+    { id: "lyrics", label: t.player.lyrics },
     { id: "related", label: t.trackPage.related },
     { id: "playlists", label: t.trackPage.inPlaylists },
     { id: "likers", label: t.trackPage.likers, count: detail.likes_count },
@@ -439,6 +451,15 @@ export function TrackView({ trackId, meId }: { trackId: number; meId: number }) 
             seek(seconds);
           }}
         />
+      )}
+
+      {side === "lyrics" && (
+        // Capped, because the transcript is a column of text on a page that is
+        // not otherwise one; and scrollable, because a long one would otherwise
+        // push the whole page down.
+        <div className="panel max-h-[60vh] overflow-y-auto p-2">
+          <LyricsPanel track={track} compact />
+        </div>
       )}
 
       {side === "related" && related.length > 0 && <TrackList tracks={related} />}

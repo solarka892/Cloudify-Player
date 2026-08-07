@@ -49,7 +49,16 @@ type State =
   | { status: "loading" }
   | { status: "ok"; data: LyricsData }
   | { status: "none" }
-  | { status: "error" };
+  /**
+   * The lookup itself failed — no network, LRCLIB down, a platform where the
+   * request cannot be made at all.
+   *
+   * Kept apart from `none`, which it used to share a message with. That was the
+   * one thing making "there are no lyrics for anything" impossible to tell from
+   * "the lyrics service is unreachable from here": both said "no lyrics, normal
+   * for remixes", so a total failure read as a catalogue full of instrumentals.
+   */
+  | { status: "error"; message: string };
 
 /**
  * How far ahead of the clock a line lights up, in seconds.
@@ -105,6 +114,8 @@ export function LyricsPanel({
   large?: boolean;
 }) {
   const [state, setState] = useState<State>({ status: "idle" });
+  /** Bumped by the retry button; re-runs the lookup. */
+  const [attempt, setAttempt] = useState(0);
   const position = useLivePosition();
   const seek = usePlayerStore((s) => s.seek);
   const activeRef = useRef<HTMLButtonElement>(null);
@@ -117,11 +128,14 @@ export function LyricsPanel({
         if (cancelled) return;
         setState(data ? { status: "ok", data } : { status: "none" });
       })
-      .catch(() => !cancelled && setState({ status: "error" }));
+      .catch((error) => {
+        if (cancelled) return;
+        setState({ status: "error", message: String(error) });
+      });
     return () => {
       cancelled = true;
     };
-  }, [track.id, track.title, track.artist, track.duration]);
+  }, [track.id, track.title, track.artist, track.duration, attempt]);
 
   const lines = useMemo(
     () =>
@@ -156,8 +170,32 @@ export function LyricsPanel({
   if (state.status === "loading") {
     return <Empty>{t.lyrics.loading}</Empty>;
   }
-  if (state.status === "none" || state.status === "error") {
-    return <Empty>{t.lyrics.none}</Empty>;
+  if (state.status === "error") {
+    return (
+      <Empty>
+        <p>{t.lyrics.failed}</p>
+        <p className="max-w-sm break-words text-xs opacity-70">{state.message}</p>
+        <button
+          onClick={() => setAttempt((n) => n + 1)}
+          className="rounded-[var(--radius-control)] border border-border px-3 py-1 text-xs transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground"
+        >
+          {t.lyrics.retry}
+        </button>
+      </Empty>
+    );
+  }
+  if (state.status === "none") {
+    return (
+      <Empty>
+        <p>{t.lyrics.none}</p>
+        {/* What was actually looked up. A SoundCloud title is often the reason
+            for a miss — a repost account's name, a "[FREE DL]" suffix — and
+            seeing the query is what makes that obvious rather than mysterious. */}
+        <p className="max-w-sm truncate text-xs opacity-70">
+          {[track.artist, track.title].filter(Boolean).join(" — ")}
+        </p>
+      </Empty>
+    );
   }
   if (state.status !== "ok") return null;
 
@@ -240,7 +278,7 @@ export function LyricsPanel({
 
 function Empty({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex h-full items-center justify-center p-8 text-center text-sm text-muted-foreground">
+    <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center text-sm text-muted-foreground">
       {children}
     </div>
   );

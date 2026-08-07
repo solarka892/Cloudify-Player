@@ -49,6 +49,12 @@ mod error {
         #[error("network error: {0}")]
         Http(#[from] reqwest::Error),
 
+        /// The HTTP client itself could not be built — no usable TLS backend.
+        /// Kept as a string because the client is built once and the error is
+        /// then handed out repeatedly, which `reqwest::Error` cannot be.
+        #[error("http client unavailable: {0}")]
+        Client(String),
+
         #[error("regex error: {0}")]
         Regex(#[from] regex::Error),
 
@@ -110,6 +116,32 @@ pub(crate) fn classify(status: reqwest::StatusCode) -> Option<ScApiError> {
 }
 
 /// A reqwest client carrying the browser User-Agent every SC request needs.
+///
+/// **One client for the process**, cloned on every call — `reqwest::Client` is
+/// an `Arc` internally, so a clone is a pointer copy and shares the connection
+/// pool. Building a fresh one per request, which is what this used to do
+/// everywhere, threw that pool away each time: playing a track is two sequential
+/// requests to `api-v2` and both paid for their own TCP connect and TLS
+/// handshake, as did the segment fetches behind a download. On a desktop that is
+/// a shrug; on a phone on mobile data it is most of the delay before a track
+/// starts.
+///
+/// The builder can fail (no TLS backend), and that is not something to hide
+/// behind a panic at startup, so the result is kept and re-returned.
 pub(crate) fn http_client() -> Result<reqwest::Client, ScApiError> {
-    Ok(reqwest::Client::builder().user_agent(USER_AGENT).build()?)
+    static CLIENT: std::sync::OnceLock<Result<reqwest::Client, String>> =
+        std::sync::OnceLock::new();
+
+    CLIENT
+        .get_or_init(|| {
+            reqwest::Client::builder()
+                .user_agent(USER_AGENT)
+                // A pool that is emptied between tracks is not a pool. Ninety
+                // seconds comfortably spans a track change.
+                .pool_idle_timeout(std::time::Duration::from_secs(90))
+                .build()
+                .map_err(|e| e.to_string())
+        })
+        .clone()
+        .map_err(ScApiError::Client)
 }

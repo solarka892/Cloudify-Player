@@ -1,5 +1,10 @@
 import { create } from "zustand";
-import { scGetStreamUrl, scRelatedTracks, type Track } from "@/lib/tauri";
+import {
+  scGetStreamUrl,
+  scRelatedTracks,
+  type StreamSource,
+  type Track,
+} from "@/lib/tauri";
 import {
   abandonGraph,
   applyAudio,
@@ -11,6 +16,7 @@ import {
   prepareForSource,
   resume,
 } from "@/audio/engine";
+import { attach as attachHls, release as releaseHls } from "@/audio/hls";
 import {
   DEFAULT_VOLUME,
   setSourceReloader,
@@ -44,6 +50,21 @@ let mediaSessionBound = false;
 /** Pressing "previous" past this many seconds restarts the track instead. */
 const RESTART_THRESHOLD_S = 3;
 
+/** Handle for the playback watchdog; see `watchElement`. */
+let watchdog: number | null = null;
+/** How often the watchdog looks. Cheap — two property reads. */
+const WATCHDOG_INTERVAL_MS = 1000;
+/**
+ * How long the playhead may sit still before the source is presumed dead.
+ *
+ * Generous, because ordinary buffering looks identical from here and reloading
+ * a track that was about to resume on its own is worse than waiting a moment
+ * longer. Eight seconds is far past any rebuffer that is going to succeed.
+ */
+const STALL_GRACE_MS = 8000;
+/** Minimum gap between two recovery attempts, so a dead track cannot loop. */
+const RECOVERY_COOLDOWN_MS = 20_000;
+
 /**
  * Resolved stream URLs, keyed by track id.
  *
@@ -53,28 +74,47 @@ const RESTART_THRESHOLD_S = 3;
  * cache — long enough to make next/prev instant, short enough that a cached
  * URL is still valid when used.
  */
-const urlCache = new Map<number, { url: string; at: number }>();
-const URL_TTL_MS = 4 * 60_000;
+const urlCache = new Map<number, { source: StreamSource; at: number }>();
+/**
+ * How long a resolved URL is reused.
+ *
+ * Deliberately short of SoundCloud's own expiry rather than close to it. A URL
+ * that dies *during* playback does not fail loudly — the CDN starts refusing the
+ * range requests the element makes as it plays past the buffer, and the track
+ * silently stops halfway with no error anywhere. Two minutes is comfortably
+ * inside the window, and the recovery in `watchForStall` covers the rest.
+ */
+const URL_TTL_MS = 2 * 60_000;
 /** Bound the map; a long listening session would otherwise grow it forever. */
 const URL_CACHE_MAX = 200;
 
-function cacheUrl(trackId: number, url: string): void {
+function cacheUrl(trackId: number, source: StreamSource): void {
   if (urlCache.size >= URL_CACHE_MAX) {
     // Insertion-ordered: the oldest entry is the first key.
     const oldest = urlCache.keys().next().value;
     if (oldest !== undefined) urlCache.delete(oldest);
   }
-  urlCache.set(trackId, { url, at: Date.now() });
+  urlCache.set(trackId, { source, at: Date.now() });
 }
 
-function cachedUrl(trackId: number): string | null {
+function cachedUrl(trackId: number): StreamSource | null {
   const hit = urlCache.get(trackId);
   if (!hit) return null;
   if (Date.now() - hit.at >= URL_TTL_MS) {
     urlCache.delete(trackId);
     return null;
   }
-  return hit.url;
+  return hit.source;
+}
+
+/** Drop a track's cached URL, so the next play signs a fresh one. */
+function forgetUrl(trackId: number): void {
+  urlCache.delete(trackId);
+}
+
+/** A downloaded file, dressed as a stream source. */
+function localSource(url: string): StreamSource {
+  return { url, protocol: "progressive", mimeType: "audio/mpeg" };
 }
 
 function initialVolume(): number {
@@ -102,9 +142,30 @@ interface PlayerState {
 
   isPlaying: boolean;
   isLoading: boolean;
+  /**
+   * Whether the user wants sound, as opposed to whether there is any.
+   *
+   * The play button follows this, not `isPlaying`. A press has to change the
+   * glyph *now* — that is the entire feedback the control gives — and the
+   * element cannot promise to be playing by then: a source takes a round trip to
+   * resolve, a paused element on a slow connection can sit in `waiting` for
+   * seconds, and either way the button was still showing "play" while the track
+   * was on its way. Two fields because they are two different facts, and the
+   * places that need the real one (the OS media session, the stall watchdog)
+   * need it to be real.
+   */
+  wantsPlay: boolean;
   /** Seconds. */
   position: number;
   duration: number;
+  /**
+   * How much of the track is buffered ahead of the playhead, in seconds.
+   *
+   * Rendered under the seek bar's fill. SoundCloud streams progressively and the
+   * element only holds a window of it, so "why did it stop when I skipped
+   * ahead?" has an answer on screen instead of being a mystery.
+   */
+  buffered: number;
   volume: number;
   muted: boolean;
   rate: number;
@@ -174,12 +235,68 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
       "durationchange",
       live(() => set({ duration: Number.isFinite(a.duration) ? a.duration : 0 })),
     );
-    a.addEventListener("play", live(() => set({ isPlaying: true })));
-    a.addEventListener("pause", live(() => set({ isPlaying: false })));
+
+    /** How far the element has buffered past where it is playing. */
+    const readBuffered = () => {
+      const at = a.currentTime;
+      for (let i = 0; i < a.buffered.length; i++) {
+        if (a.buffered.start(i) <= at + 0.5 && a.buffered.end(i) >= at) {
+          return a.buffered.end(i);
+        }
+      }
+      return at;
+    };
+    const syncBuffered = () => {
+      const next = readBuffered();
+      if (Math.abs(next - get().buffered) < 0.5) return;
+      set({ buffered: next });
+    };
+    a.addEventListener("progress", live(syncBuffered));
+    a.addEventListener("canplay", live(syncBuffered));
+
+    /**
+     * Take the element's word for whether sound is happening.
+     *
+     * Bound to five events rather than the two that "should" be enough because
+     * the pair of them is not enough in practice: WebKit can go from `play` to
+     * `waiting` and back without another `play`, a source swap emits `emptied`
+     * with no `pause` beside it, and an element that ends up stalled forever
+     * emits nothing further at all. Reading `a.paused` on any of them, plus the
+     * slow poll in `watchElement`, is what stops the button from lying.
+     */
+    const syncPlaying = () => {
+      const playing = !a.paused && !a.ended;
+      if (playing === get().isPlaying) return;
+      set({ isPlaying: playing });
+    };
+    for (const event of ["play", "playing", "pause", "emptied", "stalled"]) {
+      a.addEventListener(event, live(syncPlaying));
+    }
+
+    // `wantsPlay` follows a pause the app did not ask for — the OS, a headset
+    // button, another app taking the audio focus. The transient pause inside
+    // `load` is exempt, because `isLoading` is already set by then and the
+    // intent it would clear is the one that load is in the middle of honouring.
+    a.addEventListener(
+      "pause",
+      live(() => {
+        if (!get().isLoading) set({ wantsPlay: false });
+      }),
+    );
+    a.addEventListener("play", live(() => set({ wantsPlay: true })));
+
+    // "Buffering", as distinct from "loading a new track". Both put the same
+    // spinner on the play button; only one of them is worth a watchdog.
+    a.addEventListener("waiting", live(() => set({ isLoading: true })));
+    a.addEventListener(
+      "playing",
+      live(() => set({ isLoading: false, error: null })),
+    );
+
     a.addEventListener(
       "ended",
       live(() => {
-        set({ isPlaying: false, position: 0 });
+        set({ isPlaying: false, wantsPlay: false, position: 0 });
         const { repeat } = get();
         if (repeat === "one") {
           get().playAt(get().pos);
@@ -242,18 +359,43 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
   }
 
   /** Prefer the downloaded file, then a warm URL, then resolve a fresh one. */
-  async function resolveSource(track: Track, skipLocal = false): Promise<string> {
+  async function resolveSource(
+    track: Track,
+    skipLocal = false,
+  ): Promise<StreamSource> {
     if (!skipLocal) {
       const local = useDownloadsStore.getState().localUrl(track.id);
-      if (local) return local;
+      if (local) return localSource(local);
     }
 
     const warm = cachedUrl(track.id);
     if (warm) return warm;
 
-    const url = await scGetStreamUrl(track.id);
-    cacheUrl(track.id, url);
-    return url;
+    const source = await scGetStreamUrl(track.id);
+    cacheUrl(track.id, source);
+    return source;
+  }
+
+  /**
+   * Point the element at a resolved source, whichever kind it is.
+   *
+   * The one place `src` is assigned, because HLS is not an assignment: hls.js
+   * takes the element over and feeds it through Media Source Extensions, and an
+   * instance left attached would keep appending underneath the next track. So
+   * every path releases first, including the progressive one.
+   *
+   * Resolves once the element has something to play, not once it is playing.
+   */
+  async function setSource(
+    a: HTMLAudioElement,
+    source: StreamSource,
+  ): Promise<void> {
+    releaseHls();
+    if (source.protocol === "hls") {
+      await attachHls(a, source.url);
+      return;
+    }
+    a.src = source.url;
   }
 
   /**
@@ -272,7 +414,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
     if (cachedUrl(next.id)) return;
 
     void scGetStreamUrl(next.id)
-      .then((url) => cacheUrl(next.id, url))
+      .then((source) => cacheUrl(next.id, source))
       // A failed warm-up is invisible: the real play will resolve it again.
       .catch(() => undefined);
   }
@@ -287,8 +429,26 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
 
     let a = bindElement();
     bindMediaSession();
+    watchElement();
     const token = ++playToken;
     const { fadeMs } = useSettingsStore.getState();
+
+    // Set before the pause below, so the `pause` listener knows this one is
+    // ours and leaves `wantsPlay` alone — see `bindElement`.
+    set({
+      pos: orderPos,
+      current: track,
+      isPlaying: false,
+      // The button flips to "pause" on the press that got here, and stays there
+      // through however long the resolve takes. That wait is the whole reason
+      // this field exists.
+      wantsPlay: true,
+      isLoading: true,
+      error: null,
+      position: 0,
+      duration: 0,
+      buffered: 0,
+    });
 
     // Stop the outgoing track *before* anything async. Resolving a stream URL
     // is a network round trip that can be slow or fail, and leaving the old
@@ -298,31 +458,30 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
     // event for the empty source; assigning the new `src` resets the element
     // anyway, and a failed resolve then leaves the old track merely paused.
     a.pause();
-
-    set({
-      pos: orderPos,
-      current: track,
-      isPlaying: false,
-      isLoading: true,
-      error: null,
-      position: 0,
-      duration: 0,
-    });
     publishMetadata(track);
 
     try {
-      const src = await resolveSource(track);
+      const source = await resolveSource(track);
       if (token !== playToken) return; // superseded while resolving
 
-      // Must precede `src`: the CORS mode is read at load time. This can hand
-      // back a different element, so rebind before touching it.
-      await prepareForSource(useSettingsStore.getState().audio, src);
+      // Must precede the source: the CORS mode is read at load time. This can
+      // hand back a different element, so rebind before touching it.
+      await prepareForSource(
+        useSettingsStore.getState().audio,
+        source.url,
+        source.protocol === "hls" ? "hls" : "file",
+      );
       if (token !== playToken) return; // superseded while deciding the routing
       a = bindElement();
-      a.src = src;
+      await setSource(a, source);
+      if (token !== playToken) return; // superseded while the manifest loaded
       applyRate(a, get().rate);
       a.volume = fadeMs > 0 ? 0 : effectiveVolume();
-      await a.play();
+
+      // The user may have pressed pause during the resolve. Honouring that
+      // means loading the track and leaving it stopped, not starting it anyway
+      // and making them press again.
+      if (get().wantsPlay) await a.play();
       // Order matters: `applyAudio` is what builds the graph, so resuming
       // before it had nothing to resume — and a graph whose context stays
       // suspended plays in total silence.
@@ -334,7 +493,15 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
       warmNext();
     } catch (e) {
       if (token !== playToken) return;
-      set({ isLoading: false, error: String(e), isPlaying: false });
+      // A URL that failed is not worth keeping: the next attempt has to sign a
+      // new one rather than replay the same failure from cache.
+      forgetUrl(track.id);
+      set({
+        isLoading: false,
+        error: String(e),
+        isPlaying: false,
+        wantsPlay: false,
+      });
       // The element was faded to silence on the way in, and nothing is going to
       // fade it back — leaving it there would make the *next* successful play
       // silent as well.
@@ -350,32 +517,47 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
   /**
    * Re-fetch the current source and resume where we were.
    *
-   * Needed when the audio chain changes: the element's CORS mode is only read
-   * at load time, so a graph switched on mid-track does nothing until the
-   * source is re-assigned.
+   * Two callers, one mechanism. The audio chain changing needs it because the
+   * element's CORS mode is only read at load time, so a graph switched on
+   * mid-track does nothing until the source is re-assigned. A stall needs it
+   * because a signed SoundCloud URL that has expired mid-track cannot be
+   * un-expired — see `watchElement`.
+   *
+   * `fresh` is what separates the two: re-signing is pointless for the first and
+   * the entire point of the second.
    */
-  async function reloadInPlace(): Promise<void> {
+  async function reloadInPlace(fresh = false): Promise<void> {
     const track = get().current;
     if (!track) return;
 
     let a = bindElement();
     const at = a.currentTime;
-    const wasPlaying = !a.paused;
+    const wasPlaying = !a.paused || get().wantsPlay;
     const token = ++playToken;
+    if (fresh) forgetUrl(track.id);
 
     try {
-      const src = await resolveSource(track);
+      const source = await resolveSource(track);
       if (token !== playToken) return;
 
-      await prepareForSource(useSettingsStore.getState().audio, src);
+      await prepareForSource(
+        useSettingsStore.getState().audio,
+        source.url,
+        source.protocol === "hls" ? "hls" : "file",
+      );
       if (token !== playToken) return;
       a = bindElement();
-      a.src = src;
-      a.currentTime = at;
+      await setSource(a, source);
+      if (token !== playToken) return;
+      // Seeking before the element knows how long the track is silently lands
+      // at 0 on some builds, which turns a recovery into a restart — the one
+      // outcome that would be worse than the stall.
+      await seekWhenSeekable(a, at);
       a.volume = effectiveVolume();
       if (wasPlaying) await a.play();
       applyAudio(useSettingsStore.getState().audio);
       resume();
+      set({ isLoading: false });
     } catch {
       // Leave the element as it was; the user can hit play again.
     }
@@ -386,12 +568,17 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
     let a = bindElement();
     const token = ++playToken;
     try {
-      const src = await resolveSource(track, true);
+      const source = await resolveSource(track, true);
       if (token !== playToken) return;
-      await prepareForSource(useSettingsStore.getState().audio, src);
+      await prepareForSource(
+        useSettingsStore.getState().audio,
+        source.url,
+        source.protocol === "hls" ? "hls" : "file",
+      );
       if (token !== playToken) return;
       a = bindElement();
-      a.src = src;
+      await setSource(a, source);
+      if (token !== playToken) return;
       a.volume = effectiveVolume();
       await a.play();
       resume();
@@ -399,9 +586,107 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
       toast(t.player.localFileBroken, "info");
     } catch (e) {
       if (token !== playToken) return;
-      set({ isLoading: false, error: String(e), isPlaying: false });
+      set({
+        isLoading: false,
+        error: String(e),
+        isPlaying: false,
+        wantsPlay: false,
+      });
       toast(`${t.player.playbackFailed}: ${e}`, "error");
     }
+  }
+
+  /**
+   * Put the playhead at `at`, waiting for the element to be able to accept it.
+   *
+   * Assigning `currentTime` before metadata has arrived is ignored — the
+   * element has no idea how long the track is yet, so there is nothing to seek
+   * within. Gives up after a moment and lets the track start from the top
+   * rather than hanging: a restart is bad, a player that never resumes is worse.
+   */
+  function seekWhenSeekable(a: HTMLAudioElement, at: number): Promise<void> {
+    if (at <= 0) return Promise.resolve();
+    if (a.readyState >= 1) {
+      a.currentTime = at;
+      return Promise.resolve();
+    }
+    return new Promise((resolve) => {
+      const done = () => {
+        clearTimeout(timer);
+        a.removeEventListener("loadedmetadata", done);
+        if (a.readyState >= 1) a.currentTime = at;
+        resolve();
+      };
+      const timer = setTimeout(done, 5000);
+      a.addEventListener("loadedmetadata", done, { once: true });
+    });
+  }
+
+  /**
+   * Catch a track that has quietly stopped, and put it back.
+   *
+   * SoundCloud streams progressively over a *signed, expiring* URL, and the
+   * element fetches the rest of the file as it plays. Two things follow, and
+   * both were being reported as "the track just stops":
+   *
+   *   - seeking past what is buffered makes the element ask the CDN for a range
+   *     it may no longer serve, and
+   *   - a URL signed at the start of a long track can expire before the end of
+   *     it.
+   *
+   * Neither raises `error`. The element simply sits there with the clock
+   * stopped, playing nothing, reporting no fault — which is invisible to every
+   * event listener in this file. So it is measured: the playhead is expected to
+   * move while the user wants sound, and if it does not, the source is re-signed
+   * and reloaded at the same position.
+   *
+   * The same poll is what keeps `isPlaying` honest when an event goes missing.
+   */
+  function watchElement(): void {
+    if (watchdog !== null) return;
+
+    let lastPosition = -1;
+    let stalledFor = 0;
+    let lastRecovery = 0;
+
+    watchdog = window.setInterval(() => {
+      const a = el();
+      const state = get();
+
+      // Cheap and idempotent, and the reason a missed `play`/`pause` event can
+      // no longer leave the button showing the wrong glyph for good.
+      const playing = !a.paused && !a.ended;
+      if (playing !== state.isPlaying) set({ isPlaying: playing });
+
+      // Only a track that is *supposed* to be advancing can be stalled. A
+      // deliberate pause, a finished track and an empty player are all fine.
+      if (!state.current || !state.wantsPlay || a.paused || a.ended) {
+        stalledFor = 0;
+        lastPosition = a.currentTime;
+        return;
+      }
+
+      const moved = Math.abs(a.currentTime - lastPosition) > 0.05;
+      lastPosition = a.currentTime;
+      if (moved) {
+        stalledFor = 0;
+        return;
+      }
+
+      stalledFor += WATCHDOG_INTERVAL_MS;
+      if (stalledFor < STALL_GRACE_MS) return;
+
+      // A recovery that fires again immediately would be a reload loop against
+      // a track that is simply not going to play, so failures are spaced out
+      // and the user is told rather than left watching it thrash.
+      const now = Date.now();
+      if (now - lastRecovery < RECOVERY_COOLDOWN_MS) return;
+      lastRecovery = now;
+      stalledFor = 0;
+
+      set({ isLoading: true });
+      void reloadInPlace(true);
+    }, WATCHDOG_INTERVAL_MS);
   }
 
   /**
@@ -469,8 +754,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
 
     isPlaying: false,
     isLoading: false,
+    wantsPlay: false,
     position: 0,
     duration: 0,
+    buffered: 0,
     volume: initialVolume(),
     muted: false,
     rate: 1,
@@ -529,8 +816,18 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
     togglePlay() {
       if (!get().current) return;
       const a = bindElement();
-      if (a.paused) {
-        void a.play();
+      // Intent first, and set here rather than left to the element's events:
+      // this is what makes the glyph change on the press instead of whenever
+      // the network gets round to it. A press during a load flips the intent
+      // that `load` will honour when the source arrives.
+      const next = !get().wantsPlay;
+      set({ wantsPlay: next });
+
+      if (next) {
+        watchElement();
+        void a.play().catch(() => {
+          // Nothing loaded yet — `load` is still resolving and will start it.
+        });
         resume();
       } else {
         a.pause();
@@ -538,8 +835,13 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
     },
 
     seek(seconds) {
-      bindElement().currentTime = seconds;
-      set({ position: seconds });
+      const a = bindElement();
+      a.currentTime = seconds;
+      // The old buffered figure describes a range that no longer contains the
+      // playhead, so it would read as "buffered behind you" until the next
+      // `progress`. Collapsing it to the seek target is the honest reading:
+      // nothing ahead is known to be there yet.
+      set({ position: seconds, buffered: seconds });
     },
 
     setVolume(volume) {

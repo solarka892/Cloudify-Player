@@ -27,8 +27,28 @@ enum On {
 }
 
 /// Add to or remove from a collection endpoint. See docs/sc-api.md.
+///
+/// One forced retry with a freshly extracted `client_id`, like every read route
+/// already does. It was missing here, and the asymmetry was visible: SoundCloud
+/// rotates the key without warning, and until now that made *adding* a like fail
+/// for the rest of the session while removing one — which the browser had
+/// already warmed — kept working. That is exactly the shape of "likes go away
+/// fine but will not go on".
 async fn toggle(token: &str, path: String, on: bool, verb: On) -> Result<(), ScApiError> {
-    let cid = client_id::get(false).await?;
+    match send(token, &path, on, verb, false).await {
+        Err(ScApiError::StaleClientId) => send(token, &path, on, verb, true).await,
+        other => other,
+    }
+}
+
+async fn send(
+    token: &str,
+    path: &str,
+    on: bool,
+    verb: On,
+    fresh_client_id: bool,
+) -> Result<(), ScApiError> {
+    let cid = client_id::get(fresh_client_id).await?;
     let client = http_client()?;
     let url = format!("{API_V2}{path}");
 
@@ -38,14 +58,25 @@ async fn toggle(token: &str, path: String, on: bool, verb: On) -> Result<(), ScA
         (false, _) => client.delete(&url),
     };
 
-    request
+    let resp = request
         .query(&[("client_id", cid.as_str())])
         .header("Authorization", format!("OAuth {token}"))
+        // The write routes sit behind a bot filter that the read routes do not,
+        // and a request with no `Origin`/`Referer` is the easiest thing in the
+        // world for one to single out. soundcloud.com's own app sends both on
+        // every one of these; sending them costs nothing and removes the most
+        // obvious reason for a write to be refused while a read succeeds.
+        .header("Origin", "https://soundcloud.com")
+        .header("Referer", "https://soundcloud.com/")
         // SoundCloud rejects a bodyless PUT on these routes with a 415.
         .json(&serde_json::json!({}))
         .send()
-        .await?
-        .error_for_status()?;
+        .await?;
+
+    if let Some(reason) = super::classify(resp.status()) {
+        return Err(reason);
+    }
+    resp.error_for_status()?;
     Ok(())
 }
 

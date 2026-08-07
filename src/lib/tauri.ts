@@ -211,12 +211,26 @@ export function scSearchPlaylists(
   });
 }
 
+/** A signed, playable URL and what has to play it. Mirrors `sc_api::stream::Stream`. */
+export interface StreamSource {
+  url: string;
+  /**
+   * `"progressive"` — a plain file an `<audio>` element loads directly — or
+   * `"hls"`, a playlist that goes through `audio/hls.ts`. Not every track on
+   * SoundCloud has a progressive form, and the ones that do not used to fail
+   * outright.
+   */
+  protocol: string;
+  /** What SoundCloud claims it is, e.g. `audio/mpeg`. */
+  mimeType: string;
+}
+
 /**
- * Resolve a track to a directly-playable (progressive mp3) URL. The URL is
- * short-lived — resolve right before playback, don't cache.
+ * Resolve a track to a playable stream. The URL is short-lived — resolve right
+ * before playback, don't cache for long.
  */
-export function scGetStreamUrl(trackId: number): Promise<string> {
-  return invoke<string>("sc_get_stream_url", { trackId });
+export function scGetStreamUrl(trackId: number): Promise<StreamSource> {
+  return invoke<StreamSource>("sc_get_stream_url", { trackId });
 }
 
 // ───────────────────────────────────────────────────────── discovery ────

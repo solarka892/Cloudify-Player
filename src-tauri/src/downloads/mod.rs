@@ -31,6 +31,11 @@ pub enum DownloadError {
     ScApi(#[from] sc_api::ScApiError),
     #[error("could not resolve the app data directory")]
     NoAppDir,
+    /// SoundCloud offers this track only in a form that cannot be written out as
+    /// a file here — an opus or AAC HLS playlist, which would need a muxer. It
+    /// still *plays*; see `sc_api::stream`.
+    #[error("this track is streaming-only — SoundCloud offers no downloadable form of it")]
+    NotDownloadable,
 }
 
 impl Serialize for DownloadError {
@@ -106,25 +111,14 @@ fn now() -> i64 {
 /// Re-downloading a track that is already present overwrites it, which is also
 /// how a failed or truncated earlier attempt gets repaired.
 pub async fn download(app: &AppHandle, track: Track) -> Result<DownloadedTrack, DownloadError> {
-    let url = sc_api::stream::get_stream_url(track.id).await?;
+    let stream = sc_api::stream::get_stream_url(track.id).await?;
     let client = sc_api::http_client()?;
 
-    let mut resp = client.get(url).send().await?.error_for_status()?;
-    let total = resp.content_length();
-    let mut bytes: Vec<u8> = Vec::with_capacity(total.unwrap_or(6 << 20) as usize);
-
-    while let Some(chunk) = resp.chunk().await? {
-        bytes.extend_from_slice(&chunk);
-        // Best-effort: a closed window must not fail the download.
-        let _ = app.emit(
-            "download://progress",
-            Progress {
-                track_id: track.id,
-                received: bytes.len() as u64,
-                total,
-            },
-        );
-    }
+    let bytes = if stream.protocol == "hls" {
+        fetch_hls(app, &client, &track, &stream).await?
+    } else {
+        fetch_whole(app, &client, &track, &stream.url).await?
+    };
 
     let path = downloads_dir(app)?.join(format!("{}.mp3", track.id));
     {
@@ -168,6 +162,99 @@ pub async fn download(app: &AppHandle, track: Track) -> Result<DownloadedTrack, 
         bytes: size,
         downloaded_at: stamp,
     })
+}
+
+/// Pull a plain file down, reporting progress as it goes.
+async fn fetch_whole(
+    app: &AppHandle,
+    client: &reqwest::Client,
+    track: &Track,
+    url: &str,
+) -> Result<Vec<u8>, DownloadError> {
+    let mut resp = client.get(url).send().await?.error_for_status()?;
+    let total = resp.content_length();
+    let mut bytes: Vec<u8> = Vec::with_capacity(total.unwrap_or(6 << 20) as usize);
+
+    while let Some(chunk) = resp.chunk().await? {
+        bytes.extend_from_slice(&chunk);
+        // Best-effort: a closed window must not fail the download.
+        let _ = app.emit(
+            "download://progress",
+            Progress {
+                track_id: track.id,
+                received: bytes.len() as u64,
+                total,
+            },
+        );
+    }
+    Ok(bytes)
+}
+
+/// Pull an HLS playlist down as one file.
+///
+/// SoundCloud serves a growing share of its catalogue as HLS only, and those
+/// tracks used to be undownloadable — the resolver refused them outright. An
+/// `audio/mpeg` playlist is a list of segments each of which is raw MP3 frames,
+/// so concatenating them in order *is* the file: no remuxing, no container to
+/// rewrite, and the result plays in anything.
+///
+/// That is only true of mpeg. An opus or AAC playlist would need a real muxer
+/// to become a file, so it is refused with a reason rather than written out as
+/// something that will not play — the one outcome worse than not offering the
+/// button.
+async fn fetch_hls(
+    app: &AppHandle,
+    client: &reqwest::Client,
+    track: &Track,
+    stream: &sc_api::stream::Stream,
+) -> Result<Vec<u8>, DownloadError> {
+    if !stream.mime_type.contains("mpeg") {
+        return Err(DownloadError::NotDownloadable);
+    }
+
+    let playlist = client
+        .get(&stream.url)
+        .send()
+        .await?
+        .error_for_status()?
+        .text()
+        .await?;
+
+    // An `.m3u8` is line-oriented: everything that is not a `#` directive is a
+    // segment URI. SoundCloud sends absolute URLs, so there is no base to
+    // resolve against — and anything else is not something to go fetching.
+    let segments: Vec<&str> = playlist
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .filter(|line| line.starts_with("https://"))
+        .collect();
+    if segments.is_empty() {
+        return Err(DownloadError::NotDownloadable);
+    }
+
+    let mut bytes: Vec<u8> = Vec::with_capacity(6 << 20);
+    for (index, segment) in segments.iter().enumerate() {
+        let chunk = client
+            .get(*segment)
+            .send()
+            .await?
+            .error_for_status()?
+            .bytes()
+            .await?;
+        bytes.extend_from_slice(&chunk);
+        // The total is the only honest number available: segment sizes are not
+        // known ahead of time, so progress is reported against the count.
+        let _ = app.emit(
+            "download://progress",
+            Progress {
+                track_id: track.id,
+                received: bytes.len() as u64,
+                total: Some((bytes.len() as u64 * segments.len() as u64) / (index as u64 + 1)),
+            },
+        );
+    }
+    Ok(bytes)
 }
 
 /// Write title/artist and embed the cover so the file makes sense in any

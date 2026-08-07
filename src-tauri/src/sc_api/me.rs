@@ -5,7 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{client_id, ScApiError, API_V2, USER_AGENT};
+use super::{client_id, ScApiError, API_V2};
 
 /// Minimal projection of the SoundCloud user object we need in the UI.
 #[derive(Debug, Serialize, Deserialize)]
@@ -34,7 +34,7 @@ pub async fn get(token: &str) -> Result<Me, ScApiError> {
 
 async fn fetch(token: &str, fresh_client_id: bool) -> Result<Me, ScApiError> {
     let cid = client_id::get(fresh_client_id).await?;
-    let client = reqwest::Client::builder().user_agent(USER_AGENT).build()?;
+    let client = super::http_client()?;
 
     let resp = client
         .get(format!("{API_V2}/me"))

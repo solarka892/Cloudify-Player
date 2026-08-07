@@ -17,7 +17,7 @@ use std::time::{Duration, Instant};
 
 use regex::Regex;
 
-use super::{ScApiError, USER_AGENT};
+use super::ScApiError;
 
 const HOMEPAGE: &str = "https://soundcloud.com/";
 const CACHE_TTL: Duration = Duration::from_secs(24 * 60 * 60);
@@ -56,7 +56,7 @@ pub async fn get(force: bool) -> Result<String, ScApiError> {
 
 /// Performs the full extraction from scratch (no caching).
 pub async fn fetch() -> Result<String, ScApiError> {
-    let client = reqwest::Client::builder().user_agent(USER_AGENT).build()?;
+    let client = super::http_client()?;
 
     let html = client.get(HOMEPAGE).send().await?.text().await?;
     let bundles = bundle_urls(&html)?;

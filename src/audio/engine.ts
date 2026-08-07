@@ -73,6 +73,8 @@ type Routing = "plain" | "graph";
 
 let element: HTMLAudioElement | null = null;
 let routing: Routing = "plain";
+/** How the current source reaches the element. Set by `prepareForSource`. */
+let sourceKind: "file" | "hls" = "file";
 let graph: Graph | null = null;
 /** Set once a graph attempt has failed, so we stop retrying every track. */
 let graphUnavailable = false;
@@ -217,6 +219,9 @@ export function needsGraph(config: AudioConfig): boolean {
   );
 }
 
+/** How the source about to be loaded reaches the element. */
+export type SourceKind = "file" | "hls";
+
 /**
  * Wire up for the source about to be loaded, and hand back the element to
  * assign it to.
@@ -228,15 +233,21 @@ export function needsGraph(config: AudioConfig): boolean {
 export async function prepareForSource(
   config: AudioConfig,
   src: string,
+  kind: SourceKind = "file",
 ): Promise<HTMLAudioElement> {
   // Effects off is the common case and needs no graph, so nothing is probed.
+  //
+  // HLS skips the probe entirely and is always routable: Media Source
+  // Extensions hand the element a same-origin blob rather than the CDN URL, so
+  // there is no cross-origin read for Web Audio to be refused — the CORS
+  // question the progressive path has to ask does not arise.
   const want: Routing =
     needsGraph(config) &&
     !graphSilent &&
-    routable(src) &&
-    (await probeCors(src))
+    (kind === "hls" || (routable(src) && (await probeCors(src))))
       ? "graph"
       : "plain";
+  sourceKind = kind;
 
   // Going back to plain means abandoning a permanently-routed element. The
   // outgoing one has to be silenced explicitly — dropping the reference does
@@ -257,7 +268,10 @@ export async function prepareForSource(
   routing = want;
 
   const a = el();
-  if (want === "graph") a.crossOrigin = "anonymous";
+  // Never on the HLS path: the element is fed by MSE, and a `crossOrigin`
+  // attribute there applies to a URL the element is not going to fetch — while
+  // on some builds it makes the blob itself count as tainted.
+  if (want === "graph" && kind !== "hls") a.crossOrigin = "anonymous";
   else a.removeAttribute("crossorigin");
   return a;
 }
@@ -267,6 +281,9 @@ function graphAllowedNow(): boolean {
   const src = element?.currentSrc || element?.src;
   // Nothing loaded yet: the next load decides, and it will re-apply.
   if (!src) return true;
+  // An MSE blob is same-origin by construction — there is nothing to probe and
+  // nothing that can refuse us.
+  if (sourceKind === "hls") return true;
   // Only a source already proven readable. An unprobed one is not worth
   // guessing at: turning effects on reloads the source anyway, and that path
   // probes properly. Guessing wrong here silences the track.
@@ -413,6 +430,7 @@ export function graphBlock(): GraphBlock {
   if (graphSilent || graphUnavailable) return "unsupported";
   // Routed and running: nothing is blocked.
   if (routing === "graph") return "none";
+  if (sourceKind === "hls") return "none";
   const src = element?.currentSrc || element?.src;
   if (src && knownReadable(src) === false) return "source";
   return "none";
