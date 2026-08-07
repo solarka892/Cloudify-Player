@@ -78,6 +78,11 @@ pub enum AuthError {
     #[cfg(not(target_os = "android"))]
     #[error("browser error: {0}")]
     Browser(String),
+
+    /// The sign-in screen handed over a cookie the API will not accept.
+    #[cfg(target_os = "android")]
+    #[error("SoundCloud rejected the token from that sign-in — please try again")]
+    Rejected,
 }
 
 impl Serialize for AuthError {
@@ -173,6 +178,14 @@ pub async fn login_mobile() -> Result<(), AuthError> {
         let status = android::login_poll().await?;
 
         if let Some(token) = status.token.filter(|t| !t.is_empty()) {
+            // Only accept a token that actually works, as the desktop browser
+            // flow does. A cookie the sign-in screen found is not proof that
+            // SoundCloud still honours it, and storing a dead one shows up as a
+            // session that expired the instant the user signed in.
+            if crate::sc_api::me::get(&token).await.is_err() {
+                let _ = android::login_cancel().await;
+                return Err(AuthError::Rejected);
+            }
             save_token(&token)?;
             // The sign-in screen closes itself once it has the cookie; asking
             // again is harmless and covers the case where it did not.
