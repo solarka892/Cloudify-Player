@@ -11,8 +11,9 @@
  * See `src-tauri/src/media/mod.rs` and, for the Kotlin, `PlaybackService.kt`.
  */
 
-import { addPluginListener, invoke, type PluginListener } from "@tauri-apps/api/core";
+import { invoke } from "@tauri-apps/api/core";
 import { isAndroid } from "./platform";
+import type { NativeListener } from "./nativeNav";
 
 /** Mirrors `media::NowPlaying` on the Rust side. */
 export interface NowPlaying {
@@ -63,18 +64,30 @@ interface RawMediaAction {
   positionMs?: number;
 }
 
+/** Must match `CloudifyPlugin.emitMediaAction`. */
+const ACTION_EVENT = "cloudify:media-action";
+
 /**
  * Listen for transport commands from outside the app.
  *
- * Resolves to null on any platform without the plugin — the caller has nothing
- * to clean up and nothing to special-case.
+ * A plain DOM event rather than `addPluginListener`, and that change is a fix
+ * rather than a refactor: registering a plugin listener goes through Tauri's
+ * ACL, this plugin has no ACL manifest, and every registration was failing
+ * silently — so the lock screen and the notification have never actually been
+ * able to drive the player, however correct the Kotlin half was. See
+ * `lib/nativeNav.ts` for the full story and `MainActivity.dispatchToWeb` for the
+ * route that does work.
+ *
+ * Resolves to null off Android — the caller has nothing to clean up.
  */
 export async function onMediaAction(
   handler: (action: MediaAction) => void,
-): Promise<PluginListener | null> {
+): Promise<NativeListener | null> {
   if (!isAndroid) return null;
 
-  return addPluginListener<RawMediaAction>("cloudify", "mediaAction", (raw) => {
+  const listener = (event: Event) => {
+    const raw = (event as CustomEvent<RawMediaAction | null>).detail;
+    if (!raw) return;
     const kind = ACTIONS[raw.action];
     if (!kind) return;
     if (kind === "seek") {
@@ -85,5 +98,10 @@ export async function onMediaAction(
       return;
     }
     handler({ kind });
-  });
+  };
+
+  window.addEventListener(ACTION_EVENT, listener);
+  return {
+    unregister: () => window.removeEventListener(ACTION_EVENT, listener),
+  };
 }

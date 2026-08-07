@@ -15,8 +15,16 @@
  * button and Alt+← in `hooks/useBackGesture`.
  */
 
-import { addPluginListener, invoke, type PluginListener } from "@tauri-apps/api/core";
+import { invoke } from "@tauri-apps/api/core";
 import { isAndroid } from "./platform";
+
+/**
+ * A subscription that can be undone. Mirrors what `addPluginListener` returned,
+ * so call sites did not have to change when the transport did.
+ */
+export interface NativeListener {
+  unregister: () => void;
+}
 
 /** Tell the host whether the app has somewhere to go back to. */
 export async function setCanGoBack(value: boolean): Promise<void> {
@@ -33,12 +41,27 @@ export async function setCanGoBack(value: boolean): Promise<void> {
 /**
  * Listen for the system back gesture.
  *
- * Resolves to null on any platform without the plugin — the caller has nothing
- * to clean up and nothing to special-case.
+ * A plain DOM event, not `addPluginListener`. The latter is the obvious route
+ * and is a dead end here: registering a plugin listener goes through Tauri's
+ * ACL, and this plugin — built inline with `tauri::plugin::Builder` rather than
+ * as a crate — has no ACL manifest at all, so there is no permission that could
+ * be granted. Every registration failed with "cloudify.registerListener not
+ * allowed. Plugin not found", in a promise nobody was awaiting, which is why the
+ * back gesture did nothing and looked like a bug in the navigation instead.
+ *
+ * Kotlin dispatches it with `evaluateJavascript` — the same mechanism that
+ * already delivers the window insets. See `MainActivity.dispatchToWeb`.
+ *
+ * Resolves to null off Android — the caller has nothing to clean up.
  */
 export async function onNativeBack(
   handler: () => void,
-): Promise<PluginListener | null> {
+): Promise<NativeListener | null> {
   if (!isAndroid) return null;
-  return addPluginListener("cloudify", "navBack", () => handler());
+  const listener = () => handler();
+  window.addEventListener(BACK_EVENT, listener);
+  return { unregister: () => window.removeEventListener(BACK_EVENT, listener) };
 }
+
+/** Must match `CloudifyPlugin.emitBack`. */
+const BACK_EVENT = "cloudify:back";

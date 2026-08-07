@@ -12,6 +12,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import java.util.Locale
+import org.json.JSONObject
 
 class MainActivity : TauriActivity() {
   /**
@@ -52,6 +53,36 @@ class MainActivity : TauriActivity() {
   /** Called from the plugin whenever the frontend's history changes. */
   fun setCanGoBack(value: Boolean) {
     runOnUiThread { backCallback.isEnabled = value }
+  }
+
+  /**
+   * Send an event to the web app, as a DOM `CustomEvent`.
+   *
+   * **Not** `Plugin.trigger`, which is the obvious way and does not work here.
+   * That route arrives in JS through `addPluginListener`, which invokes
+   * `plugin:cloudify|registerListener` — and that goes through Tauri's ACL,
+   * which has no manifest for this plugin at all: it is built inline with
+   * `tauri::plugin::Builder` rather than as a crate, so nothing generates one and
+   * there is no permission string that could be added to `capabilities/`. Every
+   * such listener fails at registration with "cloudify.registerListener not
+   * allowed. Plugin not found", silently, in a promise nobody awaits.
+   *
+   * `evaluateJavascript` has no such gate and is already how the window insets
+   * reach CSS, so it is the mechanism this app knows works. `detailJson` must be
+   * valid JSON; every caller here builds it with `JSONObject`.
+   */
+  fun dispatchToWeb(name: String, detailJson: String) {
+    val view = webView ?: return
+    // `post`, because this is called from the playback service's thread as well
+    // as the UI one, and a WebView may only be touched on the thread it was made
+    // on.
+    view.post {
+      view.evaluateJavascript(
+        "window.dispatchEvent(new CustomEvent(${JSONObject.quote(name)}, " +
+          "{ detail: $detailJson }))",
+        null,
+      )
+    }
   }
 
   override fun onWebViewCreate(webView: WebView) {

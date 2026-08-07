@@ -12,6 +12,7 @@ import app.tauri.annotation.TauriPlugin
 import app.tauri.plugin.Invoke
 import app.tauri.plugin.JSObject
 import app.tauri.plugin.Plugin
+import org.json.JSONObject
 
 @InvokeArg
 internal class SetSecretArgs {
@@ -205,12 +206,11 @@ class CloudifyPlugin(private val activity: Activity) : Plugin(activity) {
          * not playing anything at that point anyway.
          */
         fun emitMediaAction(action: String, positionMs: Long?) {
-            val plugin = active ?: return
-            val payload = JSObject().apply {
+            val payload = JSONObject().apply {
                 put("action", action)
                 positionMs?.let { put("positionMs", it) }
             }
-            plugin.trigger("mediaAction", payload)
+            dispatch("cloudify:media-action", payload.toString())
         }
 
         /**
@@ -222,7 +222,21 @@ class CloudifyPlugin(private val activity: Activity) : Plugin(activity) {
          * that point there is no history to pop either.
          */
         fun emitBack() {
-            active?.trigger("navBack", JSObject())
+            dispatch("cloudify:back", "null")
+        }
+
+        /**
+         * Both of the above, over the one route to the web app that works.
+         *
+         * `Plugin.trigger` is the obvious one and is a dead end: it is delivered
+         * by `addPluginListener`, whose registration this plugin has no ACL
+         * manifest to permit, so every listener fails silently. That is why the
+         * lock-screen transport buttons never reached the player either — the
+         * same call, the same silence. See `MainActivity.dispatchToWeb`.
+         */
+        private fun dispatch(name: String, detailJson: String) {
+            val activity = active?.activity as? MainActivity ?: return
+            activity.dispatchToWeb(name, detailJson)
         }
     }
 }

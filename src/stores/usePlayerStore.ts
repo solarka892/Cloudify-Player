@@ -631,7 +631,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
       a.volume = effectiveVolume();
       await a.play();
       resume();
-      set({ isLoading: false, error: null });
+      // The badge has to stop claiming this is coming off the disk, because it
+      // no longer is — this path exists precisely because the local copy would
+      // not play. Leaving it set was an indicator that lied in the one case it
+      // was built to report on.
+      set({ isLoading: false, error: null, playingOffline: false });
       toast(t.player.localFileBroken, "info");
     } catch (e) {
       if (token !== playToken) return;
