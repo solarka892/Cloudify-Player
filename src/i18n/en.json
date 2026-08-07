@@ -191,12 +191,6 @@
     "layoutRail": "Rail",
     "layoutTop": "Top tabs",
     "layoutSidebar": "Sidebar",
-    "apple": "Apple mode",
-    "appleHint": "An iOS interface: the system palette, San Francisco, vibrancy and springs",
-    "appleOn": "Enable Apple mode",
-    "appleFont": "Install SF Pro for an exact match — Inter stands in otherwise",
-    "appleTransparency": "Transparency",
-    "appleTransparencyHint": "Off makes every vibrant surface opaque, as iOS's Reduce Transparency does",
     "appleOverrides": "Overridden by Apple mode",
     "skin": "Skin",
     "skinHint": "Form: radii, shadows, blur, typography",
@@ -251,9 +245,10 @@
     "importFailed": "Could not read that theme file",
     "imported": "Theme loaded",
     "secAppearance": "Appearance",
-    "glass": "Liquid glass",
+    "glass": "Blur",
     "glassHint": "Translucent, blurred surfaces",
-    "glassOn": "Enable glass",
+    "glassAppleLocked": "Always on in Apple mode — Liquid Glass is what the look is made of",
+    "glassOn": "Enable blur",
     "glassPerf": "Costly to render — turn it off if the UI feels sluggish",
     "monoArtwork": "Greyscale artwork",
     "monoArtworkHint": "Only the Obsidian skin asks for this",
@@ -262,6 +257,11 @@
     "nativeFrameHint": "Let the system draw the title bar. Turn it on if dragging or resizing misbehaves.",
     "builtin": "Ready-made looks",
     "builtinHint": "Skin, palette and wallpaper in one tap. Every switch stays yours afterwards.",
+    "presetHints": {
+      "builtin:standard": "The app as it ships: soft glass, colour from the cover",
+      "builtin:obsidian": "Black glass, hairlines, hard edges",
+      "builtin:apple": "iOS 26: Liquid Glass, floating chrome, San Francisco"
+    },
     "resetSection": "Reset",
     "custom": "Custom colours",
     "customHint": "Override the palette; clear them next to it",
@@ -289,7 +289,9 @@
   },
   "lyrics": {
     "loading": "Looking for lyrics…",
-    "none": "No lyrics — normal for remixes, sets and edits"
+    "none": "No lyrics — normal for remixes, sets and edits",
+    "failed": "Could not reach the lyrics service",
+    "retry": "Try again"
   },
   "downloads": {
     "title": "Downloads",

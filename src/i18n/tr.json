@@ -150,12 +150,6 @@
     "layoutRail": "İnce şerit",
     "layoutTop": "Üstte sekmeler",
     "layoutSidebar": "Yan panel",
-    "apple": "Apple modu",
-    "appleHint": "iOS arayüzü: sistem paleti, San Francisco, cam ve yay animasyonu",
-    "appleOn": "Apple modunu aç",
-    "appleFont": "Tam eşleşme için SF Pro'yu kurun; aksi hâlde Inter kullanılır",
-    "appleTransparency": "Şeffaflık",
-    "appleTransparencyHint": "Kapalıyken tüm cam yüzeyler opak olur — iOS'taki “Şeffaflığı Azalt” gibi",
     "appleOverrides": "Apple modu tarafından geçersiz kılındı",
     "skin": "Biçim",
     "skinHint": "Form: köşeler, gölgeler, bulanıklık, tipografi",
@@ -210,9 +204,9 @@
     "importFailed": "Bu tema dosyası okunamadı",
     "imported": "Tema yüklendi",
     "secAppearance": "Görünüm",
-    "glass": "Sıvı cam",
+    "glass": "Bulanıklık",
     "glassHint": "Yarı saydam, bulanık yüzeyler",
-    "glassOn": "Camı aç",
+    "glassOn": "Bulanıklığı aç",
     "glassPerf": "Çizmesi pahalı — arayüz ağırlaşırsa kapat",
     "monoArtwork": "Kapaklar gri tonlamalı",
     "monoArtworkHint": "Yalnızca Obsidian görünümünde etkili",
@@ -248,7 +242,9 @@
   },
   "lyrics": {
     "loading": "Şarkı sözü aranıyor…",
-    "none": "Şarkı sözü yok — remiks ve setlerde normaldir"
+    "none": "Şarkı sözü yok — remiks ve setlerde normaldir",
+    "failed": "Şarkı sözü servisine ulaşılamadı",
+    "retry": "Yeniden dene"
   },
   "downloads": {
     "title": "İndirilenler",

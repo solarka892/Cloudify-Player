@@ -150,12 +150,6 @@
     "layoutRail": "Barre étroite",
     "layoutTop": "Onglets en haut",
     "layoutSidebar": "Barre latérale",
-    "apple": "Mode Apple",
-    "appleHint": "Une interface iOS : palette système, San Francisco, verre et animation à ressort",
-    "appleOn": "Activer le mode Apple",
-    "appleFont": "Installez SF Pro pour une correspondance exacte, sinon Inter est utilisé",
-    "appleTransparency": "Transparence",
-    "appleTransparencyHint": "Désactivée, chaque surface de verre devient opaque, comme « Réduire la transparence » sur iOS",
     "appleOverrides": "Remplacé par le mode Apple",
     "skin": "Style",
     "skinHint": "Forme : rayons, ombres, flou, typographie",
@@ -210,9 +204,9 @@
     "importFailed": "Impossible de lire ce fichier de thème",
     "imported": "Thème chargé",
     "secAppearance": "Apparence",
-    "glass": "Verre liquide",
+    "glass": "Flou",
     "glassHint": "Surfaces translucides et floutées",
-    "glassOn": "Activer le verre",
+    "glassOn": "Activer le flou",
     "glassPerf": "Coûteux à afficher — désactivez-le si l’interface rame",
     "monoArtwork": "Pochettes en niveaux de gris",
     "monoArtworkHint": "N’a d’effet que dans le skin Obsidian",
@@ -248,7 +242,9 @@
   },
   "lyrics": {
     "loading": "Recherche des paroles…",
-    "none": "Aucune parole — c’est normal pour les remix et les sets"
+    "none": "Aucune parole — c’est normal pour les remix et les sets",
+    "failed": "Service de paroles injoignable",
+    "retry": "Réessayer"
   },
   "downloads": {
     "title": "Téléchargements",

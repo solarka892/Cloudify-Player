@@ -64,15 +64,19 @@ export interface ThemeState {
   accentFromArtwork: boolean;
   density: Density;
   uiScale: number;
-  /** Liquid-glass surfaces. Costly to render; the toggle is the perf escape. */
+  /** Blurred, translucent surfaces. Costly to render; the toggle is the perf
+   *  escape — except in Apple mode, which forces it on. See `buildVars`. */
   glass: boolean;
   /**
    * Apple mode. Not a skin — it replaces the palette, the skin, the shell and
    * the player with an iOS interface. See `theme/apple.ts`.
+   *
+   * Chosen through a built-in preset rather than a switch of its own: it is one
+   * of three *looks* the app ships, not a modifier on top of the other two, and
+   * a lone toggle three sections below the looks it competes with said the
+   * opposite.
    */
   apple: boolean;
-  /** Apple mode's own glass switch; iOS calls the inverse Reduce Transparency. */
-  appleTransparency: boolean;
   /**
    * Reduce cover art to one tone. Only the Obsidian skin asks for a filter, so
    * this is inert under the others — see `--art-filter`.
@@ -122,7 +126,6 @@ const DEFAULT_THEME: ThemeState = {
   // rendering cost on a software-composited desktop. Opt in, don't opt out.
   glass: false,
   apple: false,
-  appleTransparency: true,
   // On by default so the Obsidian preset needs no extra step to look like
   // itself; inert under every other skin, which is why it costs nothing to
   // default to on.
@@ -160,6 +163,17 @@ const DEFAULT_BACKDROP: BackdropState = {
  */
 export const BUILTIN_PRESETS: Preset[] = [
   {
+    // The app as it ships. Listed as a look of its own rather than assumed,
+    // because the other two replace enough — a palette, a skin, a whole shell —
+    // that "put it back" has to be one tap and not four.
+    id: "builtin:standard",
+    name: "Standard",
+    builtin: true,
+    layout: "rail",
+    theme: { ...DEFAULT_THEME, overrides: {} },
+    backdrop: { ...DEFAULT_BACKDROP },
+  },
+  {
     id: "builtin:obsidian",
     name: "Obsidian",
     builtin: true,
@@ -195,6 +209,41 @@ export const BUILTIN_PRESETS: Preset[] = [
       // is the single easiest way to put colour back into a mode that rules it
       // out — the skin also zeroes this in CSS, and both are on purpose.
       saturate: 0,
+    },
+  },
+  {
+    id: "builtin:apple",
+    name: "Apple",
+    builtin: true,
+    layout: "rail",
+    theme: {
+      ...DEFAULT_THEME,
+      mode: "dark",
+      // The mode's own colours. It selects the palette rather than enforcing
+      // it, so the picker below still works afterwards.
+      palette: "apple",
+      apple: true,
+      // Not a choice here, and not a choice afterwards either: `buildVars`
+      // forces glass on while `apple` is set. Written true anyway so the saved
+      // shape says what the look is, and so leaving the mode does not land the
+      // user on opaque surfaces they never asked for.
+      glass: true,
+      accent: null,
+      accentFromArtwork: false,
+      // Apple mode is the one look built around the artwork's own colour;
+      // draining it is Obsidian's idea, not iOS's.
+      monoArtwork: false,
+      overrides: {},
+    },
+    backdrop: {
+      ...DEFAULT_BACKDROP,
+      mode: "artwork",
+      // Shallower and brighter than the default: the chrome here floats *over*
+      // the wallpaper with glass between, so the wallpaper is meant to be
+      // legible through it rather than pushed to the back.
+      blur: 48,
+      dim: 0.42,
+      saturate: 1.35,
     },
   },
 ];
@@ -302,7 +351,6 @@ export const useSettingsStore = create<SettingsState>()(
           uiScale: theme.uiScale,
           glass: theme.glass,
           apple: theme.apple,
-          appleTransparency: theme.appleTransparency,
           monoArtwork: theme.monoArtwork,
           // Artwork accent sits under the user's own edits, above the palette.
           overrides: {
@@ -525,7 +573,7 @@ export const useSettingsStore = create<SettingsState>()(
     },
     {
       name: "cloudify.settings",
-      version: 4,
+      version: 5,
       merge: (persisted, current) => fillDefaults(current, persisted),
       // Runtime-only artwork state must not be written to disk.
       partialize: (s) => ({
@@ -566,16 +614,25 @@ export const useSettingsStore = create<SettingsState>()(
 
         function retire(theme: Record<string, unknown> | undefined): void {
           if (!theme) return;
-          if (theme.skin === "apple") theme.skin = "aurora";
-          if (theme.palette === "apple") theme.palette = "midnight";
-          for (const dead of [
-            "apple",
-            "appleVibrancy",
-            "appleRoundness",
-            "appleReduceTransparency",
-          ]) {
-            delete theme[dead];
+          if (from < 3) {
+            if (theme.skin === "apple") theme.skin = "aurora";
+            if (theme.palette === "apple") theme.palette = "midnight";
+            for (const dead of [
+              "apple",
+              "appleVibrancy",
+              "appleRoundness",
+              "appleReduceTransparency",
+            ]) {
+              delete theme[dead];
+            }
           }
+
+          // v5: Apple mode no longer has a transparency switch — the mode is
+          // always glass (`buildVars`). Someone who had turned it *off* has a
+          // saved `glass: false` underneath from before they entered the mode,
+          // and leaving that is right: it is what they chose for every other
+          // look, and it is no longer what Apple mode reads.
+          delete theme.appleTransparency;
         }
 
         retire(state?.theme);
@@ -601,7 +658,6 @@ export const useSettingsStore = create<SettingsState>()(
     uiScale: s.theme.uiScale,
     glass: s.theme.glass,
     apple: s.theme.apple,
-    appleTransparency: s.theme.appleTransparency,
     monoArtwork: s.theme.monoArtwork,
     overrides: s.theme.overrides,
   });

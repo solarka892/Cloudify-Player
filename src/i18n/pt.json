@@ -150,12 +150,6 @@
     "layoutRail": "Barra estreita",
     "layoutTop": "Abas no topo",
     "layoutSidebar": "Barra lateral",
-    "apple": "Modo Apple",
-    "appleHint": "Uma interface iOS: paleta do sistema, San Francisco, vidro e animação com mola",
-    "appleOn": "Ativar o modo Apple",
-    "appleFont": "Instale a SF Pro para uma correspondência exata; caso contrário, usa-se a Inter",
-    "appleTransparency": "Transparência",
-    "appleTransparencyHint": "Desativado, todas as superfícies de vidro ficam opacas, como «Reduzir transparência» no iOS",
     "appleOverrides": "Substituído pelo modo Apple",
     "skin": "Estilo",
     "skinHint": "Forma: raios, sombras, desfoque, tipografia",
@@ -210,9 +204,9 @@
     "importFailed": "Não foi possível ler esse arquivo de tema",
     "imported": "Tema carregado",
     "secAppearance": "Aparência",
-    "glass": "Vidro líquido",
+    "glass": "Desfoque",
     "glassHint": "Superfícies translúcidas e desfocadas",
-    "glassOn": "Ativar o vidro",
+    "glassOn": "Ativar desfoque",
     "glassPerf": "Custa caro para desenhar — desative se a interface travar",
     "monoArtwork": "Capas em tons de cinza",
     "monoArtworkHint": "Só tem efeito no skin Obsidian",
@@ -248,7 +242,9 @@
   },
   "lyrics": {
     "loading": "Procurando a letra…",
-    "none": "Sem letra — normal em remixes e sets"
+    "none": "Sem letra — normal em remixes e sets",
+    "failed": "Não foi possível contactar o serviço de letras",
+    "retry": "Tentar de novo"
   },
   "downloads": {
     "title": "Downloads",

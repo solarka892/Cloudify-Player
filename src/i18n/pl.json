@@ -150,12 +150,6 @@
     "layoutRail": "Wąski pasek",
     "layoutTop": "Zakładki u góry",
     "layoutSidebar": "Panel z boku",
-    "apple": "Tryb Apple",
-    "appleHint": "Interfejs iOS: systemowa paleta, San Francisco, szkło i animacja sprężynowa",
-    "appleOn": "Włącz tryb Apple",
-    "appleFont": "Zainstaluj SF Pro, aby uzyskać dokładne dopasowanie — w przeciwnym razie użyty będzie Inter",
-    "appleTransparency": "Przezroczystość",
-    "appleTransparencyHint": "Wyłączenie sprawia, że każda szklana powierzchnia staje się nieprzezroczysta — jak „Ogranicz przezroczystość” w iOS",
     "appleOverrides": "Nadpisane przez tryb Apple",
     "skin": "Styl",
     "skinHint": "Forma: zaokrąglenia, cienie, rozmycie, typografia",
@@ -210,9 +204,9 @@
     "importFailed": "Nie udało się odczytać tego pliku motywu",
     "imported": "Motyw wczytany",
     "secAppearance": "Wygląd",
-    "glass": "Płynne szkło",
+    "glass": "Rozmycie",
     "glassHint": "Przezroczyste, rozmyte powierzchnie",
-    "glassOn": "Włącz szkło",
+    "glassOn": "Włącz rozmycie",
     "glassPerf": "Kosztowne w rysowaniu — wyłącz, jeśli interfejs zwalnia",
     "monoArtwork": "Okładki w odcieniach szarości",
     "monoArtworkHint": "Działa tylko w skinie Obsidian",
@@ -248,7 +242,9 @@
   },
   "lyrics": {
     "loading": "Szukam tekstu…",
-    "none": "Brak tekstu — normalne dla remiksów i setów"
+    "none": "Brak tekstu — normalne dla remiksów i setów",
+    "failed": "Nie udało się połączyć z serwisem tekstów",
+    "retry": "Spróbuj ponownie"
   },
   "downloads": {
     "title": "Pobrane",

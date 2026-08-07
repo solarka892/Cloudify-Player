@@ -40,12 +40,6 @@ export interface ThemeInput {
    */
   apple: boolean;
   /**
-   * iOS Accessibility → Reduce Transparency, the same way round as Apple has
-   * it: on means the glass is glass. Off makes every vibrant surface opaque,
-   * which is also the cheap path on a software-composited desktop.
-   */
-  appleTransparency: boolean;
-  /**
    * Whether cover art is reduced to one tone.
    *
    * A setting rather than part of the skin because it is the one piece of
@@ -92,10 +86,12 @@ export function buildVars(input: ThemeInput): ThemeVars {
     "--ui-scale": `${input.uiScale}%`,
   };
 
-  // In Apple mode the glass setting is the transparency switch instead: the
-  // look is built on vibrancy, so there is no version of it with `--blur: 0`
-  // that is still Apple mode.
-  const glass = input.apple ? input.appleTransparency : input.glass;
+  // Apple mode is always glass, and the user cannot turn it off there. Liquid
+  // Glass *is* the design language — a version of it with `--blur: 0` is not a
+  // cheaper Apple mode, it is a different, worse interface wearing its
+  // proportions. Everywhere else the switch is the user's, and it stays the
+  // perf escape hatch it has always been.
+  const glass = input.apple || input.glass;
   if (!glass) {
     vars["--blur"] = "0px";
     vars["--surface-alpha"] = "100%";
@@ -149,9 +145,7 @@ export function applyTheme(input: ThemeInput): void {
   // Tailwind's `dark:` variant and any `.dark`-scoped CSS still key off this.
   root.classList.toggle("dark", resolveDark(input.mode));
   // CSS gates every `backdrop-filter` on this attribute.
-  root.dataset.glass = (input.apple ? input.appleTransparency : input.glass)
-    ? "1"
-    : "0";
+  root.dataset.glass = input.apple || input.glass ? "1" : "0";
   // The whole of `styles/apple.css` hangs off this one attribute, so the mode
   // is a single flag on <html> rather than a class on every component.
   root.dataset.apple = input.apple ? "1" : "0";

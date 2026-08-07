@@ -204,9 +204,15 @@ export function SettingsView() {
       <Group title={t.settings.builtin} hint={t.settings.builtinHint}>
         <div className="flex flex-wrap gap-2 px-4 py-3">
           {BUILTIN_PRESETS.map((preset) => {
+            // Apple mode replaces the skin outright, so a look that is on can
+            // agree with another one's skin id and still not be it — which is
+            // exactly what happens between Standard and Apple, both of which
+            // sit on `aurora`. The flag has to be part of the comparison.
             const active =
-              theme.skin === preset.theme.skin &&
-              theme.palette === preset.theme.palette;
+              theme.apple === preset.theme.apple &&
+              (preset.theme.apple ||
+                (theme.skin === preset.theme.skin &&
+                  theme.palette === preset.theme.palette));
             return (
               <button
                 key={preset.id}
@@ -222,7 +228,13 @@ export function SettingsView() {
                 <span className="min-w-0">
                   <span className="block text-sm font-medium">{preset.name}</span>
                   <span className="block text-xs text-muted-foreground">
-                    {t.settings.skinHints[preset.theme.skin]}
+                    {/* A preset's own line, not the skin's. Apple mode has no
+                        skin to borrow one from, and the other two are more than
+                        their skin anyway — the wallpaper and the colour are
+                        half of what makes them look like themselves. */}
+                    {t.settings.presetHints[
+                      preset.id as keyof typeof t.settings.presetHints
+                    ] ?? t.settings.skinHints[preset.theme.skin]}
                   </span>
                 </span>
               </button>
@@ -307,25 +319,6 @@ export function SettingsView() {
         </div>
       </Group>
       )}
-
-      {/* ── Apple mode ─────────────────────────────────────────────────── */}
-      {/* Above skin and colour on purpose: it replaces both, and the two
-          sections below say so while it is on. */}
-      <Group title={t.settings.apple}>
-        <Row label={t.settings.appleOn} hint={t.settings.appleFont}>
-          <Switch
-            checked={theme.apple}
-            // Switching on also selects the iOS palette, because that is the
-            // colour the mode is designed around — but it selects it rather
-            // than enforcing it, so the picker below still works and moving off
-            // it is a choice the user gets to make. Switching off leaves it
-            // alone: it is an ordinary palette and may well be what they want.
-            onCheckedChange={(apple) =>
-              setTheme(apple ? { apple, palette: "apple" } : { apple })
-            }
-          />
-        </Row>
-      </Group>
 
       {/* ── Skin ───────────────────────────────────────────────────────── */}
       <Group
@@ -543,22 +536,24 @@ export function SettingsView() {
         </Group>
       )}
 
-      {/* One switch, and which flag it holds follows the mode — exactly as
-          `buildVars` reads them. Two would be a lie: in Apple mode the glass
-          setting has no effect, and a second toggle for the same idea just
-          invites the user to find the one that does nothing. */}
-      <Group title={t.settings.glass} hint={t.settings.glassHint}>
+      {/* Locked on under Apple mode rather than hidden. A control that vanishes
+          when a look is chosen reads as the app having lost a feature; one that
+          is visibly held down says which look is holding it, and comes back the
+          moment that look does not. `buildVars` is the authority — this only
+          shows what it has already decided. */}
+      <Group
+        title={t.settings.glass}
+        hint={theme.apple ? t.settings.glassAppleLocked : t.settings.glassHint}
+        muted={theme.apple}
+      >
         <Row
-          label={theme.apple ? t.settings.appleTransparency : t.settings.glassOn}
-          hint={
-            theme.apple ? t.settings.appleTransparencyHint : t.settings.glassPerf
-          }
+          label={t.settings.glassOn}
+          hint={theme.apple ? t.settings.glassAppleLocked : t.settings.glassPerf}
         >
           <Switch
-            checked={theme.apple ? theme.appleTransparency : theme.glass}
-            onCheckedChange={(on) =>
-              setTheme(theme.apple ? { appleTransparency: on } : { glass: on })
-            }
+            checked={theme.apple || theme.glass}
+            disabled={theme.apple}
+            onCheckedChange={(on) => setTheme({ glass: on })}
           />
         </Row>
       </Group>

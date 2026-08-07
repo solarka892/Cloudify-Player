@@ -24,7 +24,6 @@ function input(patch: Partial<ThemeInput> = {}): ThemeInput {
     uiScale: 100,
     glass: false,
     apple: false,
-    appleTransparency: true,
     monoArtwork: true,
     overrides: {},
     ...patch,
@@ -81,6 +80,16 @@ describe("the glass switch", () => {
       expect(on["--blur"], skin).not.toBe("0px");
       expect(on["--surface-alpha"], skin).not.toBe("100%");
     }
+  });
+
+  it("is overruled by Apple mode, which is always glass", () => {
+    // Liquid Glass is the whole of that look; there is no opaque version of it
+    // to offer, so the switch stops applying rather than being obeyed. The
+    // stored value is untouched and comes back when the mode is left — which is
+    // why this asserts against `glass: false` specifically.
+    const vars = buildVars(input({ apple: true, glass: false }));
+    expect(vars["--blur"]).not.toBe("0px");
+    expect(vars["--surface-alpha"]).not.toBe("100%");
   });
 });
 
