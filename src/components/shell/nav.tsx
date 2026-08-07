@@ -259,10 +259,21 @@ function HeaderIcon({
  *
  * The gesture bar is `.safe-inset`'s job on the app frame, not this
  * component's — see `globals.css`.
+ *
+ * Built from `panel panel-chrome`, the same surface the player bar above it
+ * uses, and not from utilities of its own. It used to carry `bg-card/80
+ * backdrop-blur-lg`, which is a hardcoded translucency outside the theme system
+ * — so it blurred whether or not the user had asked for blur, while the player
+ * two pixels above it obeyed the setting and stayed opaque. The result was two
+ * touching strips of chrome in two different greys with a seam between them,
+ * which is what made the bottom of the app look broken rather than designed.
+ *
+ * `border-x-0 border-b-0` for the same reason the player bar does it: these are
+ * edges of the window, not of a card.
  */
 export function NavBottom({ view, onNavigate }: NavProps) {
   return (
-    <nav className="nav-in-y flex shrink-0 items-stretch border-t border-border bg-card/80 backdrop-blur-lg">
+    <nav className="nav-in-y panel panel-chrome flex shrink-0 items-stretch rounded-none border-x-0 border-b-0">
       {COMPACT_NAV_ITEMS.map(({ id, label, Icon }) => (
         <button
           key={id}
