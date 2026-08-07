@@ -192,3 +192,24 @@ export const SKINS: Record<SkinId, Skin> = {
 };
 
 export const SKIN_IDS = Object.keys(SKINS) as SkinId[];
+
+/**
+ * Skins that belong to a built-in look rather than standing on their own.
+ *
+ * Obsidian was listed twice — once as a look in "Ready-made looks" and again as
+ * a skin below it — while Apple, which is the same kind of thing, appeared only
+ * in the first. Two lists disagreeing about what the app's modes are is worse
+ * than either list alone, so the skin picker now offers only the skins that are
+ * *just* form, and Obsidian is reached the way Apple is: by choosing the look.
+ *
+ * It stays a perfectly ordinary `SkinId` — the preset selects it, saved themes
+ * carry it, `SKIN_IDS` still covers it, and `SettingsView` still shows it in the
+ * picker while it is the current skin, so the section is never a list with
+ * nothing selected in it.
+ */
+export const MODE_SKIN_IDS: SkinId[] = ["obsidian"];
+
+/** The skins the picker offers on their own. */
+export const PICKABLE_SKIN_IDS = SKIN_IDS.filter(
+  (id) => !MODE_SKIN_IDS.includes(id),
+);

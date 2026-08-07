@@ -30,7 +30,12 @@ import {
   ACCENTS,
   ACCENT_IDS,
 } from "@/theme/palettes";
-import { SKINS, SKIN_IDS, type SkinId } from "@/theme/skins";
+import {
+  PICKABLE_SKIN_IDS,
+  SKINS,
+  SKIN_IDS,
+  type SkinId,
+} from "@/theme/skins";
 import { EFFECT_IDS } from "@/theme/particles";
 import type { Density, ThemeMode } from "@/theme/apply";
 import {
@@ -329,7 +334,13 @@ export function SettingsView() {
         muted={theme.apple}
       >
         <div className="flex flex-col divide-y divide-border">
-          {SKIN_IDS.map((id) => {
+          {/* The skins that are only form, plus whichever one is on — so
+              choosing the Obsidian look does not leave this section showing a
+              list with nothing checked in it. Picking any other skin drops it
+              back out. See `MODE_SKIN_IDS`. */}
+          {SKIN_IDS.filter(
+            (id) => PICKABLE_SKIN_IDS.includes(id) || theme.skin === id,
+          ).map((id) => {
             const skin = SKINS[id];
             return (
               <button
