@@ -101,43 +101,84 @@ async fn resolve(track_id: u64, fresh_client_id: bool) -> Result<Stream, ScApiEr
     }
     let track: RawTrack = resp.error_for_status()?.json().await?;
 
-    // Prefer the mp3 among the progressive transcodings rather than whichever
-    // comes first: a track can also offer opus, or an encrypted preset, and
-    // both are a coin toss in a WebView — one that lands on silence or a decode
-    // error. Any progressive will still do if there is no mp3 at all.
+    let candidates = ranked(track.media.transcodings);
+    if candidates.is_empty() {
+        return Err(ScApiError::NoStream);
+    }
+
+    // Every candidate gets a turn, in order, because a transcoding that a track
+    // *advertises* is not a transcoding that resolves.
     //
-    // HLS is the fallback and not the first choice, because it costs a playlist
-    // fetch and a Media Source pipeline that progressive does not — but it is a
-    // fallback rather than a failure, which is the point. Encrypted presets are
-    // excluded from both: `-hls-aes` and friends need a key exchange nothing
-    // here does, and offering one back would be a track that loads and then
-    // plays nothing.
-    let playable: Vec<Transcoding> = track
-        .media
-        .transcodings
+    // Observed on 2026-08-08 against the live API: two tracks in a page of
+    // eighteen offered a `progressive` entry whose signing URL answered **404**.
+    // Taking the first candidate and giving up — which is what this did — is
+    // therefore not "the track has no stream", it is one dead preset in front of
+    // live ones, and it reached the user as a track that simply would not play
+    // with no way round it.
+    let mut last_error = None;
+    for transcoding in candidates {
+        match sign(&client, &transcoding, &cid, &track.track_authorization).await {
+            Ok(url) => {
+                return Ok(Stream {
+                    url,
+                    protocol: transcoding.format.protocol,
+                    mime_type: transcoding.format.mime_type,
+                })
+            }
+            // Not this preset's fault, and trying the next one would ask the
+            // same rejected key or deepen the same rate limit. The caller's one
+            // forced retry is the right response to both.
+            Err(e @ (ScApiError::StaleClientId | ScApiError::RateLimited)) => return Err(e),
+            Err(e) => last_error = Some(e),
+        }
+    }
+    Err(last_error.unwrap_or(ScApiError::NoStream))
+}
+
+/// The transcodings worth trying, best first.
+///
+/// Progressive before HLS, because progressive is a plain file a bare `<audio>`
+/// element plays and HLS costs a playlist fetch and a Media Source pipeline.
+/// Within each, `audio/mpeg` first: a track can also offer opus, which is a coin
+/// toss in a WebView.
+///
+/// Encrypted presets are dropped outright rather than ranked last — `-hls-aes`
+/// and friends need a key exchange nothing here does, so offering one back would
+/// be a track that loads and then plays silence. `audio/mpegurl` (the `abr_sq`
+/// preset) sorts last instead of being dropped: it is documented as answering
+/// 404 on resolve (docs/sc-api.md), and the loop above now costs one wasted
+/// request to find that out rather than a dead end.
+fn ranked(transcodings: Vec<Transcoding>) -> Vec<Transcoding> {
+    fn mpeg(t: &Transcoding) -> bool {
+        t.format.mime_type.contains("mpeg") || t.format.mime_type.contains("mp3")
+    }
+
+    let mut out: Vec<Transcoding> = transcodings
         .into_iter()
         .filter(|t| !t.url.contains("encrypted") && !t.format.protocol.contains("encrypted"))
-        .collect();
-    let progressive: Vec<&Transcoding> = playable
-        .iter()
-        .filter(|t| t.format.protocol == "progressive")
+        .filter(|t| t.format.protocol == "progressive" || t.format.protocol == "hls")
         .collect();
 
-    let transcoding = progressive
-        .iter()
-        .copied()
-        .find(|t| t.format.mime_type.contains("mpeg") || t.format.mime_type.contains("mp3"))
-        .or_else(|| progressive.first().copied())
-        .or_else(|| playable.iter().find(|t| t.format.protocol == "hls"))
-        .ok_or(ScApiError::NoStream)?;
-    let protocol = transcoding.format.protocol.clone();
-    let mime_type = transcoding.format.mime_type.clone();
+    out.sort_by_key(|t| {
+        let known_dead = t.format.mime_type.contains("mpegurl");
+        let progressive = t.format.protocol == "progressive";
+        (known_dead, !progressive, !mpeg(t))
+    });
+    out
+}
 
+/// Exchange a transcoding for the signed CDN URL behind it.
+async fn sign(
+    client: &reqwest::Client,
+    transcoding: &Transcoding,
+    client_id: &str,
+    track_authorization: &str,
+) -> Result<String, ScApiError> {
     let resp = client
         .get(&transcoding.url)
         .query(&[
-            ("client_id", cid.as_str()),
-            ("track_authorization", track.track_authorization.as_str()),
+            ("client_id", client_id),
+            ("track_authorization", track_authorization),
         ])
         .send()
         .await?;
@@ -145,10 +186,5 @@ async fn resolve(track_id: u64, fresh_client_id: bool) -> Result<Stream, ScApiEr
         return Err(reason);
     }
     let resolved: ResolvedUrl = resp.error_for_status()?.json().await?;
-
-    Ok(Stream {
-        url: resolved.url,
-        protocol,
-        mime_type,
-    })
+    Ok(resolved.url)
 }

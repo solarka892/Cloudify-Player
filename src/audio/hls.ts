@@ -42,11 +42,18 @@ function load(): Promise<typeof HlsType> {
 }
 
 /**
- * Whether the platform plays `.m3u8` natively.
+ * Whether the platform plays `.m3u8` natively — asked *last*, and never
+ * believed on its own.
  *
- * Safari and iOS do, and there it is better than MSE — hardware decode, and no
- * JavaScript in the audio path. WebKitGTK reports nothing here, which is why the
- * library is bundled at all.
+ * `canPlayType("application/vnd.apple.mpegurl")` answers **"maybe"** in
+ * Chromium's Android WebView, which cannot play HLS at all. Measured on the
+ * emulator 2026-08-08, and it is the whole reason an HLS track played silently:
+ * this returned true, the element was handed the playlist, it fetched it, and
+ * then sat there with nothing to decode and no error worth the name.
+ *
+ * Safari and iOS are the platforms where it is true, and they are also the ones
+ * without Media Source Extensions for this — so "no MSE" is the reliable signal
+ * and this is only the confirmation. See `attach`.
  */
 function playsNatively(a: HTMLAudioElement): boolean {
   return a.canPlayType("application/vnd.apple.mpegurl") !== "";
@@ -76,13 +83,19 @@ export function release(): void {
 export async function attach(a: HTMLAudioElement, url: string): Promise<void> {
   release();
 
-  if (playsNatively(a)) {
-    a.src = url;
-    return;
-  }
-
+  // Media Source Extensions first, native second — the order the library's own
+  // documentation prescribes, and the opposite of what this did.
+  //
+  // Asking the element whether it plays HLS and believing it is the trap: every
+  // Chromium says "maybe" and none of them can (see `playsNatively`). MSE is the
+  // honest signal, because the platforms that lack it are precisely the ones —
+  // Safari, iOS — where native playback is real, and better.
   const Hls = await load();
   if (!Hls.isSupported()) {
+    if (playsNatively(a)) {
+      a.src = url;
+      return;
+    }
     throw new Error("this build cannot play HLS streams");
   }
 
