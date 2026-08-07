@@ -29,6 +29,7 @@ import {
   AppleSpeakerLow,
 } from "./icons";
 import { useDismiss } from "@/hooks/useDismiss";
+import { useSwipeDown } from "@/hooks/useSwipeDown";
 import { t } from "@/i18n";
 import { artwork, cn } from "@/lib/utils";
 
@@ -87,6 +88,9 @@ const RATES = [0.75, 1, 1.25, 1.5, 2];
  */
 export function AppleNowPlaying({ onClose }: { onClose: () => void }) {
   const { leaving, dismiss } = useDismiss(onClose);
+  // Pulling the sheet down closes it, the way every music app on the platform
+  // has since the gesture existed.
+  const swipe = useSwipeDown(dismiss);
   const current = usePlayerStore((s) => s.current);
   const rate = usePlayerStore((s) => s.rate);
   const setRate = usePlayerStore((s) => s.setRate);
@@ -118,8 +122,9 @@ export function AppleNowPlaying({ onClose }: { onClose: () => void }) {
 
   return (
     <div
+      {...swipe}
       className={cn(
-        "lg-on-artwork fixed inset-0 z-50 flex flex-col overflow-hidden bg-black",
+        "lg-on-artwork safe-inset fixed inset-0 z-50 flex flex-col overflow-hidden bg-black",
         leaving ? "view-exit" : "view-enter",
       )}
     >
@@ -145,16 +150,13 @@ export function AppleNowPlaying({ onClose }: { onClose: () => void }) {
         could not be clicked at all. Taking the button out of the flow removes
         both the overlap and the negative margin that caused it.
       */}
-      {/* Inset out of the status bar for the same reason the shell's content is:
-          this view is `fixed inset-0` over an edge-to-edge window, so `top-4`
-          alone left a 36px button spanning 16–52px on a phone whose status bar
-          is taller than that — the one control that closes the view, sitting
-          under the clock. */}
+      {/* `top-4` measures from the safe area, not from the window: the root
+          above carries `safe-inset`, so on a phone whose status bar is taller
+          than 36px this button is no longer under the clock. */}
       <button
         onClick={dismiss}
         aria-label={t.player.collapse}
-        className="lg-chip absolute left-4 z-30 h-9 w-9"
-        style={{ top: "calc(1rem + var(--safe-top))" }}
+        className="lg-chip absolute left-4 top-4 z-30 h-9 w-9"
       >
         <AppleChevronDown className="h-5 w-5" />
       </button>

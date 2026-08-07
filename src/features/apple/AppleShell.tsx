@@ -92,18 +92,13 @@ export function AppleShell({
                 effect; without the reserve the last row would sit under it
                 permanently instead of passing behind it.
 
-                The top is the same problem at the other edge, and unlike the
-                bottom there is no floating chrome to hide it: this mode has no
-                top bar on a phone, so the first row of a view is the first
-                thing under the status bar. A bare `pt-4` put it beneath the
-                clock. `--safe-top` rather than `pt-safe` because the gap above
-                the content is wanted *in addition* to the inset, and the
-                utility would replace it. */}
+                Neither figure carries a safe-area term any more: `.safe-inset`
+                on the app frame means these are measured from the safe area
+                already, and adding one here would inset the content twice. */}
             <div
-              className="mx-auto w-full max-w-3xl px-4"
+              className="mx-auto w-full max-w-3xl px-4 pt-4"
               style={{
-                paddingTop: "calc(1rem + var(--safe-top))",
-                paddingBottom: `calc(${player ? "10.5rem" : "6.5rem"} + var(--safe-bottom))`,
+                paddingBottom: player ? "10.5rem" : "6.5rem",
               }}
             >
               {children}
@@ -111,15 +106,8 @@ export function AppleShell({
           </main>
 
           {/* One stack, so the player and the dock keep a single gap between
-              them and a single inset from the window. The inset and the gesture
-              bar are added together rather than set as two `padding-bottom`
-              declarations, one of which would simply win over the other. */}
-          <div
-            className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex flex-col gap-2 px-3"
-            style={{
-              paddingBottom: "calc(0.75rem + var(--safe-bottom))",
-            }}
-          >
+              them and a single inset from the window. */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex flex-col gap-2 px-3 pb-3">
             {player && <div className="pointer-events-auto">{player}</div>}
             <div className="pointer-events-auto">
               <AppleDock view={view} onNavigate={onNavigate} />

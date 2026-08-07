@@ -22,6 +22,7 @@ import { SkinLight } from "@/components/Ambient";
 import { LogoMark } from "@/components/Logo";
 import { HotkeyHelp } from "@/components/HotkeyHelp";
 import { useHotkeys } from "@/hooks/useHotkeys";
+import { useBackGesture } from "@/hooks/useBackGesture";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
 import { HomeView } from "@/features/home/HomeView";
 import { LibraryView } from "@/features/library/LibraryView";
@@ -68,6 +69,11 @@ function App() {
   // everywhere else. Mounted above the auth gate so a session restored on launch
   // does not need a second render to be announced.
   useNativeMediaSession();
+
+  // The Android back gesture, the mouse's back button, Alt+← and a swipe from
+  // the left edge — all of them, and above the auth gate so the sign-in screen
+  // is not the one place they stop working.
+  useBackGesture();
 
   // The offline library gates the download buttons and the playback source,
   // so it has to be known before the first play.
@@ -255,10 +261,16 @@ function App() {
  * is no frame and, on Linux and Windows, no drop shadow either, so on a dark
  * desktop the app would have no visible edge at all. Only the skins that ask for
  * it draw one — see `globals.css`.
+ *
+ * `.safe-inset` is what keeps the whole interface — every layout, not just the
+ * two edges the phone shell happens to draw — clear of the camera cutout, the
+ * status bar and the gesture bar. One box, applied here, instead of a rule each
+ * new screen has to remember; see `globals.css`. It is 0px everywhere but
+ * Android.
  */
 function Chrome({ children }: { children: React.ReactNode }) {
   return (
-    <div className="app-frame relative flex h-full w-full flex-col overflow-hidden">
+    <div className="app-frame safe-inset relative flex h-full w-full flex-col overflow-hidden">
       <TitleBar />
       <div className="relative min-h-0 flex-1">{children}</div>
     </div>

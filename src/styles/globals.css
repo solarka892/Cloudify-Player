@@ -603,9 +603,74 @@
   /* Progress fills advance in ticks, not continuously, so without this every
      bar in the app visibly steps. Linear, because a bar that eases into each
      tick reads as lag. */
-  .seek-fill,
+  /*
+   * No transition on the seek fill.
+   *
+   * It carried `width 220ms linear` so the once-a-tick advance from `timeupdate`
+   * did not visibly step. The fill is now written per frame from the element's
+   * own clock (`SeekBar`), so it is already smooth — and the transition was
+   * actively in the way: a seek animated to its destination instead of arriving
+   * there, which is the "slow, awkward scrubbing" it was blamed for. The
+   * progress fill elsewhere still steps, so it keeps its own.
+   */
   .progress-fill {
     transition: width 220ms linear;
+  }
+
+  /* How much of the track is really here, behind the played portion. Quiet on
+     purpose: it is context for a seek, not a second progress bar. */
+  .seek-buffer {
+    background: color-mix(in srgb, var(--foreground) 18%, transparent);
+    transition: width var(--motion-slow) linear;
+  }
+
+  /*
+   * Touch targets.
+   *
+   * The transport is drawn at desktop sizes — 32px for shuffle, repeat, prev and
+   * next — and 32px is two thirds of what a finger needs. On a phone that is not
+   * a cosmetic problem: a miss lands on the row behind the button and reads as
+   * "the button did nothing", which is what "some buttons don't work the first
+   * time" actually was. Grown rather than padded with an invisible halo, because
+   * two overlapping halos 4px apart mean the press lands on whichever element
+   * happens to be later in the DOM.
+   *
+   * `pointer: coarse` and not a width query: a touchscreen laptop wants this at
+   * any window size, and a narrow desktop window does not want it at all.
+   */
+  @media (pointer: coarse) {
+    [data-transport] {
+      min-height: 2.75rem;
+      min-width: 2.75rem;
+    }
+  }
+
+  /* No double-tap-to-zoom delay on anything interactive. Zoom is off in the
+     viewport meta anyway, but WebViews still hold the press for a moment to be
+     sure — which on a control that responds instantly reads as a dropped tap. */
+  button,
+  [role="button"],
+  a,
+  input[type="range"],
+  select,
+  summary {
+    touch-action: manipulation;
+  }
+
+  /* Buffering, around the play button rather than instead of its glyph. */
+  .transport-busy {
+    position: absolute;
+    inset: -3px;
+    border-radius: var(--radius-round);
+    border: 2px solid transparent;
+    border-top-color: currentColor;
+    opacity: 0.75;
+    animation: transport-busy 900ms linear infinite;
+  }
+  @keyframes transport-busy {
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   .brand-gradient {
@@ -895,15 +960,48 @@
 :root {
   --safe-top: max(env(safe-area-inset-top, 0px), var(--inset-top, 0px));
   --safe-bottom: max(env(safe-area-inset-bottom, 0px), var(--inset-bottom, 0px));
+  --safe-left: max(env(safe-area-inset-left, 0px), var(--inset-left, 0px));
+  --safe-right: max(env(safe-area-inset-right, 0px), var(--inset-right, 0px));
 }
 
-@utility pt-safe {
+/*
+ * The insets are applied **once, to the whole app**, rather than by each edge
+ * component for itself.
+ *
+ * Doing it per component was a rule every new screen had to remember, and it was
+ * only ever remembered for the two the phone layout happens to put at the edges.
+ * Everything else — the rail, the sidebar, the top bar, every full-screen
+ * overlay — ran under the camera cutout, and in landscape, where the cutout is
+ * on a *side*, so did all four layouts at once. One box that is the safe area,
+ * with the interface inside it, cannot be forgotten.
+ *
+ * What deliberately stays outside it: `.app-backdrop` and the ambient layers,
+ * which are `position: fixed` and so measured against the viewport rather than
+ * this box. The wallpaper should run under the status bar — it is the interface
+ * that must not.
+ *
+ * Costs nothing off Android: every one of these is 0px on a desktop.
+ */
+.safe-inset {
   padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
 }
 
-@utility pb-safe {
-  padding-bottom: var(--safe-bottom);
+.app-frame {
+  /* The strip the padding exposes is window, not page: without this it is
+     whatever `body` happens to be, which is a different colour from the shell
+     under every palette that tints its surfaces. */
+  background: var(--background);
 }
+
+/*
+ * `position: fixed` measures against the viewport, not against `.app-frame`, so
+ * the two full-screen players escape the box above and have to carry it
+ * themselves. They are the only things in the app that do — anything `fixed`
+ * added later needs this class or it will render under the cutout.
+ */
 
 /* ── Search ────────────────────────────────────────────────────────────────
  *

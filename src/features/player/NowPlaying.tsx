@@ -29,6 +29,7 @@ import { Ambient } from "@/components/Ambient";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { AudioLines } from "lucide-react";
 import { useDismiss } from "@/hooks/useDismiss";
+import { useSwipeDown } from "@/hooks/useSwipeDown";
 import { useCompact } from "@/hooks/useCompact";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { t } from "@/i18n";
@@ -55,6 +56,7 @@ const SIDE_BY_SIDE = "(min-width: 1280px)";
  */
 export function NowPlaying({ onClose }: { onClose: () => void }) {
   const { leaving, dismiss } = useDismiss(onClose);
+  const swipe = useSwipeDown(dismiss);
   const current = usePlayerStore((s) => s.current);
   const rate = usePlayerStore((s) => s.rate);
   const setRate = usePlayerStore((s) => s.setRate);
@@ -84,8 +86,11 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
 
   return (
     <div
+      {...swipe}
       className={cn(
-        "fixed inset-0 z-50 flex flex-col bg-background",
+        // `safe-inset` because this is `fixed`: it is measured against the
+        // viewport, so the app frame's own inset does not reach it.
+        "safe-inset fixed inset-0 z-50 flex flex-col bg-background",
         leaving ? "view-exit" : "view-enter",
       )}
     >
@@ -99,7 +104,7 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
       )}
       <div className="pointer-events-none absolute inset-0 bg-background/70" aria-hidden />
 
-      <header className="pt-safe relative z-10 flex items-center gap-2 p-4">
+      <header className="relative z-10 flex items-center gap-2 p-4">
         <button
           onClick={dismiss}
           aria-label={t.player.collapse}
@@ -356,7 +361,7 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
               )}
             </aside>
           ) : (
-            <div className="pop-in pt-safe pb-safe absolute inset-0 z-30 flex flex-col bg-background/95 backdrop-blur-xl">
+            <div className="pop-in absolute inset-0 z-30 flex flex-col bg-background/95 backdrop-blur-xl">
               <header className="flex items-center gap-2 p-4">
                 <button
                   onClick={() => setSide("none")}

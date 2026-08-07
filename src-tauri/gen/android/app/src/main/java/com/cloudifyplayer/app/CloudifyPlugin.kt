@@ -25,6 +25,11 @@ internal class KeyArgs {
 }
 
 @InvokeArg
+internal class CanGoBackArgs {
+    var value: Boolean = false
+}
+
+@InvokeArg
 internal class PlaybackArgs {
     var title: String = ""
     var artist: String = ""
@@ -126,6 +131,24 @@ class CloudifyPlugin(private val activity: Activity) : Plugin(activity) {
         invoke.resolve()
     }
 
+    // ── navigation ─────────────────────────────────────────────────────────
+
+    /**
+     * Whether the app has somewhere to go back to.
+     *
+     * `OnBackPressedCallback.handleOnBackPressed` has to decide synchronously
+     * and there is no synchronous way to ask a WebView anything, so the frontend
+     * publishes this on every navigation and the callback reads the last value.
+     * False disables the callback, which is what lets Android's own back —
+     * leave the app — happen. See `MainActivity.backCallback`.
+     */
+    @Command
+    fun setCanGoBack(invoke: Invoke) {
+        val args = invoke.parseArgs(CanGoBackArgs::class.java)
+        (activity as? MainActivity)?.setCanGoBack(args.value)
+        invoke.resolve()
+    }
+
     // ── background playback ────────────────────────────────────────────────
 
     @Command
@@ -188,6 +211,18 @@ class CloudifyPlugin(private val activity: Activity) : Plugin(activity) {
                 positionMs?.let { put("positionMs", it) }
             }
             plugin.trigger("mediaAction", payload)
+        }
+
+        /**
+         * Hand the back gesture to the frontend.
+         *
+         * Only ever called once [MainActivity] has established that the app has
+         * somewhere to go — see `setCanGoBack`. Dropped when nothing is
+         * listening, which can only be before the document has mounted, and at
+         * that point there is no history to pop either.
+         */
+        fun emitBack() {
+            active?.trigger("navBack", JSObject())
         }
     }
 }

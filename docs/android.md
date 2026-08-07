@@ -160,17 +160,44 @@ Logs: `adb logcat -s Cloudify:V chromium:V RustStdoutStderr:V`.
   desktop window wants the same layout, a landscape tablet does not.
 - The full-screen `NowPlaying` view is the only place seeking, shuffle, repeat,
   queue and lyrics appear on a phone; the compact bar is a launcher for it.
-- `viewport-fit=cover` plus the `pt-safe`/`pb-safe` utilities keep content out
-  from under the status bar and the gesture bar, since `MainActivity` draws edge
-  to edge — and from targetSdk 35 the platform enforces edge to edge regardless.
+- **Safe areas are applied once, to the whole app** (`.safe-inset` on
+  `.app-frame`, `globals.css`), since `MainActivity` draws edge to edge — and
+  from targetSdk 35 the platform enforces edge to edge regardless.
+
+  It used to be per component (`pt-safe` on the compact header, `pb-safe` on the
+  tab bar), which was a rule every new screen had to remember and which only the
+  phone layout ever did: the rail, the sidebar, the top bar and every
+  full-screen overlay ran under the camera. In landscape, where the cutout is on
+  a *side* edge, all four layouts did. One padded box cannot be forgotten. The
+  wallpaper deliberately stays outside it — `.app-backdrop` is `fixed`, so it
+  still runs under the status bar; only the interface is inset. The two
+  `fixed` full-screen players carry `.safe-inset` themselves, because `fixed`
+  measures against the viewport rather than the frame.
+
   **`env(safe-area-inset-*)` is not sufficient here.** Android's webview fills it
   from the display *cutout* and nothing else: measured in the emulator, the top
   was 49px (the notch, which the status bar happens to occupy) and the bottom was
   0px with a gesture bar plainly there, so the tab bar's labels rendered
-  underneath it. `MainActivity.publishInsets` pushes the real system-bar insets
-  in as `--inset-*` custom properties and the utilities take `max()` of the two.
-  `LoginActivity` pads its own webview, since the page inside it is
-  SoundCloud's and knows nothing about any of this.
+  underneath it. `MainActivity.publishInsets` pushes the real insets in as
+  `--inset-*` custom properties and `--safe-*` takes `max()` of the two. Those
+  insets are `systemBars() or displayCutout()`: neither rectangle contains the
+  other — a punch-hole can poke below a short status bar, and in landscape it
+  moves to an edge with no bar on it at all. `LoginActivity` pads its own
+  webview, since the page inside it is SoundCloud's and knows nothing about any
+  of this.
+- **The system back gesture is wired to the app's history.** `useNavStore` keeps
+  a real back/forward stack, and `hooks/useBackGesture` feeds it from four
+  inputs: this gesture, a mouse's fourth and fifth buttons, Alt+←/→ and a swipe
+  in from the left edge.
+
+  The Kotlin half is a flag, not a question. `OnBackPressedCallback` has to
+  decide *synchronously* whether the press is the app's, and there is no
+  synchronous way to ask a WebView anything — so the frontend publishes
+  `canGoBack` on every navigation (`nav_set_can_go_back` → `setCanGoBack` →
+  `backCallback.isEnabled`) and the callback reads the last value. Disabled, the
+  callback is simply not in the chain and Android's own "finish the activity"
+  runs, which is what should happen at the root. Enabled, it fires the `navBack`
+  plugin event and the store pops.
 - **Seven sections, five tabs.** `COMPACT_NAV_ITEMS` drops messages and
   notifications from the bottom bar — five is the most a 360px bar fits at a
   48px touch target. They move to `NavCompactHeader` instead, as icons with

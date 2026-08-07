@@ -138,7 +138,7 @@ pub async fn sc_login_browser() -> Result<sc_api::me::Me, String> {
 /// Resolve a track to a directly-playable (progressive mp3) stream URL. Public;
 /// no login required. The URL is short-lived — call this right before playback.
 #[tauri::command]
-pub async fn sc_get_stream_url(track_id: u64) -> Result<String, String> {
+pub async fn sc_get_stream_url(track_id: u64) -> Result<sc_api::stream::Stream, String> {
     sc_api::stream::get_stream_url(track_id)
         .await
         .map_err(|e| e.to_string())
@@ -555,6 +555,28 @@ pub async fn sync_insets() -> Result<(), String> {
 #[cfg(not(target_os = "android"))]
 #[tauri::command]
 pub async fn sync_insets() -> Result<(), String> {
+    Ok(())
+}
+
+// ────────────────────────────────────────────────────────── navigation ────
+
+/// Tell the host whether the app has anywhere to go back to.
+///
+/// Android only. Its back gesture belongs to the system and the system needs a
+/// synchronous answer, so the frontend publishes the bit ahead of time rather
+/// than being asked for it at the moment of the press — see `MainActivity.kt`.
+/// A no-op everywhere else, where back is a mouse button we handle ourselves.
+#[cfg(target_os = "android")]
+#[tauri::command]
+pub async fn nav_set_can_go_back(value: bool) -> Result<(), String> {
+    crate::android::nav_set_can_go_back(value)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[cfg(not(target_os = "android"))]
+#[tauri::command]
+pub async fn nav_set_can_go_back(_value: bool) -> Result<(), String> {
     Ok(())
 }
 

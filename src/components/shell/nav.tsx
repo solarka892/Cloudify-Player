@@ -187,15 +187,15 @@ function TopItem({
  * with no way in at all on a phone. They live up here instead, as icons with
  * their unread badges, which is also where SoundCloud's own app keeps them.
  *
- * `pt-safe` because `MainActivity` draws edge to edge and this is the topmost
- * thing on the screen.
+ * No inset of its own: `.safe-inset` on the app frame holds every layout clear
+ * of the status bar and the cutout, so one here would be counted twice.
  */
 export function NavCompactHeader({ view, onNavigate }: NavProps) {
   const unreadMessages = useBadge("messages");
   const unreadNotifications = useBadge("notifications");
 
   return (
-    <header className="nav-in-y pt-safe relative z-20 flex shrink-0 items-center gap-1 border-b border-border px-2">
+    <header className="nav-in-y relative z-20 flex shrink-0 items-center gap-1 border-b border-border px-2">
       <BrandMark />
       <div className="ml-auto flex items-center gap-1">
         <HeaderIcon
@@ -257,11 +257,12 @@ function HeaderIcon({
  * them so five tabs fit across a narrow screen, and the touch targets stay at the
  * 48px Android asks for even though the labels are small.
  *
- * `pb-safe` keeps the tabs clear of the gesture bar; see `styles`.
+ * The gesture bar is `.safe-inset`'s job on the app frame, not this
+ * component's — see `globals.css`.
  */
 export function NavBottom({ view, onNavigate }: NavProps) {
   return (
-    <nav className="nav-in-y pb-safe flex shrink-0 items-stretch border-t border-border bg-card/80 backdrop-blur-lg">
+    <nav className="nav-in-y flex shrink-0 items-stretch border-t border-border bg-card/80 backdrop-blur-lg">
       {COMPACT_NAV_ITEMS.map(({ id, label, Icon }) => (
         <button
           key={id}

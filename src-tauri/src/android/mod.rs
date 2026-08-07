@@ -181,6 +181,28 @@ pub async fn insets_sync() -> Result<(), AndroidError> {
 }
 
 // ---------------------------------------------------------------------------
+// Navigation
+// ---------------------------------------------------------------------------
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CanGoBackArgs {
+    value: bool,
+}
+
+/// Tell Kotlin whether the back gesture belongs to the app or to the system.
+///
+/// `OnBackPressedCallback` has to answer synchronously and `evaluateJavascript`
+/// does not, so the frontend pushes this bit on every navigation instead of
+/// being asked for it at the moment of the press. When it is false the callback
+/// stands down and Android's own "leave the app" behaviour runs.
+pub async fn nav_set_can_go_back(value: bool) -> Result<(), AndroidError> {
+    call_async::<_, Ack>("setCanGoBack", CanGoBackArgs { value })
+        .await
+        .map(|_| ())
+}
+
+// ---------------------------------------------------------------------------
 // Background playback
 // ---------------------------------------------------------------------------
 

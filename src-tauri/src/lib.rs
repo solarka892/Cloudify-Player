@@ -97,6 +97,7 @@ pub fn run() {
             commands::media_session_update,
             commands::media_session_stop,
             commands::sync_insets,
+            commands::nav_set_can_go_back,
             commands::sc_search_albums,
             commands::sc_search_all,
             commands::sc_search_suggest,

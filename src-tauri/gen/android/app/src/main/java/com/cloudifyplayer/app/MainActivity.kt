@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.webkit.WebView
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
@@ -24,10 +25,33 @@ class MainActivity : TauriActivity() {
   /** Kept only to re-publish the insets on resume; the webview is Tauri's. */
   private var webView: WebView? = null
 
+  /**
+   * The back gesture, while the app has somewhere to go.
+   *
+   * Registered disabled and toggled by [setCanGoBack] from the frontend. That
+   * indirection is the whole design: `handleOnBackPressed` must decide *now*,
+   * and the only way to ask a WebView anything is asynchronous — so the answer
+   * has to already be here. Disabled, the callback is simply not in the chain
+   * and Android's own behaviour (finish the activity) runs, which is exactly
+   * what should happen at the root of the app.
+   */
+  private val backCallback =
+    object : OnBackPressedCallback(false) {
+      override fun handleOnBackPressed() {
+        CloudifyPlugin.emitBack()
+      }
+    }
+
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
+    onBackPressedDispatcher.addCallback(this, backCallback)
     askForNotificationPermission()
+  }
+
+  /** Called from the plugin whenever the frontend's history changes. */
+  fun setCanGoBack(value: Boolean) {
+    runOnUiThread { backCallback.isEnabled = value }
   }
 
   override fun onWebViewCreate(webView: WebView) {
@@ -63,11 +87,21 @@ class MainActivity : TauriActivity() {
    * those from the display cutout alone. On a notched phone the top value is
    * therefore right by coincidence and the bottom one is 0 with a gesture bar
    * plainly there — which left the tab bar's labels underneath it. See
-   * `pt-safe`/`pb-safe` in `src/styles/globals.css` for the consuming end.
+   * `.safe-inset` in `src/styles/globals.css` for the consuming end.
+   *
+   * `systemBars() or displayCutout()`, not `systemBars()` alone. The two are
+   * different rectangles and neither contains the other: in landscape the
+   * camera hole moves to a *side* edge, where no system bar is, and a punch-hole
+   * that pokes below a short status bar is taller than the bar that nominally
+   * covers it. Taking the union is the only reading under which the interface is
+   * never under the lens.
    */
   private fun publishInsets(webView: WebView) {
     ViewCompat.setOnApplyWindowInsetsListener(webView) { view, insets ->
-      val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+      val bars =
+        insets.getInsets(
+          WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout(),
+        )
       val density = view.resources.displayMetrics.density
       // Locale.US: a decimal comma would not be CSS.
       fun css(px: Int) = String.format(Locale.US, "%.2fpx", px / density)
