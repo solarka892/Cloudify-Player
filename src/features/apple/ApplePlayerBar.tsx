@@ -10,6 +10,7 @@ import { Ambient } from "@/components/Ambient";
 import { AppleNowPlaying } from "./AppleNowPlaying";
 import { QueuePanel } from "@/features/player/QueuePanel";
 import { LyricsPanel } from "@/features/player/Lyrics";
+import { OfflineBadge } from "@/components/OfflineBadge";
 import {
   PlayPauseButton,
   RepeatButton,
@@ -35,7 +36,7 @@ import {
 } from "./icons";
 import type { Track } from "@/lib/tauri";
 import { t } from "@/i18n";
-import { artwork } from "@/lib/utils";
+import { useArtwork } from "@/hooks/useArtwork";
 
 type Panel = "none" | "queue" | "lyrics";
 
@@ -74,6 +75,8 @@ export function ApplePlayerBar() {
   const active = useDownloadsStore((s) => s.active);
   const startDownload = useDownloadsStore((s) => s.start);
 
+  const art = useArtwork(current, "t120x120");
+
   if (!current) return null;
 
   if (compact) {
@@ -85,7 +88,6 @@ export function ApplePlayerBar() {
     );
   }
 
-  const art = artwork(current.artwork_url, "t120x120");
   const isDownloaded = downloadedIds.has(current.id);
   const downloading = active[current.id];
   const progress = downloading?.total
@@ -141,8 +143,11 @@ export function ApplePlayerBar() {
             </button>
 
             <div className="flex min-w-0 flex-col">
-              <span className="truncate text-[0.9375rem] font-medium">
-                {current.title}
+              <span className="flex min-w-0 items-center gap-1.5">
+                <span className="truncate text-[0.9375rem] font-medium">
+                  {current.title}
+                </span>
+                <OfflineBadge />
               </span>
               {current.artist && (
                 <span className="truncate text-[0.8125rem] text-[var(--ios-label-2)]">
@@ -227,7 +232,7 @@ export function ApplePlayerBar() {
 function CompactBar({ track, onExpand }: { track: Track; onExpand: () => void }) {
   const position = usePlayerStore((s) => s.position);
   const duration = usePlayerStore((s) => s.duration);
-  const art = artwork(track.artwork_url, "t120x120");
+  const art = useArtwork(track, "t120x120");
   const progress = duration > 0 ? Math.min(100, (position / duration) * 100) : 0;
 
   return (
@@ -258,8 +263,11 @@ function CompactBar({ track, onExpand }: { track: Track; onExpand: () => void })
           </span>
         )}
         <span className="flex min-w-0 flex-col">
-          <span className="truncate text-[0.9375rem] font-medium">
-            {track.title}
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span className="truncate text-[0.9375rem] font-medium">
+              {track.title}
+            </span>
+            <OfflineBadge />
           </span>
           {track.artist && (
             <span className="truncate text-[0.8125rem] text-[var(--ios-label-2)]">

@@ -45,12 +45,25 @@ impl Serialize for DownloadError {
 }
 
 /// A track that exists on disk.
+///
+/// Snake case throughout, like `Track` which it flattens in — a `rename_all`
+/// here would quietly rename `downloaded_at` out from under the frontend.
 #[derive(Debug, Serialize)]
 pub struct DownloadedTrack {
     #[serde(flatten)]
     pub track: Track,
     /// Absolute path; the frontend turns this into an asset URL.
     pub path: String,
+    /// The cover, saved beside the audio during the download.
+    ///
+    /// The bytes are fetched anyway to embed in the ID3 tag, so keeping a copy
+    /// costs one file write and saves a CDN request every single time the track
+    /// appears in a list, a queue or the player — which for a track you have
+    /// downloaded is the one remaining reason it touches the network at all.
+    ///
+    /// `None` for anything downloaded before this existed, and for tracks with
+    /// no artwork; both fall back to the remote URL.
+    pub cover_path: Option<String>,
     pub bytes: u64,
     /// Unix seconds.
     pub downloaded_at: i64,
@@ -96,6 +109,10 @@ fn open_db(app: &AppHandle) -> Result<Connection, DownloadError> {
         )",
         [],
     )?;
+    // Added after the table shipped. SQLite has no `ADD COLUMN IF NOT EXISTS`,
+    // and the only way it can fail on an existing database is by already being
+    // there — which is the desired state, so the error is the success case.
+    let _ = conn.execute("ALTER TABLE downloads ADD COLUMN cover_path TEXT", []);
     Ok(conn)
 }
 
@@ -120,14 +137,19 @@ pub async fn download(app: &AppHandle, track: Track) -> Result<DownloadedTrack, 
         fetch_whole(app, &client, &track, &stream.url).await?
     };
 
-    let path = downloads_dir(app)?.join(format!("{}.mp3", track.id));
+    let dir = downloads_dir(app)?;
+    let path = dir.join(format!("{}.mp3", track.id));
     {
         let mut file = std::fs::File::create(&path)?;
         file.write_all(&bytes)?;
     }
 
-    // Tagging is cosmetic — a file that plays but has no cover beats no file.
-    if let Err(e) = write_tags(&path, &track, &client).await {
+    // One fetch, two homes: the tag needs the bytes and so does the offline
+    // cover. Both are cosmetic — a file that plays but has no artwork beats no
+    // file — so neither failing takes the download with it.
+    let cover = fetch_cover(&track, &client).await;
+    let cover_path = cover.as_ref().and_then(|art| save_cover(&dir, &track, art));
+    if let Err(e) = write_tags(&path, &track, cover.as_ref()) {
         eprintln!("cloudify: tagging {} failed: {e}", track.id);
     }
 
@@ -137,10 +159,12 @@ pub async fn download(app: &AppHandle, track: Track) -> Result<DownloadedTrack, 
 
     open_db(app)?.execute(
         "INSERT INTO downloads
-            (track_id, title, artist, duration, artwork_url, permalink_url, path, bytes, downloaded_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+            (track_id, title, artist, duration, artwork_url, permalink_url, path,
+             cover_path, bytes, downloaded_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
          ON CONFLICT(track_id) DO UPDATE SET
             path = excluded.path,
+            cover_path = excluded.cover_path,
             bytes = excluded.bytes,
             downloaded_at = excluded.downloaded_at",
         rusqlite::params![
@@ -151,6 +175,7 @@ pub async fn download(app: &AppHandle, track: Track) -> Result<DownloadedTrack, 
             track.artwork_url,
             track.permalink_url,
             path_str,
+            cover_path,
             size,
             stamp,
         ],
@@ -159,6 +184,7 @@ pub async fn download(app: &AppHandle, track: Track) -> Result<DownloadedTrack, 
     Ok(DownloadedTrack {
         track,
         path: path_str,
+        cover_path,
         bytes: size,
         downloaded_at: stamp,
     })
@@ -259,11 +285,44 @@ async fn fetch_hls(
 
 /// Write title/artist and embed the cover so the file makes sense in any
 /// other player too.
-async fn write_tags(
-    path: &Path,
-    track: &Track,
-    client: &reqwest::Client,
-) -> Result<(), DownloadError> {
+/// The track's cover at 500px, fetched once for both the tag and the disk copy.
+struct Cover {
+    mime: String,
+    data: Vec<u8>,
+}
+
+async fn fetch_cover(track: &Track, client: &reqwest::Client) -> Option<Cover> {
+    let art = track.artwork_url.as_ref()?;
+    let hi_res = art.replace("-large", "-t500x500");
+    let resp = client.get(&hi_res).send().await.ok()?;
+    if !resp.status().is_success() {
+        return None;
+    }
+    let mime = resp
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("image/jpeg")
+        .to_string();
+    let data = resp.bytes().await.ok()?.to_vec();
+    Some(Cover { mime, data })
+}
+
+/// Write the cover beside the audio. Returns its path, or `None` if it could
+/// not be written — in which case the app falls back to the remote URL, which
+/// is what it did before this existed.
+fn save_cover(dir: &Path, track: &Track, cover: &Cover) -> Option<String> {
+    let extension = if cover.mime.contains("png") {
+        "png"
+    } else {
+        "jpg"
+    };
+    let path = dir.join(format!("{}.{extension}", track.id));
+    std::fs::write(&path, &cover.data).ok()?;
+    Some(path.to_string_lossy().to_string())
+}
+
+fn write_tags(path: &Path, track: &Track, cover: Option<&Cover>) -> Result<(), DownloadError> {
     use id3::{frame::Picture, frame::PictureType, Tag, TagLike, Version};
 
     let mut tag = Tag::new();
@@ -272,26 +331,13 @@ async fn write_tags(
         tag.set_artist(artist.clone());
     }
 
-    if let Some(art) = &track.artwork_url {
-        let hi_res = art.replace("-large", "-t500x500");
-        if let Ok(resp) = client.get(&hi_res).send().await {
-            if resp.status().is_success() {
-                let mime = resp
-                    .headers()
-                    .get(reqwest::header::CONTENT_TYPE)
-                    .and_then(|v| v.to_str().ok())
-                    .unwrap_or("image/jpeg")
-                    .to_string();
-                if let Ok(data) = resp.bytes().await {
-                    tag.add_frame(Picture {
-                        mime_type: mime,
-                        picture_type: PictureType::CoverFront,
-                        description: String::new(),
-                        data: data.to_vec(),
-                    });
-                }
-            }
-        }
+    if let Some(cover) = cover {
+        tag.add_frame(Picture {
+            mime_type: cover.mime.clone(),
+            picture_type: PictureType::CoverFront,
+            description: String::new(),
+            data: cover.data.clone(),
+        });
     }
 
     tag.write_to_path(path, Version::Id3v24)?;
@@ -307,7 +353,7 @@ pub fn list(app: &AppHandle) -> Result<Vec<DownloadedTrack>, DownloadError> {
     let rows = {
         let mut stmt = conn.prepare(
             "SELECT track_id, title, artist, duration, artwork_url, permalink_url,
-                    path, bytes, downloaded_at
+                    path, bytes, downloaded_at, cover_path
              FROM downloads ORDER BY downloaded_at DESC",
         )?;
         // Bound to a local: as a block tail expression the temporaries would
@@ -326,6 +372,12 @@ pub fn list(app: &AppHandle) -> Result<Vec<DownloadedTrack>, DownloadError> {
                     path: row.get(6)?,
                     bytes: row.get(7)?,
                     downloaded_at: row.get(8)?,
+                    // Checked below rather than trusted: a cover the user has
+                    // deleted by hand must fall back to the network, not point
+                    // the app at a file that is not there.
+                    cover_path: row
+                        .get::<_, Option<String>>(9)?
+                        .filter(|p| Path::new(p).exists()),
                 })
             })?
             .collect::<Result<Vec<_>, _>>()?;
@@ -349,6 +401,9 @@ pub fn clear(app: &AppHandle) -> Result<usize, DownloadError> {
     for track in tracks {
         // Keep going on a stubborn file; the index row still goes.
         let _ = std::fs::remove_file(&track.path);
+        if let Some(cover) = &track.cover_path {
+            let _ = std::fs::remove_file(cover);
+        }
     }
     open_db(app)?.execute("DELETE FROM downloads", [])?;
     Ok(count)
@@ -357,17 +412,20 @@ pub fn clear(app: &AppHandle) -> Result<usize, DownloadError> {
 /// Remove a track from the local library, file and all.
 pub fn remove(app: &AppHandle, track_id: u64) -> Result<(), DownloadError> {
     let conn = open_db(app)?;
-    let path: Option<String> = conn
+    let files: Option<(String, Option<String>)> = conn
         .query_row(
-            "SELECT path FROM downloads WHERE track_id = ?1",
+            "SELECT path, cover_path FROM downloads WHERE track_id = ?1",
             [track_id],
-            |row| row.get(0),
+            |row| Ok((row.get(0)?, row.get(1)?)),
         )
         .ok();
 
-    if let Some(path) = path {
+    if let Some((path, cover)) = files {
         // An already-missing file is success: the desired end state is "gone".
         let _ = std::fs::remove_file(path);
+        if let Some(cover) = cover {
+            let _ = std::fs::remove_file(cover);
+        }
     }
     conn.execute("DELETE FROM downloads WHERE track_id = ?1", [track_id])?;
     Ok(())

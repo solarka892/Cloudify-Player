@@ -142,7 +142,9 @@
     "enableVisualizer": "Włącz wizualizator",
     "visualizerBlocked": "Wizualizator nie może odczytać tego utworu — jego host na to nie pozwala. Dźwięk działa normalnie.",
     "playbackFailed": "Nie udało się odtworzyć",
-    "localFileBroken": "Pobrany plik jest nieczytelny — odtwarzam z sieci"
+    "localFileBroken": "Pobrany plik jest nieczytelny — odtwarzam z sieci",
+    "offlineOnlyBlocked": "Tryb offline jest włączony, a ten utwór nie jest pobrany",
+    "playingOffline": "Odtwarzanie z pobranych"
   },
   "settings": {
     "layout": "Układ",
@@ -244,7 +246,8 @@
     "loading": "Szukam tekstu…",
     "none": "Brak tekstu — normalne dla remiksów i setów",
     "failed": "Nie udało się połączyć z serwisem tekstów",
-    "retry": "Spróbuj ponownie"
+    "retry": "Spróbuj ponownie",
+    "offline": "W trybie offline teksty nie są pobierane"
   },
   "downloads": {
     "title": "Pobrane",

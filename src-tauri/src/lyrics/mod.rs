@@ -8,16 +8,42 @@
 //! simply have no lyrics, so "not found" returns `None` and the UI shows a
 //! quiet empty state.
 
+use std::collections::HashMap;
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
+
 use serde::{Deserialize, Serialize};
 
-use crate::sc_api::USER_AGENT;
-
 const LRCLIB: &str = "https://lrclib.net/api";
+
+/// Lookups already made this session, keyed by `artist\ntitle`.
+///
+/// A miss costs up to six requests — three exact lookups and three fuzzy
+/// searches, one per reading of the metadata — and the panel re-runs the whole
+/// lot every time it is opened, which on a track you keep coming back to is the
+/// same six requests over and over for an answer that has not changed.
+///
+/// **Misses are cached too**, and that is most of the value: they are the common
+/// case on SoundCloud, and they are the expensive one. They expire, because
+/// LRCLIB is a community database and a song that has no transcription today may
+/// have one next week; a hit does not, because a transcription does not change
+/// once it exists and the app is not open for days.
+/// When it was answered, and what the answer was — `None` meaning "no lyrics
+/// exist for this", which is itself worth remembering.
+type Answer = (Instant, Option<Lyrics>);
+
+static CACHE: Mutex<Option<HashMap<String, Answer>>> = Mutex::new(None);
+
+/// How long a "no lyrics for this" answer is believed.
+const MISS_TTL: Duration = Duration::from_secs(6 * 60 * 60);
 
 #[derive(Debug, thiserror::Error)]
 pub enum LyricsError {
     #[error("network error: {0}")]
     Http(#[from] reqwest::Error),
+
+    #[error("http client unavailable: {0}")]
+    Client(String),
 }
 
 impl serde::Serialize for LyricsError {
@@ -26,7 +52,7 @@ impl serde::Serialize for LyricsError {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Lyrics {
     /// Raw LRC (`[mm:ss.xx] line`), when the track has a synced transcription.
     pub synced: Option<String>,
@@ -245,7 +271,43 @@ pub async fn get(
     title: &str,
     duration_ms: Option<u64>,
 ) -> Result<Option<Lyrics>, LyricsError> {
-    let client = reqwest::Client::builder().user_agent(USER_AGENT).build()?;
+    let key = format!("{artist}\n{title}");
+    if let Some(hit) = cached(&key) {
+        return Ok(hit);
+    }
+    let found = lookup(artist, title, duration_ms).await?;
+    remember(key, &found);
+    Ok(found)
+}
+
+/// The cached answer for a key, or `None` when there is nothing usable.
+///
+/// The outer `Option` is "do we know?" and the inner one is "are there lyrics?".
+fn cached(key: &str) -> Option<Option<Lyrics>> {
+    let guard = CACHE.lock().ok()?;
+    let (at, value) = guard.as_ref()?.get(key)?;
+    // A hit keeps for the session; a miss is re-asked once it is stale.
+    if value.is_none() && at.elapsed() > MISS_TTL {
+        return None;
+    }
+    Some(value.clone())
+}
+
+fn remember(key: String, value: &Option<Lyrics>) {
+    let Ok(mut guard) = CACHE.lock() else { return };
+    guard
+        .get_or_insert_with(HashMap::new)
+        .insert(key, (Instant::now(), value.clone()));
+}
+
+async fn lookup(
+    artist: &str,
+    title: &str,
+    duration_ms: Option<u64>,
+) -> Result<Option<Lyrics>, LyricsError> {
+    // The app's shared client, so a lookup reuses a warm connection instead of
+    // opening its own — six requests meant six TLS handshakes.
+    let client = crate::sc_api::http_client().map_err(|e| LyricsError::Client(e.to_string()))?;
     let candidates = candidates(artist, title);
 
     // 1. The exact endpoint, and deliberately without a duration: it matches

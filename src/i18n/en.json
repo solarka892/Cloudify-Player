@@ -183,7 +183,9 @@
     "enableVisualizer": "Enable visualiser",
     "visualizerBlocked": "The visualiser can't read this track — its host doesn't allow it. Sound is unaffected.",
     "playbackFailed": "Could not play that",
-    "localFileBroken": "The downloaded file won't decode — streaming instead"
+    "localFileBroken": "The downloaded file won't decode — streaming instead",
+    "offlineOnlyBlocked": "Offline mode is on and this track isn't downloaded",
+    "playingOffline": "Playing from your downloads"
   },
   "settings": {
     "layout": "Layout",
@@ -285,13 +287,18 @@
       "rain": "Rain",
       "leaves": "Autumn leaves",
       "fireflies": "Fireflies"
-    }
+    },
+    "offline": "Data and offline",
+    "offlineHint": "A downloaded track always plays from disk — cover included. This is for when you want nothing else to reach the network at all.",
+    "offlineOnly": "Offline mode",
+    "offlineOnlyHint": "Play only what is downloaded. Nothing streams, no covers or lyrics are fetched."
   },
   "lyrics": {
     "loading": "Looking for lyrics…",
     "none": "No lyrics — normal for remixes, sets and edits",
     "failed": "Could not reach the lyrics service",
-    "retry": "Try again"
+    "retry": "Try again",
+    "offline": "Lyrics aren't fetched in offline mode"
   },
   "downloads": {
     "title": "Downloads",

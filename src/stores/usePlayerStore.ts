@@ -65,6 +65,9 @@ const STALL_GRACE_MS = 8000;
 /** Minimum gap between two recovery attempts, so a dead track cannot loop. */
 const RECOVERY_COOLDOWN_MS = 20_000;
 
+/** How long a play will wait for the offline index before giving up on it. */
+const INDEX_WAIT_MS = 2000;
+
 /**
  * Resolved stream URLs, keyed by track id.
  *
@@ -112,10 +115,19 @@ function forgetUrl(trackId: number): void {
   urlCache.delete(trackId);
 }
 
-/** A downloaded file, dressed as a stream source. */
-function localSource(url: string): StreamSource {
-  return { url, protocol: "progressive", mimeType: "audio/mpeg" };
+/**
+ * A downloaded file, dressed as a stream source.
+ *
+ * `local` is carried rather than sniffed back off the URL: `convertFileSrc`
+ * produces a different scheme on every platform, and a player that has to guess
+ * where its audio came from will eventually guess wrong.
+ */
+function localSource(url: string): PlayableSource {
+  return { url, protocol: "progressive", mimeType: "audio/mpeg", local: true };
 }
+
+/** A resolved source, plus where it came from. */
+type PlayableSource = StreamSource & { local: boolean };
 
 function initialVolume(): number {
   const { rememberVolume, volume } = useSettingsStore.getState();
@@ -155,6 +167,15 @@ interface PlayerState {
    * need it to be real.
    */
   wantsPlay: boolean;
+  /**
+   * Whether what is playing came off the disk rather than the network.
+   *
+   * Shown in the player. "Prefer the local copy" is invisible when it works and
+   * indistinguishable from a fast connection when it does not, so the app says
+   * which one it did — otherwise the only way to know whether an offline
+   * library is being used is to turn the wifi off and find out.
+   */
+  playingOffline: boolean;
   /** Seconds. */
   position: number;
   duration: number;
@@ -358,22 +379,46 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
     });
   }
 
-  /** Prefer the downloaded file, then a warm URL, then resolve a fresh one. */
+  /**
+   * The downloaded file first, then a warm URL, then the network.
+   *
+   * The local copy wins whether or not there is a connection: it is the same
+   * audio, it starts without a round trip, and streaming it again is the app
+   * spending the user's data on a file it already has. Nothing but an explicit
+   * `skipLocal` — the retry for a file that will not decode — can override that.
+   *
+   * The `await` on `ready` is the part that makes it reliable rather than
+   * usually-right. The index is read from SQLite at startup, and a play in the
+   * first moments after launch used to see an empty list and stream a track that
+   * was sitting on disk. One await, once per session.
+   */
   async function resolveSource(
     track: Track,
     skipLocal = false,
-  ): Promise<StreamSource> {
+  ): Promise<PlayableSource> {
     if (!skipLocal) {
+      // Raced against a deadline rather than simply awaited: the index is a
+      // local SQLite read and answers in milliseconds, but a promise that never
+      // settles would be a player that never starts — a far worse failure than
+      // streaming a track that was on disk.
+      await Promise.race([
+        useDownloadsStore.getState().ready,
+        new Promise((resolve) => setTimeout(resolve, INDEX_WAIT_MS)),
+      ]);
       const local = useDownloadsStore.getState().localUrl(track.id);
       if (local) return localSource(local);
     }
 
+    if (useSettingsStore.getState().offlineOnly) {
+      throw new Error(t.player.offlineOnlyBlocked);
+    }
+
     const warm = cachedUrl(track.id);
-    if (warm) return warm;
+    if (warm) return { ...warm, local: false };
 
     const source = await scGetStreamUrl(track.id);
     cacheUrl(track.id, source);
-    return source;
+    return { ...source, local: false };
   }
 
   /**
@@ -388,7 +433,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
    */
   async function setSource(
     a: HTMLAudioElement,
-    source: StreamSource,
+    source: PlayableSource,
   ): Promise<void> {
     releaseHls();
     if (source.protocol === "hls") {
@@ -412,6 +457,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
     // Downloaded tracks and already-warm URLs need nothing.
     if (useDownloadsStore.getState().ids.has(next.id)) return;
     if (cachedUrl(next.id)) return;
+    // Nothing speculative goes over the network while the user is saving data:
+    // this is two requests for a track they may well skip past.
+    if (useSettingsStore.getState().offlineOnly) return;
 
     void scGetStreamUrl(next.id)
       .then((source) => cacheUrl(next.id, source))
@@ -475,6 +523,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
       a = bindElement();
       await setSource(a, source);
       if (token !== playToken) return; // superseded while the manifest loaded
+      set({ playingOffline: source.local });
       applyRate(a, get().rate);
       a.volume = fadeMs > 0 ? 0 : effectiveVolume();
 
@@ -755,6 +804,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
     isPlaying: false,
     isLoading: false,
     wantsPlay: false,
+    playingOffline: false,
     position: 0,
     duration: 0,
     buffered: 0,

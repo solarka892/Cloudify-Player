@@ -14,6 +14,7 @@
 
 import { useEffect } from "react";
 import { usePlayerStore } from "@/stores/usePlayerStore";
+import { useDownloadsStore } from "@/stores/useDownloadsStore";
 import { isAndroid } from "@/lib/platform";
 import {
   clearNowPlaying,
@@ -74,7 +75,13 @@ export function useNativeMediaSession(): void {
       const payload: NowPlaying = {
         title: current.title,
         artist: current.artist ?? "",
-        artworkUrl: artwork(current.artwork_url ?? null, "t500x500"),
+        // The local copy when there is one. Kotlin fetches this itself to build
+        // the notification's `Bitmap` — the WebView's image is not reachable
+        // from the service — so a downloaded track would otherwise still hit the
+        // CDN once per track change purely to draw a 500px thumbnail.
+        artworkUrl:
+          useDownloadsStore.getState().localCover(current.id) ??
+          artwork(current.artwork_url ?? null, "t500x500"),
         durationMs: Math.round((Number.isFinite(duration) ? duration : 0) * 1000),
         positionMs: Math.round(position * 1000),
         playing: isPlaying,

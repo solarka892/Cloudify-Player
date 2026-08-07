@@ -31,7 +31,8 @@ import {
 import { useDismiss } from "@/hooks/useDismiss";
 import { useSwipeDown } from "@/hooks/useSwipeDown";
 import { t } from "@/i18n";
-import { artwork, cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { useArtwork } from "@/hooks/useArtwork";
 
 type Panel = "none" | "lyrics" | "queue";
 
@@ -114,9 +115,10 @@ export function AppleNowPlaying({ onClose }: { onClose: () => void }) {
   const queueBeside = panel === "queue" && roomBeside;
   const queueInPlace = panel === "queue" && !roomBeside;
 
+  const art = useArtwork(current, "t500x500");
+
   if (!current) return null;
 
-  const art = artwork(current.artwork_url, "t500x500");
   const isDownloaded = downloadedIds.has(current.id);
   const downloading = active[current.id];
 

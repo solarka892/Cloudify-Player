@@ -31,6 +31,26 @@ interface DownloadsState {
   items: DownloadedTrack[];
   /** Fast membership test for the download button on every row. */
   ids: Set<number>;
+  /**
+   * Local cover URLs by track id, for everything in the offline library.
+   *
+   * A separate map rather than a lookup through `items` so components can
+   * subscribe to *it*: the reference only changes when something is downloaded
+   * or removed, so a list of five hundred rows does not re-render because a
+   * download reported progress.
+   */
+  covers: Record<number, string>;
+  /** Local audio URLs by track id. Same reasoning as `covers`. */
+  files: Record<number, string>;
+  /**
+   * Resolves once the index has been read at least once.
+   *
+   * The player awaits this before resolving a stream, so a track downloaded
+   * last session cannot be streamed from the network just because the user hit
+   * play in the first moments after launch — which is the one way "play the
+   * local copy" quietly failed.
+   */
+  ready: Promise<void>;
   active: Record<number, ActiveDownload>;
   status: "idle" | "loading" | "ok" | "error";
   error: string | null;
@@ -53,6 +73,8 @@ interface DownloadsState {
   dismiss: (trackId: number) => void;
   /** Local asset URL for a track, or `null` when it isn't downloaded. */
   localUrl: (trackId: number) => string | null;
+  /** Local cover URL for a track, or `null` when there isn't one on disk. */
+  localCover: (trackId: number) => string | null;
 }
 
 /** Breathing room between tracks in a bulk download. */
@@ -60,6 +82,22 @@ const BULK_GAP_MS = 350;
 const BULK_MAX_BACKOFF_MS = 15_000;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Rebuild the id/url indexes from the list Rust handed back. */
+function index(items: DownloadedTrack[]): {
+  items: DownloadedTrack[];
+  ids: Set<number>;
+  covers: Record<number, string>;
+  files: Record<number, string>;
+} {
+  const covers: Record<number, string> = {};
+  const files: Record<number, string> = {};
+  for (const item of items) {
+    files[item.id] = localFileUrl(item.path);
+    if (item.cover_path) covers[item.id] = localFileUrl(item.cover_path);
+  }
+  return { items, ids: new Set(items.map((i) => i.id)), covers, files };
+}
 
 export const useDownloadsStore = create<DownloadsState>((set, get) => {
   // One subscription for the whole app; Rust emits per-chunk progress.
@@ -71,9 +109,18 @@ export const useDownloadsStore = create<DownloadsState>((set, get) => {
     });
   });
 
+  /** Settled by the first `load`; see the field's comment. */
+  let markReady: () => void = () => {};
+  const ready = new Promise<void>((resolve) => {
+    markReady = resolve;
+  });
+
   return {
     items: [],
     ids: new Set(),
+    covers: {},
+    files: {},
+    ready,
     active: {},
     status: "idle",
     error: null,
@@ -83,14 +130,13 @@ export const useDownloadsStore = create<DownloadsState>((set, get) => {
     async load() {
       set({ status: "loading", error: null });
       try {
-        const items = await listDownloads();
-        set({
-          items,
-          ids: new Set(items.map((i) => i.id)),
-          status: "ok",
-        });
+        set({ ...index(await listDownloads()), status: "ok" });
       } catch (e) {
         set({ status: "error", error: String(e) });
+      } finally {
+        // Resolved either way: a failed read is still an answer, and leaving
+        // the player waiting on it forever would be worse than streaming.
+        markReady();
       }
     },
 
@@ -114,7 +160,7 @@ export const useDownloadsStore = create<DownloadsState>((set, get) => {
         const items = [done, ...get().items.filter((i) => i.id !== done.id)];
         const active = { ...get().active };
         delete active[track.id];
-        set({ items, ids: new Set(items.map((i) => i.id)), active });
+        set({ ...index(items), active });
       } catch (e) {
         const current = get().active[track.id];
         if (!current) return;
@@ -133,12 +179,12 @@ export const useDownloadsStore = create<DownloadsState>((set, get) => {
       const items = get().items.filter((i) => i.id !== trackId);
       const active = { ...get().active };
       delete active[trackId];
-      set({ items, ids: new Set(items.map((i) => i.id)), active });
+      set({ ...index(items), active });
     },
 
     async clearAll() {
       const count = await clearDownloads();
-      set({ items: [], ids: new Set(), active: {} });
+      set({ ...index([]), active: {} });
       return count;
     },
 
@@ -194,8 +240,11 @@ export const useDownloadsStore = create<DownloadsState>((set, get) => {
     },
 
     localUrl(trackId) {
-      const hit = get().items.find((i) => i.id === trackId);
-      return hit ? localFileUrl(hit.path) : null;
+      return get().files[trackId] ?? null;
+    },
+
+    localCover(trackId) {
+      return get().covers[trackId] ?? null;
     },
   };
 });

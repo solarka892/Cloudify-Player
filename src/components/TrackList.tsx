@@ -14,7 +14,8 @@ import { useVirtual } from "@/hooks/useVirtual";
 import { useCompact } from "@/hooks/useCompact";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import type { Density } from "@/theme/apply";
-import { artwork, cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { useArtwork } from "@/hooks/useArtwork";
 import { t } from "@/i18n";
 import { ArtFallback } from "./ArtFallback";
 
@@ -116,7 +117,7 @@ const TrackRow = memo(function TrackRow({
   onContextMenu: (e: React.MouseEvent) => void;
   onMenu: (x: number, y: number) => void;
 }) {
-  const art = artwork(track.artwork_url);
+  const art = useArtwork(track);
   const playTrack = usePlayerStore((s) => s.playTrack);
   const addNext = usePlayerStore((s) => s.addNext);
   const isCurrent = usePlayerStore((s) => s.current?.id === track.id);

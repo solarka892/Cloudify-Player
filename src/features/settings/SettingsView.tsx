@@ -76,6 +76,8 @@ export function SettingsView() {
   const unlocked = useSettingsStore((s) => s.unlocked);
   const nativeFrame = useSettingsStore((s) => s.nativeFrame);
   const autoplayNext = useSettingsStore((s) => s.autoplayNext);
+  const offlineOnly = useSettingsStore((s) => s.offlineOnly);
+  const setOfflineOnly = useSettingsStore((s) => s.setOfflineOnly);
   const rememberVolume = useSettingsStore((s) => s.rememberVolume);
 
   const setLayout = useSettingsStore((s) => s.setLayout);
@@ -744,6 +746,17 @@ export function SettingsView() {
           hint={t.settings.rememberVolumeHint}
         >
           <Switch checked={rememberVolume} onCheckedChange={setRememberVolume} />
+        </Row>
+      </Group>
+
+      {/* ── Data and offline ───────────────────────────────────────────── */}
+      {/* One switch, and the hint is doing as much work as the switch: playing
+          a downloaded track from disk is not a preference and has no toggle —
+          it is simply what the player does. This is the stronger statement,
+          for a metered connection or none at all. */}
+      <Group title={t.settings.offline} hint={t.settings.offlineHint}>
+        <Row label={t.settings.offlineOnly} hint={t.settings.offlineOnlyHint}>
+          <Switch checked={offlineOnly} onCheckedChange={setOfflineOnly} />
         </Row>
       </Group>
 

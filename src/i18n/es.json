@@ -142,7 +142,9 @@
     "enableVisualizer": "Activar el visualizador",
     "visualizerBlocked": "El visualizador no puede leer esta pista: su servidor no lo permite. El sonido no se ve afectado.",
     "playbackFailed": "No se pudo reproducir",
-    "localFileBroken": "El archivo descargado no se puede leer: se reproduce en línea"
+    "localFileBroken": "El archivo descargado no se puede leer: se reproduce en línea",
+    "offlineOnlyBlocked": "El modo sin conexión está activo y esta pista no está descargada",
+    "playingOffline": "Reproduciendo desde tus descargas"
   },
   "settings": {
     "layout": "Disposición",
@@ -244,7 +246,8 @@
     "loading": "Buscando la letra…",
     "none": "Sin letra: es normal en remezclas y sesiones",
     "failed": "No se pudo contactar con el servicio de letras",
-    "retry": "Reintentar"
+    "retry": "Reintentar",
+    "offline": "Las letras no se descargan en modo sin conexión"
   },
   "downloads": {
     "title": "Descargas",

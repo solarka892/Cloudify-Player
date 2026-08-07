@@ -142,7 +142,9 @@
     "enableVisualizer": "Ativar o visualizador",
     "visualizerBlocked": "O visualizador não consegue ler esta faixa — o servidor dela não permite. O som não é afetado.",
     "playbackFailed": "Não foi possível tocar",
-    "localFileBroken": "O arquivo baixado não pode ser lido — tocando pela internet"
+    "localFileBroken": "O arquivo baixado não pode ser lido — tocando pela internet",
+    "offlineOnlyBlocked": "O modo offline está ativo e esta faixa não foi descarregada",
+    "playingOffline": "A reproduzir a partir das transferências"
   },
   "settings": {
     "layout": "Disposição",
@@ -244,7 +246,8 @@
     "loading": "Procurando a letra…",
     "none": "Sem letra — normal em remixes e sets",
     "failed": "Não foi possível contactar o serviço de letras",
-    "retry": "Tentar de novo"
+    "retry": "Tentar de novo",
+    "offline": "As letras não são obtidas no modo offline"
   },
   "downloads": {
     "title": "Downloads",

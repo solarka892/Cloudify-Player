@@ -300,6 +300,11 @@ export function getLyrics(
 /** A track that lives on disk. Carries every `Track` field, plus location. */
 export interface DownloadedTrack extends Track {
   path: string;
+  /**
+   * The cover, saved beside the audio at download time. `null` for tracks with
+   * no artwork and for anything downloaded before this existed.
+   */
+  cover_path: string | null;
   bytes: number;
   /** Unix seconds. */
   downloaded_at: number;

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { getLyrics, type Lyrics as LyricsData, type Track } from "@/lib/tauri";
 import { el } from "@/audio/engine";
 import { usePlayerStore } from "@/stores/usePlayerStore";
+import { useSettingsStore } from "@/stores/useSettingsStore";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 
@@ -49,6 +50,8 @@ type State =
   | { status: "loading" }
   | { status: "ok"; data: LyricsData }
   | { status: "none" }
+  /** Offline mode is on; nothing was asked. */
+  | { status: "offline" }
   /**
    * The lookup itself failed — no network, LRCLIB down, a platform where the
    * request cannot be made at all.
@@ -122,6 +125,12 @@ export function LyricsPanel({
 
   useEffect(() => {
     let cancelled = false;
+    // Lyrics are a lookup against a third-party database — up to six requests
+    // for a track that most likely has none. Offline mode means offline.
+    if (useSettingsStore.getState().offlineOnly) {
+      setState({ status: "offline" });
+      return;
+    }
     setState({ status: "loading" });
     getLyrics(track.title, track.artist, track.duration)
       .then((data) => {
@@ -169,6 +178,9 @@ export function LyricsPanel({
 
   if (state.status === "loading") {
     return <Empty>{t.lyrics.loading}</Empty>;
+  }
+  if (state.status === "offline") {
+    return <Empty>{t.lyrics.offline}</Empty>;
   }
   if (state.status === "error") {
     return (

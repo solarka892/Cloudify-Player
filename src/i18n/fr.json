@@ -142,7 +142,9 @@
     "enableVisualizer": "Activer le visualiseur",
     "visualizerBlocked": "Le visualiseur ne peut pas lire ce morceau : son hôte l'interdit. Le son n'est pas affecté.",
     "playbackFailed": "Lecture impossible",
-    "localFileBroken": "Le fichier téléchargé est illisible — lecture en ligne"
+    "localFileBroken": "Le fichier téléchargé est illisible — lecture en ligne",
+    "offlineOnlyBlocked": "Le mode hors ligne est actif et ce morceau n'est pas téléchargé",
+    "playingOffline": "Lecture depuis vos téléchargements"
   },
   "settings": {
     "layout": "Disposition",
@@ -244,7 +246,8 @@
     "loading": "Recherche des paroles…",
     "none": "Aucune parole — c’est normal pour les remix et les sets",
     "failed": "Service de paroles injoignable",
-    "retry": "Réessayer"
+    "retry": "Réessayer",
+    "offline": "Les paroles ne sont pas récupérées en mode hors ligne"
   },
   "downloads": {
     "title": "Téléchargements",

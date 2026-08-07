@@ -278,6 +278,16 @@ interface SettingsState {
   fadeMs: number;
   /** Keep playing past the end of the queue with related tracks. */
   radio: boolean;
+  /**
+   * Play only what is on disk; never open a stream.
+   *
+   * Not the same thing as preferring the downloaded copy — that is unconditional
+   * and needs no setting. This is for a metered connection or no connection at
+   * all: a track with no local file refuses to play and says so, instead of
+   * quietly spending data. Covers, lyrics and the next track's URL stop being
+   * fetched with it.
+   */
+  offlineOnly: boolean;
   /** Equaliser and the rest of the signal chain. */
   audio: AudioConfig;
 
@@ -313,6 +323,7 @@ interface SettingsState {
   rememberCurrentVolume: (volume: number) => void;
   setFadeMs: (ms: number) => void;
   setRadio: (on: boolean) => void;
+  setOfflineOnly: (on: boolean) => void;
   setAudio: (patch: Partial<AudioConfig>) => void;
   resetAudio: () => void;
 }
@@ -396,6 +407,7 @@ export const useSettingsStore = create<SettingsState>()(
         volume: DEFAULT_VOLUME,
         fadeMs: 0,
         radio: false,
+        offlineOnly: false,
         audio: { ...DEFAULT_AUDIO },
 
         artworkAccent: null,
@@ -550,6 +562,7 @@ export const useSettingsStore = create<SettingsState>()(
         rememberCurrentVolume: (volume) => set({ volume }),
         setFadeMs: (fadeMs) => set({ fadeMs }),
         setRadio: (radio) => set({ radio }),
+        setOfflineOnly: (offlineOnly) => set({ offlineOnly }),
 
         setAudio(patch) {
           const before = get().audio;
@@ -589,6 +602,7 @@ export const useSettingsStore = create<SettingsState>()(
         volume: s.volume,
         fadeMs: s.fadeMs,
         radio: s.radio,
+        offlineOnly: s.offlineOnly,
         audio: s.audio,
       }),
       migrate: (persisted, from) => {

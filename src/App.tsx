@@ -22,6 +22,7 @@ import { SkinLight } from "@/components/Ambient";
 import { LogoMark } from "@/components/Logo";
 import { HotkeyHelp } from "@/components/HotkeyHelp";
 import { useHotkeys } from "@/hooks/useHotkeys";
+import { useArtwork } from "@/hooks/useArtwork";
 import { useBackGesture } from "@/hooks/useBackGesture";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
 import { HomeView } from "@/features/home/HomeView";
@@ -39,7 +40,6 @@ import { useMessagesStore } from "@/stores/useMessagesStore";
 import { useNotificationsStore } from "@/stores/useNotificationsStore";
 import { useRepostStore } from "@/stores/useRepostStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
-import { artwork } from "@/lib/utils";
 import { t } from "@/i18n";
 
 type AuthStatus =
@@ -105,7 +105,11 @@ function App() {
 
   // Feed the playing cover to the theme engine: it drives the artwork
   // backdrop and, when enabled, the accent colour.
-  const currentArt = usePlayerStore((s) => s.current?.artwork_url ?? null);
+  //
+  // The offline copy when there is one — this is a second full-size request for
+  // the same image the player is already showing, and for a downloaded track
+  // there is no reason for it to leave the machine.
+  const currentArt = useArtwork(current, "t500x500");
   const setArtwork = useSettingsStore((s) => s.setArtwork);
   const locale = useSettingsStore((s) => s.locale);
   // Apple mode replaces the frame and the player outright, not just their
@@ -116,7 +120,7 @@ function App() {
     // 500px, not a thumbnail: this is stretched across the whole window, and
     // the blur is a user setting — turn it down and a 120px source is a mess of
     // squares. The accent sampler downscales to 24px regardless.
-    void setArtwork(artwork(currentArt, "t500x500"));
+    void setArtwork(currentArt);
   }, [currentArt, setArtwork]);
 
   const refreshMe = useCallback(async () => {

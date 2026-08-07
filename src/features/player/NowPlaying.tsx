@@ -33,7 +33,8 @@ import { useSwipeDown } from "@/hooks/useSwipeDown";
 import { useCompact } from "@/hooks/useCompact";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { t } from "@/i18n";
-import { artwork, cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { useArtwork } from "@/hooks/useArtwork";
 import { ArtFallback } from "@/components/ArtFallback";
 
 type Side = "none" | "lyrics" | "queue";
@@ -78,9 +79,10 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
   const toggleSide = (which: Exclude<Side, "none">) =>
     setSide(side === which ? "none" : which);
 
+  const art = useArtwork(current, "t500x500");
+
   if (!current) return null;
 
-  const art = artwork(current.artwork_url, "t500x500");
   const isDownloaded = downloadedIds.has(current.id);
   const downloading = active[current.id];
 
