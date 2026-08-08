@@ -210,7 +210,12 @@ export function SettingsView() {
           design behind the architecture. Applying one leaves every switch it
           touched still switchable. */}
       <Group title={t.settings.builtin} hint={t.settings.builtinHint}>
-        <div className="flex flex-wrap gap-2 px-4 py-3">
+        {/* A column, not a wrapping row. Sized to their content, the three cards
+            came out three different widths — Obsidian's description is one line
+            where the others take two — which reads as a broken layout rather
+            than as three equal choices. Stretching them also matches the skin
+            list below, which is the same kind of list. */}
+        <div className="flex flex-col gap-2 px-4 py-3">
           {BUILTIN_PRESETS.map((preset) => {
             // Apple mode replaces the skin outright, so a look that is on can
             // agree with another one's skin id and still not be it — which is
