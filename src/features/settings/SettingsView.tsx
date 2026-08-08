@@ -37,6 +37,7 @@ import {
   type SkinId,
 } from "@/theme/skins";
 import { EFFECT_IDS } from "@/theme/particles";
+import { appleVars } from "@/theme/apple";
 import type { Density, ThemeMode } from "@/theme/apply";
 import {
   LOCALES,
@@ -932,14 +933,33 @@ function SkinSwatch({ id }: { id: SkinId }) {
 function PresetSwatch({ preset }: { preset: Preset }) {
   const skin = SKINS[preset.theme.skin] ?? SKINS.aurora;
   const palette = PALETTES[preset.theme.palette] ?? PALETTES.midnight;
-  const shade = preset.theme.mode === "light" ? palette.light : palette.dark;
-  const glow = Number(skin.vars["--glow"]) || 0;
+  const dark = preset.theme.mode !== "light";
+  const shade = dark ? palette.dark : palette.light;
+
+  /*
+   * The form this look actually renders in, resolved the way `buildVars` does.
+   *
+   * Apple mode does not use the skin underneath it — it replaces the whole set —
+   * so drawing the tile from `preset.theme.skin` drew *aurora*, which is what
+   * Standard is. Two different looks came out as the same rounded rectangle with
+   * a different dot on it, which is a swatch that lies about what the button
+   * does.
+   */
+  const vars = preset.theme.apple ? appleVars(dark) : skin.vars;
+  const alpha = preset.theme.apple
+    ? (vars["--surface-alpha"] ?? "100%")
+    : preset.theme.glass
+      ? skin.glass.alpha
+      : "100%";
+  const glow = Number(vars["--glow"]) || 0;
+  /** The surface both the pane and the dock are drawn in. */
+  const panel = `color-mix(in srgb, color-mix(in srgb, ${shade.surface}, ${shade.text} ${SWATCH_LIFT}) ${alpha}, transparent)`;
   return (
     <span
       aria-hidden
       className="relative block h-11 w-11 shrink-0 overflow-hidden"
       style={{
-        borderRadius: skin.vars["--radius"],
+        borderRadius: vars["--radius"],
         // A gradient rather than a flat fill, the same way the palette dots are
         // drawn — it is what stops a near-black page from reading as a dead
         // rectangle, and it uses two colours the palette already supplies.
@@ -960,14 +980,32 @@ function PresetSwatch({ preset }: { preset: Preset }) {
         className="absolute right-1 top-1 h-1.5 w-1.5 rounded-[var(--radius-round)]"
         style={{ background: shade.brand }}
       />
+      {/* The content pane. Short in Apple mode, to leave room for the dock. */}
       <span
-        className="absolute inset-x-1.5 bottom-1.5 top-5"
+        className={cn(
+          "absolute inset-x-1.5 top-5",
+          preset.theme.apple ? "bottom-3.5" : "bottom-1.5",
+        )}
         style={{
-          borderRadius: skin.vars["--radius-control"],
-          background: `color-mix(in srgb, color-mix(in srgb, ${shade.surface}, ${shade.text} ${SWATCH_LIFT}) ${preset.theme.glass ? skin.glass.alpha : "100%"}, transparent)`,
+          borderRadius: vars["--radius-control"],
+          background: panel,
           border: `1px solid ${shade.line}`,
         }}
       />
+      {/* Apple mode's second object: a dock that floats free of the pane above
+          it and of the window below it. That gap is the mode's loudest tell —
+          every other look welds its chrome to the window's edges — and it is
+          what stops this tile from being Standard's with a different dot. */}
+      {preset.theme.apple && (
+        <span
+          className="absolute inset-x-3 bottom-1 h-1.5"
+          style={{
+            borderRadius: vars["--radius-round"] ?? "999px",
+            background: panel,
+            border: `1px solid ${shade.line}`,
+          }}
+        />
+      )}
     </span>
   );
 }
