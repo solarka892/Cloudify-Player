@@ -62,7 +62,7 @@ export function useHotkeys(actions: HotkeyActions): void {
           progress += 1;
           if (progress === KONAMI.length) {
             progress = 0;
-            unlockGraticule();
+            unlockVapor();
             return;
           }
         } else {
@@ -187,23 +187,14 @@ export function clock(ms: number): string {
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
 }
 
-/**
- * The Konami payoff: the sheet's coordinate grid.
- *
- * It used to unlock a hidden neon palette, which has nowhere to live now that
- * there is one palette — and a language whose rule is "no colour the legend
- * cannot name" cannot have a secret sixth colour as its joke.
- *
- * A graticule is the grid a survey sheet is ruled with, and it is a real part of
- * the artefact rather than a gag about one. Ten keystrokes rule the sheet; ten
- * more clear it. See `--data-graticule` in `globals.css`.
- */
-function unlockGraticule(): void {
+/** The Konami payoff: a hidden palette, plus a few seconds of nonsense. */
+function unlockVapor(): void {
   const settings = useSettingsStore.getState();
-  const first = settings.unlock("sheet:graticule");
+  const first = settings.unlock("palette:vapor");
+  settings.setTheme({ palette: "vapor" });
+  toast(first ? t.eggs.vaporFound : t.eggs.vaporAgain, "success");
+
   const root = document.documentElement;
-  const on = root.dataset.graticule !== "1";
-  if (on) root.dataset.graticule = "1";
-  else delete root.dataset.graticule;
-  toast(first ? t.eggs.graticuleFound : t.eggs.graticuleAgain, "success");
+  root.dataset.disco = "1";
+  setTimeout(() => delete root.dataset.disco, 6000);
 }

@@ -5,15 +5,24 @@ import {
   type Locale,
 } from "@/i18n";
 import { persist } from "zustand/middleware";
-import { applyTheme, resolveDark, type ThemeMode } from "@/theme/apply";
-import { accentFromArtwork } from "@/theme/artwork";
+import {
+  applyTheme,
+  applyBackdrop,
+  resolveDark,
+  type Density,
+  type ThemeMode,
+} from "@/theme/apply";
+import { accentFromArtwork, desaturate } from "@/theme/artwork";
 import {
   applyAudio,
   DEFAULT_AUDIO,
   needsGraph,
   type AudioConfig,
 } from "@/audio/engine";
-import { accentValue, type AccentId } from "@/theme/palettes";
+import { PALETTES, type PaletteId } from "@/theme/palettes";
+import type { SkinId } from "@/theme/skins";
+import type { LayoutId } from "@/theme/layout";
+import type { EffectId } from "@/theme/particles";
 import type { ThemeVars } from "@/theme/tokens";
 import { fillDefaults } from "@/lib/merge";
 
@@ -21,37 +30,80 @@ import { fillDefaults } from "@/lib/merge";
  * Everything the user can change about the app, persisted to the webview's
  * localStorage.
  *
- * ## What appearance used to be here
- *
- * Three independent axes — layout, skin, palette — plus a backdrop, plus saved
- * presets to name combinations of them. Seventeen palettes, five skins, three
- * layouts: 255 valid appearances, and the drift between them is what read as
- * unfinished. Relief is one appearance, so what is left below is the part that
- * was always a real preference rather than an unanswered design question: which
- * printing (light or dark), which band of the ramp accents it, whether the
- * playing cover picks that band, and how large the sheet is drawn.
- *
- * Everything non-appearance — language, audio chain, volume, the Nit features —
- * is untouched by any of that.
+ * Appearance is deliberately split into three independent axes — layout
+ * (structure), skin (form) and palette (colour) — so any combination is valid
+ * and a saved preset is just a snapshot of all three plus the backdrop.
  */
 
+/**
+ * Re-exported, not declared: which arrangements exist is a question the theme
+ * layer answers now, because a skin can decline one. See `theme/layout`.
+ */
+export type { LayoutId };
+
+export interface BackdropState {
+  /** `artwork` tracks the playing cover; `image` is a user file. */
+  mode: "none" | "artwork" | "image";
+  /** Falling particles over the whole app. Independent of `mode`. */
+  effect: EffectId | "none";
+  /** Particle count multiplier, 0.25–2. */
+  effectIntensity: number;
+  /** Data URL of the user's background image. */
+  image: string | null;
+  /** Blur radius in px. */
+  blur: number;
+  /** Darkening overlay, 0..1. */
+  dim: number;
+  /** Saturation multiplier, 0..2. */
+  saturate: number;
+}
+
 export interface ThemeState {
-  /** Which printing: the light stock, the black one, or whatever the OS says. */
   mode: ThemeMode;
-  /** A band of the relief ramp, or `null` for the water. */
-  accent: AccentId | null;
-  /**
-   * Let the playing cover choose the band.
-   *
-   * Asked for by name, and legal under a language that forbids colours the
-   * legend cannot name because the sampled colour is snapped to the ramp rather
-   * than applied as found. See `theme/artwork`.
-   */
+  palette: PaletteId;
+  skin: SkinId;
+  /** Accent preset id, or `null` for the palette's own accent. */
+  accent: string | null;
+  /** Derive the accent from the playing track's cover instead. */
   accentFromArtwork: boolean;
-  /** 80–140. Scale, not density: the sheet gets bigger, not looser. */
+  density: Density;
   uiScale: number;
-  /** Hand-edited custom properties; win over everything else. */
+  /** Blurred, translucent surfaces. Costly to render; the toggle is the perf
+   *  escape — except in Apple mode, which forces it on. See `buildVars`. */
+  glass: boolean;
+  /**
+   * Apple mode. Not a skin — it replaces the palette, the skin, the shell and
+   * the player with an iOS interface. See `theme/apple.ts`.
+   *
+   * Chosen through a built-in preset rather than a switch of its own: it is one
+   * of three *looks* the app ships, not a modifier on top of the other two, and
+   * a lone toggle three sections below the looks it competes with said the
+   * opposite.
+   */
+  apple: boolean;
+  /**
+   * Reduce cover art to the skin's own treatment — Nit's two-ink duotone,
+   * Obsidian's greyscale. Only those two ask for a filter, so this is inert
+   * under the others — see `--art-filter`.
+   */
+  monoArtwork: boolean;
+  /** Print screen headings twice, out of register. Inert unless the skin offsets. */
+  printShift: boolean;
+  /** Hand-edited CSS custom properties; win over everything else. */
   overrides: ThemeVars;
+}
+
+export interface Preset {
+  id: string;
+  name: string;
+  theme: ThemeState;
+  backdrop: BackdropState;
+  layout: LayoutId;
+  /**
+   * Ships with the app rather than saved by the user. Cannot be deleted, and
+   * applying it must not mutate it — see `applyPreset`.
+   */
+  builtin?: boolean;
 }
 
 /** Shape written to disk and produced by "export theme". */
@@ -59,25 +111,181 @@ export interface ThemeFile {
   cloudifyTheme: 1;
   name: string;
   theme: ThemeState;
+  backdrop: BackdropState;
+  layout: LayoutId;
 }
 
 export const DEFAULT_VOLUME = 0.8;
 
 
+/** Reject background images bigger than this — localStorage is not a filesystem. */
+const MAX_BACKGROUND_BYTES = 4_000_000;
+
 const DEFAULT_THEME: ThemeState = {
-  // The black stock, because that is what a player is opened into at night and
-  // the light one is a deliberate act. Both are the same sheet; see `palettes`.
   mode: "dark",
-  // The water. A band is a choice; the water is the sheet's own colour.
+  // Ember on One: the app's one look. Everything else is on its way out — see
+  // `theme/skins` for why five appearances were the thing making the app feel
+  // unfinished, rather than any one of them being wrong.
+  palette: "ember",
+  skin: "one",
   accent: null,
-  // On. Five rounds of "still feels unfinished" against a restrained accent, and
-  // the only change that ever drew a "better" was the one that put a record's own
-  // colour on the screen. Under Relief it can no longer misbehave: whatever it
-  // samples lands on a band the legend already names.
+  // On.
+  //
+  // It shipped off on the argument that a default has to be right for every
+  // cover at once. That argument was wrong about this app: five rounds of
+  // "still feels unfinished" against a restrained one-accent palette, and the
+  // only change that drew a "better" was the one that put a record's own colour
+  // on the screen. An interface for listening to music that does not take any
+  // colour from the music is not restrained, it is empty.
+  //
+  // Still a setting, so a fixed accent is one switch away for anyone who wants
+  // the interface to hold still (`theme/artwork`).
   accentFromArtwork: true,
+  density: "cozy",
   uiScale: 100,
+  // Off by default: `backdrop-filter` on every surface is the biggest
+  // rendering cost on a software-composited desktop. Opt in, don't opt out.
+  glass: false,
+  // On, and no longer a "mode": this is the app's shell now. It kept the name
+  // in the code because renaming a flag across the store, the theme engine and
+  // a stylesheet is churn without a reader — see `theme/apple.ts`, which is
+  // where the impersonation actually ended.
+  apple: true,
+  // On by default so the Nit and Obsidian presets need no extra step to look
+  // like themselves; inert under every other skin, which is why it costs
+  // nothing to default to on.
+  monoArtwork: true,
+  printShift: true,
   overrides: {},
 };
+
+const DEFAULT_BACKDROP: BackdropState = {
+  // The playing cover, blurred, is the app's default wallpaper — leaving this
+  // at "none" meant the feature existed but nobody ever saw it.
+  mode: "artwork",
+  // Off by default: an animated full-window layer is exactly the kind of cost
+  // this app is careful about, so it stays something the user asks for.
+  effect: "none",
+  effectIntensity: 1,
+  image: null,
+  blur: 40,
+  dim: 0.55,
+  saturate: 1.2,
+};
+
+/**
+ * Presets that ship with the app.
+ *
+ * The three appearance axes are independent, and that is the point — but a
+ * *designed* look is a particular combination of them, and asking the user to
+ * find four settings before Obsidian looks like Obsidian would hide the design
+ * behind the architecture. A preset is the one place the axes are allowed to be
+ * named together, and it stays a suggestion: every switch it touches is still
+ * there afterwards.
+ *
+ * Built-ins are not persisted. They live here so a later version can change what
+ * "Obsidian" means without a migration, and so nothing the user saved can be
+ * shadowed by an id we later reuse.
+ */
+export const BUILTIN_PRESETS: Preset[] = [
+  {
+    // The app as it ships, and the look it is named after. Listed as a look of
+    // its own rather than assumed, because the other two replace enough — a
+    // palette, a skin, a whole shell — that "put it back" has to be one tap.
+    //
+    // It replaced "Standard", which was the old default (Aurora Glass over
+    // Midnight). That skin is gone; the palette is not, and is still one choice
+    // among fifteen below.
+    id: "builtin:nit",
+    name: "Nit",
+    builtin: true,
+    layout: "rail",
+    theme: { ...DEFAULT_THEME, overrides: {} },
+    backdrop: {
+      ...DEFAULT_BACKDROP,
+      mode: "artwork",
+      // Deep, because the interface over it is four flat inks and a bright
+      // wallpaper is the one thing that can make them look accidental. The skin
+      // also drains its colour in CSS — see `--backdrop-saturate-scale`.
+      blur: 56,
+      dim: 0.72,
+      saturate: 0,
+    },
+  },
+  {
+    id: "builtin:obsidian",
+    name: "Obsidian",
+    builtin: true,
+    layout: "rail",
+    theme: {
+      ...DEFAULT_THEME,
+      mode: "dark",
+      palette: "obsidian",
+      skin: "obsidian",
+      // The reference look. Glass stays a user-owned perf switch everywhere
+      // else, but the preset is a statement about how the mode is meant to look,
+      // and frosted is how: 30px of blur over a 26% surface.
+      glass: true,
+      accent: null,
+      // Both off: the accent is white by palette, and a sampled one would be the
+      // one colour in the interface. See `Palette.achromatic`.
+      accentFromArtwork: false,
+      apple: false,
+      density: "cozy",
+      monoArtwork: true,
+      // A preset that carried overrides would silently discard the user's own
+      // hand edits, which are theirs and not part of any look we ship.
+      overrides: {},
+    },
+    backdrop: {
+      ...DEFAULT_BACKDROP,
+      mode: "artwork",
+      blur: 64,
+      // Deeper than the default 0.55: the wallpaper is the only thing the loupe
+      // has to compete with, and at 0.55 a bright cover washes the light out.
+      dim: 0.78,
+      // Not optional. The blurred cover is a full-window field of colour, and it
+      // is the single easiest way to put colour back into a mode that rules it
+      // out — the skin also zeroes this in CSS, and both are on purpose.
+      saturate: 0,
+    },
+  },
+  {
+    id: "builtin:apple",
+    name: "Apple",
+    builtin: true,
+    layout: "rail",
+    theme: {
+      ...DEFAULT_THEME,
+      mode: "dark",
+      // The mode's own colours. It selects the palette rather than enforcing
+      // it, so the picker below still works afterwards.
+      palette: "apple",
+      apple: true,
+      // Not a choice here, and not a choice afterwards either: `buildVars`
+      // forces glass on while `apple` is set. Written true anyway so the saved
+      // shape says what the look is, and so leaving the mode does not land the
+      // user on opaque surfaces they never asked for.
+      glass: true,
+      accent: null,
+      accentFromArtwork: false,
+      // Apple mode is the one look built around the artwork's own colour;
+      // draining it is Obsidian's idea, not iOS's.
+      monoArtwork: false,
+      overrides: {},
+    },
+    backdrop: {
+      ...DEFAULT_BACKDROP,
+      mode: "artwork",
+      // Shallower and brighter than the default: the chrome here floats *over*
+      // the wallpaper with glass between, so the wallpaper is meant to be
+      // legible through it rather than pushed to the back.
+      blur: 48,
+      dim: 0.42,
+      saturate: 1.35,
+    },
+  },
+];
 
 /** Where the HUD appears, as a screen corner. */
 export type HudCorner = "tl" | "tr" | "bl" | "br";
@@ -137,7 +345,10 @@ const DEFAULT_NIT: NitState = {
 };
 
 interface SettingsState {
+  layout: LayoutId;
   theme: ThemeState;
+  backdrop: BackdropState;
+  presets: Preset[];
   /** Ids of easter-egg extras the user has found. */
   unlocked: string[];
 
@@ -167,20 +378,26 @@ interface SettingsState {
   nit: NitState;
 
   /** Accent sampled from the current cover. Runtime only — never persisted. */
-  /** The band the playing cover was snapped to. Runtime only. */
-  artworkAccent: AccentId | null;
-  /** URL of the cover the accent was sampled from. Runtime only. */
+  artworkAccent: { brand: string; brand2: string } | null;
+  /** URL of the cover currently driving the backdrop. Runtime only. */
   artworkUrl: string | null;
 
+  setLayout: (layout: LayoutId) => void;
   /** Reveal a hidden extra. Returns true the first time only. */
   unlock: (id: string) => boolean;
   setTheme: (patch: Partial<ThemeState>) => void;
   setOverride: (name: string, value: string | null) => void;
   resetTheme: () => void;
+  setBackdrop: (patch: Partial<BackdropState>) => void;
+  /** Returns an error message, or `null` on success. */
+  setBackdropImage: (dataUrl: string) => string | null;
 
   /** Tell the theme engine which cover is playing. */
   setArtwork: (url: string | null) => Promise<void>;
 
+  savePreset: (name: string) => void;
+  applyPreset: (id: string) => void;
+  deletePreset: (id: string) => void;
   exportTheme: (name?: string) => string;
   /** Returns an error message, or `null` on success. */
   importTheme: (json: string) => string | null;
@@ -216,22 +433,58 @@ export const useSettingsStore = create<SettingsState>()(
       /** Push the current appearance onto the document. */
       function sync(): void {
         const { theme, artworkAccent } = get();
+        // An accent sampled from the cover is the one path by which colour can
+        // reach a palette that rules colour out, and the palette gets to say what
+        // happens to it. Reduced to its lightness rather than dropped: a dark
+        // cover still gives a dark accent, so the setting keeps meaning something.
+        const sampled =
+          artworkAccent && PALETTES[theme.palette]?.achromatic
+            ? desaturate(artworkAccent)
+            : artworkAccent;
         applyTheme({
           mode: theme.mode,
+          palette: theme.palette,
+          skin: theme.skin,
           accent: theme.accent,
+          density: theme.density,
           uiScale: theme.uiScale,
-          // The cover's band beats the chosen one while something is playing,
-          // and the user's own overrides beat both — see `buildVars`.
-          artworkAccent:
-            theme.accentFromArtwork && artworkAccent
-              ? accentValue(artworkAccent, resolveDark(theme.mode))
-              : null,
-          overrides: theme.overrides,
+          glass: theme.glass,
+          apple: theme.apple,
+          monoArtwork: theme.monoArtwork,
+          printShift: theme.printShift,
+          // Artwork accent sits under the user's own edits, above the palette.
+          overrides: {
+            ...(theme.accentFromArtwork && sampled
+              ? { "--brand": sampled.brand, "--brand-2": sampled.brand2 }
+              : {}),
+            ...theme.overrides,
+          },
+        });
+        syncBackdrop();
+      }
+
+      function syncBackdrop(): void {
+        const { backdrop, artworkUrl } = get();
+        const source =
+          backdrop.mode === "image"
+            ? backdrop.image
+            : backdrop.mode === "artwork"
+              ? artworkUrl
+              : null;
+
+        applyBackdrop({
+          "--backdrop-image": source ? `url("${source}")` : "none",
+          "--backdrop-blur": `${backdrop.blur}px`,
+          "--backdrop-dim": String(backdrop.dim),
+          "--backdrop-saturate": String(backdrop.saturate),
         });
       }
 
       return {
+        layout: "rail",
         theme: DEFAULT_THEME,
+        backdrop: DEFAULT_BACKDROP,
+        presets: [],
         unlocked: [],
 
         locale: detectLocale(),
@@ -246,6 +499,9 @@ export const useSettingsStore = create<SettingsState>()(
 
         artworkAccent: null,
         artworkUrl: null,
+
+        setLayout: (layout) => set({ layout }),
+
 
         unlock(id) {
           if (get().unlocked.includes(id)) return false;
@@ -278,12 +534,29 @@ export const useSettingsStore = create<SettingsState>()(
         },
 
         resetTheme() {
-          set({ theme: { ...DEFAULT_THEME } });
+          set({ theme: { ...DEFAULT_THEME }, backdrop: { ...DEFAULT_BACKDROP } });
           sync();
+        },
+
+        setBackdrop(patch) {
+          set({ backdrop: { ...get().backdrop, ...patch } });
+          syncBackdrop();
+        },
+
+        setBackdropImage(dataUrl) {
+          if (dataUrl.length > MAX_BACKGROUND_BYTES) {
+            return "too-large";
+          }
+          set({
+            backdrop: { ...get().backdrop, image: dataUrl, mode: "image" },
+          });
+          syncBackdrop();
+          return null;
         },
 
         async setArtwork(url) {
           set({ artworkUrl: url });
+          syncBackdrop();
 
           if (!get().theme.accentFromArtwork) return;
           if (!url) {
@@ -291,16 +564,52 @@ export const useSettingsStore = create<SettingsState>()(
             sync();
             return;
           }
-          const band = await accentFromArtwork(url);
-          // A greyscale or unreadable cover leaves the previous band alone.
-          if (!band) return;
+          const accent = await accentFromArtwork(url);
+          // A greyscale or unreadable cover leaves the previous accent alone.
+          if (!accent) return;
           if (get().artworkUrl !== url) return; // superseded while sampling
-          set({ artworkAccent: band });
+          set({ artworkAccent: accent });
           sync();
         },
 
+        savePreset(name) {
+          const { theme, backdrop, layout, presets } = get();
+          const preset: Preset = {
+            id: `${Date.now().toString(36)}`,
+            name,
+            theme: { ...theme },
+            backdrop: { ...backdrop },
+            layout,
+          };
+          set({ presets: [...presets, preset] });
+        },
+
+        applyPreset(id) {
+          const preset =
+            get().presets.find((p) => p.id === id) ??
+            BUILTIN_PRESETS.find((p) => p.id === id);
+          if (!preset) return;
+          // Copied field by field, not referenced. A built-in is a module-level
+          // object shared by every window and every later `applyPreset`, so
+          // handing its `theme` straight to `set` would let the next settings
+          // change edit the preset itself.
+          set({
+            theme: { ...preset.theme, overrides: { ...preset.theme.overrides } },
+            backdrop: { ...preset.backdrop },
+            layout: preset.layout,
+          });
+          sync();
+        },
+
+        deletePreset(id) {
+          // Built-ins are not in `presets`, so this cannot reach them — the guard
+          // is in the UI, which does not offer the button.
+          set({ presets: get().presets.filter((p) => p.id !== id) });
+        },
+
         exportTheme(name = "My theme") {
-          const file: ThemeFile = { cloudifyTheme: 1, name, theme: get().theme };
+          const { theme, backdrop, layout } = get();
+          const file: ThemeFile = { cloudifyTheme: 1, name, theme, backdrop, layout };
           return JSON.stringify(file, null, 2);
         },
 
@@ -316,10 +625,10 @@ export const useSettingsStore = create<SettingsState>()(
 
           set({
             // Merge onto the defaults so a theme written by an older version
-            // (missing fields added since) still loads. A file from before Relief
-            // carries palettes and skins that no longer exist; those keys simply
-            // are not in `ThemeState` any more, so they land nowhere.
+            // (missing fields added since) still loads.
             theme: { ...DEFAULT_THEME, ...file.theme },
+            backdrop: { ...DEFAULT_BACKDROP, ...(file.backdrop ?? {}) },
+            layout: file.layout ?? get().layout,
           });
           sync();
           return null;
@@ -371,10 +680,14 @@ export const useSettingsStore = create<SettingsState>()(
     },
     {
       name: "cloudify.settings",
+      version: 7,
       merge: (persisted, current) => fillDefaults(current, persisted),
       // Runtime-only artwork state must not be written to disk.
       partialize: (s) => ({
+        layout: s.layout,
         theme: s.theme,
+        backdrop: s.backdrop,
+        presets: s.presets,
         unlocked: s.unlocked,
         locale: s.locale,
         autoplayNext: s.autoplayNext,
@@ -386,40 +699,103 @@ export const useSettingsStore = create<SettingsState>()(
         audio: s.audio,
         nit: s.nit,
       }),
-      version: 8,
       migrate: (persisted, from) => {
-        // Everything before v8 described a different appearance system: three
-        // axes, seventeen palettes, five skins, three layouts, saved presets and
-        // a backdrop. None of those fields exist now, and none of them can be
-        // translated — there is no palette that means "Obsidian" any more, so a
-        // migration cannot honour one.
+        // v1 stored a flat {theme, accent, ...}; too far from the three-axis
+        // model to salvage, so those users start clean.
+        if (from < 2) return {} as never;
+
+        // v3 removed the *first* Apple mode, which was a skin and a palette.
+        // Both ids are retired here and both retirements still stand, for
+        // different reasons: `skin: "apple"` resolves to nothing at all, while
+        // `palette: "apple"` resolves again — but to the current mode's iOS
+        // palette, which is not the colours that id used to mean. Landing on a
+        // default is the honest outcome either way.
         //
-        // So the appearance is reset and everything else is kept. That is the
-        // whole of it: `theme` goes back to the default, and `locale`, `volume`,
-        // `audio`, `nit` and the shortcuts are carried across untouched. Losing a
-        // hand-picked palette is a real loss and is stated plainly rather than
-        // faked; keeping someone's equaliser curve and their global hotkeys
-        // matters more than pretending their old skin survived.
-        //
-        // Hand-written `theme.overrides` are the one appearance field kept: they
-        // are the user's own CSS, they were always applied last, and a property
-        // Relief no longer defines simply does nothing.
-        if (from < 8) {
-          const old = persisted as { theme?: { overrides?: unknown } } | null;
-          const overrides =
-            old?.theme?.overrides && typeof old.theme.overrides === "object"
-              ? (old.theme.overrides as Record<string, string>)
-              : {};
-          return {
-            ...(persisted as object),
-            theme: { ...DEFAULT_THEME, overrides },
-            // Both belonged to the old system and have nowhere to land.
-            layout: undefined,
-            backdrop: undefined,
-            presets: undefined,
-          } as never;
+        // The `apple` flag this deletes is that old one, whose value said
+        // nothing about the mode that replaced it — the current one is a
+        // different feature that happens to reuse the name. It is added back
+        // by `fillDefaults`, off, which is the right place to start.
+        const state = persisted as {
+          theme?: Record<string, unknown>;
+          presets?: { theme?: Record<string, unknown> }[];
+        } | null;
+
+        function retire(theme: Record<string, unknown> | undefined): void {
+          if (!theme) return;
+          if (from < 3) {
+            if (theme.skin === "apple") theme.skin = "aurora";
+            if (theme.palette === "apple") theme.palette = "midnight";
+            for (const dead of [
+              "apple",
+              "appleVibrancy",
+              "appleRoundness",
+              "appleReduceTransparency",
+            ]) {
+              delete theme[dead];
+            }
+          }
+
+          // v5: Apple mode no longer has a transparency switch — the mode is
+          // always glass (`buildVars`). Someone who had turned it *off* has a
+          // saved `glass: false` underneath from before they entered the mode,
+          // and leaving that is right: it is what they chose for every other
+          // look, and it is no longer what Apple mode reads.
+          delete theme.appleTransparency;
+
+          // v6: `aurora` is gone. Anything still naming it resolves to nothing,
+          // and `buildVars` would fall back silently — which is the right
+          // behaviour for a stray id and the wrong one for a saved preset the
+          // user can see in a list, where the swatch would then disagree with
+          // what applying it does.
+          if (from < 6 && theme.skin === "aurora") theme.skin = "nit";
         }
-        return persisted as never;
+
+        retire(state?.theme);
+        // v4: the same cleanup for saved presets, which v3 forgot — applying
+        // one of those put an unresolvable id back into the live theme.
+        for (const preset of state?.presets ?? []) retire(preset?.theme);
+
+        // v6: the app has a look of its own, and every install moves onto it.
+        //
+        // This is a *choice*, and an unusual one — a migration that overwrites
+        // settings someone deliberately changed is normally indefensible. It is
+        // here because the previous default was not a design, it was an absence
+        // of one, and shipping the app's identity to new installs only would
+        // mean the people who have been using it longest are the only ones who
+        // never see it.
+        //
+        // What it does not touch: their saved presets, their hand-written
+        // overrides, their layout, their language, their audio chain and their
+        // volume. So the way back is one tap on a preset they already have, and
+        // nothing they authored is lost — only the three fields that say which
+        // of the app's own looks is on.
+        if (from < 6 && state?.theme) {
+          state.theme.palette = "signal";
+          state.theme.skin = "nit";
+          state.theme.apple = false;
+        }
+
+        // v7: one look, and everyone lands on it.
+        //
+        // The same argument as v6 and it has to be made again, because the
+        // thing v6 shipped turned out to be the problem rather than the fix:
+        // the app had five appearances and the drift between them is what read
+        // as unfinished. Ember on One replaces all of them, Apple mode
+        // included.
+        //
+        // Overwriting a look someone chose is only defensible when the choice
+        // is about to stop existing, which is exactly the case here. The same
+        // three fields as last time, and nothing else: presets, overrides,
+        // layout, language, audio and volume are all left alone, so a preset
+        // they saved is still one tap away.
+        if (from < 7 && state?.theme) {
+          state.theme.palette = "ember";
+          state.theme.skin = "one";
+          state.theme.apple = true;
+          state.theme.accentFromArtwork = true;
+        }
+
+        return state as never;
       },
     },
   ),
@@ -430,11 +806,24 @@ export const useSettingsStore = create<SettingsState>()(
   const s = useSettingsStore.getState();
   applyTheme({
     mode: s.theme.mode,
+    palette: s.theme.palette,
+    skin: s.theme.skin,
     accent: s.theme.accent,
+    density: s.theme.density,
     uiScale: s.theme.uiScale,
-    // Nothing is playing yet, so there is no cover to sample from.
-    artworkAccent: null,
+    glass: s.theme.glass,
+    apple: s.theme.apple,
+    monoArtwork: s.theme.monoArtwork,
+    printShift: s.theme.printShift,
     overrides: s.theme.overrides,
+  });
+  applyBackdrop({
+    "--backdrop-image": s.backdrop.image && s.backdrop.mode === "image"
+      ? `url("${s.backdrop.image}")`
+      : "none",
+    "--backdrop-blur": `${s.backdrop.blur}px`,
+    "--backdrop-dim": String(s.backdrop.dim),
+    "--backdrop-saturate": String(s.backdrop.saturate),
   });
 }
 

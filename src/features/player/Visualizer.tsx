@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { analyser, graphBlock } from "@/audio/engine";
-import { THEME_EVENT } from "@/theme/apply";
+import { THEME_EVENT } from "@/theme/particles";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";

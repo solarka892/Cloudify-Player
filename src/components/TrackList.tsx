@@ -13,24 +13,26 @@ import { ShareButton } from "./ShareButton";
 import { useRepostStore } from "@/stores/useRepostStore";
 import { useVirtual } from "@/hooks/useVirtual";
 import { useCompact } from "@/hooks/useCompact";
-import { bandForDuration } from "@/lib/band";
+import { useSettingsStore } from "@/stores/useSettingsStore";
+import type { Density } from "@/theme/apply";
 import { cn } from "@/lib/utils";
 import { useArtwork } from "@/hooks/useArtwork";
 import { t } from "@/i18n";
 import { ArtFallback } from "./ArtFallback";
 
 /**
- * Row height in px. One number, because the language states it.
+ * Row height in px, per density setting.
  *
- * 40, against 64 before, and the number is the redesign's whole argument about
- * density in one place: eighteen rows on a 900px sheet where eleven used to fit.
- * A map is dense — that is the point of one — and a list that shows eleven things
- * is a list you scroll rather than read.
- *
- * It has to be a number rather than CSS because the virtualiser positions rows by
- * it, and it must match the rendered height exactly or the scrollbar drifts.
+ * A number rather than CSS because the virtualiser positions rows by it, and it
+ * must match the rendered height exactly or the scrollbar drifts. This is what
+ * makes the density control mean something on the screen where it counts —
+ * `.stack` gaps alone were invisible.
  */
-const ROW_HEIGHT = 40;
+const ROW_HEIGHT: Record<Density, number> = {
+  compact: 52,
+  cozy: 64,
+  spacious: 76,
+};
 
 /** Format milliseconds as m:ss. */
 function formatDuration(ms: number): string {
@@ -41,25 +43,18 @@ function formatDuration(ms: number): string {
 }
 
 /**
- * A list of tracks: the densest thing on the sheet, and the element the language
- * is most visible in.
+ * Clickable list of tracks; a click plays the track (or toggles it). The whole
+ * list becomes the player queue, so next/prev and autoplay walk it.
  *
- * Every row carries a band from the ramp on its left edge, encoding how long the
- * track is (`lib/band.ts`), which the legend in the corner declares. That is the
- * signature: a library you can read as terrain rather than search line by line.
- *
- * What has not changed: a click plays the track and the whole list becomes the
- * queue, right-click opens the actions, and only the visible slice is in the DOM,
- * so a likes list of several thousand costs what one of thirty costs.
- *
- * What has: no rule under each row and no card around the list. Forty hairlines
- * draw a table nobody asked for, and forty covers are already structure enough.
- * Rows are separated by a fill under the pointer and by the bands.
+ * Only the visible slice is in the DOM — a likes list of several thousand
+ * costs the same as one of thirty. Right-clicking a row opens the same actions
+ * the player bar offers.
  */
 export function TrackList({ tracks }: { tracks: Track[] }) {
   const [menu, setMenu] = useState<MenuTarget | null>(null);
   const [addTo, setAddTo] = useState<Track | null>(null);
-  const { ref, start, end } = useVirtual(tracks.length, ROW_HEIGHT);
+  const rowHeight = ROW_HEIGHT[useSettingsStore((s) => s.theme.density)];
+  const { ref, start, end } = useVirtual(tracks.length, rowHeight);
   // One subscription for the whole list rather than one per row.
   const compact = useCompact();
 
@@ -69,17 +64,19 @@ export function TrackList({ tracks }: { tracks: Track[] }) {
     <>
       <div
         ref={ref}
-        className="relative"
+        className="list-card relative"
         // The full height is reserved up front so the scrollbar is honest.
-        style={{ height: tracks.length * ROW_HEIGHT }}
+        style={{ height: tracks.length * rowHeight }}
       >
         {visible.map((track, index) => (
           <TrackRow
             key={track.id}
             track={track}
             queue={tracks}
+            index={start + index + 1}
             compact={compact}
-            top={(start + index) * ROW_HEIGHT}
+            top={(start + index) * rowHeight}
+            height={rowHeight}
             onContextMenu={(e) => {
               e.preventDefault();
               setMenu({ track, x: e.clientX, y: e.clientY });
@@ -107,16 +104,21 @@ export function TrackList({ tracks }: { tracks: Track[] }) {
 const TrackRow = memo(function TrackRow({
   track,
   queue,
+  index,
   compact,
   top,
+  height,
   onContextMenu,
   onMenu,
 }: {
   track: Track;
   queue: Track[];
+  /** 1-based position in the list. Only one skin shows it; see `.row-index`. */
+  index: number;
   /** Touch-sized layout: no hover, so the row's actions need a real button. */
   compact: boolean;
   top: number;
+  height: number;
   onContextMenu: (e: React.MouseEvent) => void;
   onMenu: (x: number, y: number, align?: MenuTarget["align"]) => void;
 }) {
@@ -132,110 +134,139 @@ const TrackRow = memo(function TrackRow({
   // map the store already holds, so no request and no per-row effect.
   const marks = useNitStore((s) => s.rowMarks[track.id] ?? 0);
   const goneAt = useNitStore((s) => s.rowGone[track.id]);
-  const band = bandForDuration(track.duration);
 
   return (
     <div
       onContextMenu={onContextMenu}
-      style={{ top, height: ROW_HEIGHT }}
+      style={{ top, height }}
       className="absolute inset-x-0"
     >
       <button
         onClick={() => void playTrack(track, queue)}
+        // A hook rather than a style: Obsidian marks the playing row with a 2px
+        // bar at its left edge instead of a fill, and `bg-accent` is a utility a
+        // stylesheet cannot sensibly select on.
         data-current={isCurrent || undefined}
         className={cn(
-          "group flex h-[calc(100%-2px)] w-full items-center gap-3 rounded-[var(--radius)] pr-2 text-left transition-colors duration-[var(--t-state)] hover:bg-accent",
+          // `bg-row` stays on regardless: the current row's `bg-accent` only
+          // sets a background *colour*, so it wins over the row fill without
+          // taking the class — and the class is what a stylesheet has to grab
+          // hold of to restyle rows as a set.
+          // No rule under each row. Forty hairlines down a list draw a grid
+          // nobody asked for and make the covers look like cells in a table;
+          // the covers are already forty rectangles, and that is enough
+          // structure. What separates rows now is the space between them and
+          // the fill that appears under the pointer.
+          "group bg-row flex h-[calc(100%-0.25rem)] w-full items-center gap-3 rounded-[var(--radius-control)] px-2.5 text-left transition-colors duration-[var(--motion-fast)] hover:bg-accent",
           isCurrent && "bg-accent",
+          goneAt && "row-gone",
         )}
       >
-        {/* The band. First thing on the row and the only coloured thing on it,
-            because it is the only thing on it that is a measurement. */}
-        <span
-          className={cn("h-[calc(100%-8px)] shrink-0", `band band-${band}`)}
-          aria-hidden
-        />
+        {/* The row's number. Hidden in every skin but the one that wants a
+            column of readings down the left of the list. */}
+        <span className="row-index readout shrink-0">
+          {String(index).padStart(2, "0")}
+        </span>
 
-        <div className="relative h-8 w-8 shrink-0">
+        <div className="relative h-12 w-12 shrink-0">
           {art ? (
-            <span className="art-frame block h-8 w-8">
+            /* The frame is the duotone's box, and it holds the picture and
+               nothing else — the play button below is a sibling above it, or
+               the ink would recolour the glyph as well. */
+            <span className="art-frame block h-12 w-12 rounded-[var(--radius-control)]">
               <img
                 src={art}
                 alt=""
                 loading="lazy"
                 decoding="async"
-                width={32}
-                height={32}
-                className="artwork"
+                width={48}
+                height={48}
+                className="artwork h-12 w-12 object-cover"
               />
             </span>
           ) : (
-            <ArtFallback seed={track.id} className="h-8 w-8" />
+            <ArtFallback
+              seed={track.id}
+              className="h-12 w-12 rounded-[var(--radius-control)]"
+            />
           )}
-          <span className="art-overlay absolute inset-0 flex items-center justify-center rounded-[var(--radius)] opacity-0 transition-opacity duration-[var(--t-state)] group-hover:opacity-100">
+          <span className="absolute inset-0 flex items-center justify-center rounded-[var(--radius-control)] art-overlay opacity-0 transition-opacity duration-[var(--motion-fast)] group-hover:opacity-100">
             {isCurrent && isPlaying ? (
-              <Pause className="h-3.5 w-3.5" />
+              <Pause className="h-4 w-4" />
             ) : (
-              <Play className="h-3.5 w-3.5 translate-x-[1px]" />
+              <Play className="h-4 w-4 translate-x-[1px]" />
             )}
           </span>
         </div>
 
-        {/* Title and artist on one line, separated by the ink rather than by a
-            second row of type. At 40px there is one line, and a title is what
-            the row is for — the artist follows it in the lighter ink. */}
-        <span className="flex min-w-0 flex-1 items-baseline gap-2">
-          <span className={cn("truncate", isCurrent && "text-brand")}>
+        <div className="flex min-w-0 flex-col">
+          <span
+            className={cn(
+              "row-title type-body truncate",
+              isCurrent && "text-brand",
+            )}
+          >
             {track.title}
           </span>
           {track.artist && (
-            <span className="truncate text-xs text-muted-foreground">
+            <span className="type-label truncate text-muted-foreground">
               {track.artist}
             </span>
           )}
-        </span>
+        </div>
 
-        {/* What is true about this row beyond its name. Contours, never fills: a
-            filled tag would be a second landmark competing with the play mark. */}
+        {/* What is true about this row beyond its title. Outlines, never fills:
+            a filled tag would compete with the play button for the interface's
+            one accent. */}
         {(goneAt || marks > 0) && (
-          <span className="flex shrink-0 items-center gap-1.5">
-            {goneAt && <span className="chip">{t.gone.badge}</span>}
+          <div className="ml-auto flex shrink-0 items-center gap-1.5">
+            {goneAt && (
+              <span className="row-tag" data-tone="gone">
+                {t.gone.badge}
+              </span>
+            )}
             {marks > 0 && (
-              <span className="chip">
+              <span className="row-tag" data-tone="mark">
                 {t.marks.count.replace("{n}", String(marks))}
               </span>
             )}
-          </span>
+          </div>
         )}
 
-        <span className="flex shrink-0 items-center gap-1">
+        <div className={cn("flex shrink-0 items-center gap-1", !(goneAt || marks > 0) && "ml-auto")}>
           {isDownloaded && (
             <Download
               className="h-3.5 w-3.5 text-brand"
               aria-label={t.player.downloaded}
             />
           )}
-          {/* Always on screen: hiding the heart until hover meant an unliked
-              track showed nothing at all, so "not liked" and "no button here"
-              looked the same until the pointer moved. */}
+          {/* The heart leads the group and is always on screen: hiding it until
+              hover meant an unliked track showed nothing at all, so there was
+              no way to tell "not liked" from "no button here" without moving
+              the pointer over every row. Liked is the accent, not-liked is the
+              muted outline — the state is the colour, not the presence. */}
           <LikeButton track={track} />
 
           {compact ? (
             /* A touch screen has no hover, so hover-revealed actions are
-               unreachable on a phone. One overflow button opens the same menu
-               the right click does. */
+               unreachable on a phone — a row offered play and the heart and
+               nothing else. One overflow button opens the same menu the right
+               click does, which is the pattern every mobile list uses. */
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 const box = e.currentTarget.getBoundingClientRect();
+                // Beside the button, tops level.
                 onMenu(box.right, box.top, "beside");
               }}
               aria-label={t.track.more}
-              className="rounded-[var(--radius)] p-1 text-muted-foreground"
+              className="rounded-[var(--radius-control)] p-1.5 text-muted-foreground"
             >
               <MoreVertical className="h-4 w-4" />
             </button>
           ) : (
             <>
+              {/* The rest stay hover-only, which keeps a long list calm. */}
               <button
                 onClick={(e) => {
                   // The whole row is a play button; this must not trigger it.
@@ -245,28 +276,27 @@ const TrackRow = memo(function TrackRow({
                 }}
                 title={t.track.playNext}
                 aria-label={t.track.playNext}
-                className="rounded-[var(--radius)] p-1 text-muted-foreground opacity-0 transition-[opacity,color] duration-[var(--t-state)] hover:text-foreground group-hover:opacity-100"
+                className="rounded-[var(--radius-control)] p-1 text-muted-foreground opacity-0 transition-[opacity,color] duration-[var(--motion-fast)] hover:text-foreground group-hover:opacity-100"
               >
                 <ListPlus className="h-4 w-4" />
               </button>
               <RepostButton
                 track={track}
                 className={cn(
-                  "transition-opacity duration-[var(--t-state)] group-hover:opacity-100",
+                  "transition-opacity duration-[var(--motion-fast)] group-hover:opacity-100",
                   reposted ? "opacity-100" : "opacity-0",
                 )}
               />
               <ShareButton
                 url={track.permalink_url}
-                className="opacity-0 transition-opacity duration-[var(--t-state)] group-hover:opacity-100"
+                className="opacity-0 transition-opacity duration-[var(--motion-fast)] group-hover:opacity-100"
               />
             </>
           )}
-          {/* A reading, in the instrument face, tabular so the column lines up. */}
-          <span className="readout text-muted-foreground">
+          <span className="readout type-caption tabular-nums text-muted-foreground">
             {formatDuration(track.duration)}
           </span>
-        </span>
+        </div>
       </button>
     </div>
   );

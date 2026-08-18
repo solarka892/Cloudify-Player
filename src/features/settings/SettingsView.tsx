@@ -1,29 +1,62 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+  Check,
   ChevronDown,
+  Download,
+  Image as ImageIcon,
+  Monitor,
+  Moon,
+  RotateCcw,
+  Palette as PaletteIcon,
+  SlidersHorizontal,
+  Sun,
   Flag,
   HardDrive,
-  Palette as PaletteIcon,
-  RotateCcw,
-  SlidersHorizontal,
+  Trash2,
+  Upload,
   Volume2,
-  type LucideIcon,
+  Wallpaper,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { AudioSettings } from "./AudioSettings";
 import { NitSettings } from "./NitSettings";
 import { StorageSettings } from "./StorageSettings";
 
-import { ACCENTS, accentValue, type AccentId } from "@/theme/palettes";
+import {
+  PALETTES,
+  PALETTE_IDS,
+  HIDDEN_PALETTE_IDS,
+  ACCENTS,
+  ACCENT_IDS,
+} from "@/theme/palettes";
 
 import { useSettingsStore } from "@/stores/useSettingsStore";
-import { resolveDark, type ThemeMode } from "@/theme/apply";
+import { EFFECT_IDS } from "@/theme/particles";
+import type { Density, ThemeMode } from "@/theme/apply";
 import {
   LOCALES,
   LOCALE_NAMES,
   t,
   type Locale,
 } from "@/i18n";
+import {
+  AppleAppearance,
+  AppleBookmark,
+  AppleCheck,
+  AppleChevronDown,
+  AppleDisplay,
+  AppleDownload,
+  AppleList,
+  AppleMoon,
+  ApplePhoto,
+  ApplePlayCircle,
+  AppleReset,
+  AppleSpeaker,
+  AppleSun,
+  AppleTrash,
+  AppleUpload,
+  type Glyph,
+} from "@/features/apple/icons";
 import { scrollViewToTop } from "@/lib/scroll";
 import { cn } from "@/lib/utils";
 import { ViewHead } from "@/components/ViewHead";
@@ -32,31 +65,33 @@ import { ViewHead } from "@/components/ViewHead";
 /**
  * Everything the user can bend.
  *
- * Appearance used to be most of this screen: ready-made looks, a layout picker, a
- * skin picker, seventeen palettes, a wallpaper with blur and dim sliders, falling
- * particles, and saved presets to name combinations of all of it. That was the
- * old app looking back at the user out of its own settings — a screen offering
- * choices the app no longer makes.
- *
- * What is left is what was always a preference rather than an unanswered design
- * question: which printing the sheet is on, which band of the ramp accents it,
- * whether the playing cover picks that band, and how large it is all drawn.
+ * Appearance is presented along the same three axes the theme engine uses —
+ * layout, skin, palette — because they compose freely and pretending otherwise
+ * would just hide combinations from the user.
  */
 export function SettingsView() {
   const theme = useSettingsStore((s) => s.theme);
+  const backdrop = useSettingsStore((s) => s.backdrop);
+  const unlocked = useSettingsStore((s) => s.unlocked);
   const autoplayNext = useSettingsStore((s) => s.autoplayNext);
   const offlineOnly = useSettingsStore((s) => s.offlineOnly);
   const setOfflineOnly = useSettingsStore((s) => s.setOfflineOnly);
   const rememberVolume = useSettingsStore((s) => s.rememberVolume);
 
   const setTheme = useSettingsStore((s) => s.setTheme);
+  const setBackdrop = useSettingsStore((s) => s.setBackdrop);
+  const setBackdropImage = useSettingsStore((s) => s.setBackdropImage);
+  const setOverride = useSettingsStore((s) => s.setOverride);
   const setAutoplayNext = useSettingsStore((s) => s.setAutoplayNext);
   const locale = useSettingsStore((s) => s.locale);
   const setLocale = useSettingsStore((s) => s.setLocale);
   const setRememberVolume = useSettingsStore((s) => s.setRememberVolume);
 
+  const glyphs = useGlyphs();
 
   const [section, setSection] = useState<SectionId>("appearance");
+  const [notice, setNotice] = useState<string | null>(null);
+  const imageInput = useRef<HTMLInputElement>(null);
 
   // The section list is sticky, so a section can be picked from far down a long
   // one. The next section starts at its own top rather than at that offset.
@@ -64,6 +99,14 @@ export function SettingsView() {
     scrollViewToTop();
   }, [section]);
 
+  function pickImage(file: File) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const error = setBackdropImage(String(reader.result));
+      setNotice(error === "too-large" ? t.settings.imageTooLarge : null);
+    };
+    reader.readAsDataURL(file);
+  }
 
 
 
@@ -80,7 +123,7 @@ export function SettingsView() {
           {t.nav.settings}
         </div>
         {SECTIONS.map(({ id, label }) => {
-          const Icon = SECTION_ICONS[id];
+          const Icon = glyphs.sections[id];
           return (
             <button
               key={id}
@@ -122,8 +165,34 @@ export function SettingsView() {
           ))}
         </nav>
 
+      {notice && (
+        <p className="panel px-4 py-2 text-sm text-muted-foreground">{notice}</p>
+      )}
+
       <div key={section} className="stack-lg view-enter">
       {section === "appearance" && (<>
+      {/* ── Ready-made looks ───────────────────────────────────────────── */}
+      {/* First, and the only place in Settings where the three axes appear under
+          one name. They compose freely and the sections below keep saying so —
+          but a designed look *is* a particular combination, and asking someone to
+          find four switches before Obsidian looks like Obsidian would hide the
+          design behind the architecture. Applying one leaves every switch it
+          touched still switchable. */}
+      {/*
+        Four sections used to stand here: the built-in looks, the layout
+        picker, the skin picker and saved presets.
+
+        They are gone with the thing they configured. The app had five
+        appearances and three arrangements, and the drift between them is what
+        made it feel unfinished — so it has one of each now, and a setting that
+        offers a choice the app can no longer make is worse than no setting: it
+        is a promise the screen cannot keep. The user opened this page and saw
+        "Nit / Obsidian / Apple" still listed, which is exactly how a redesign
+        gets read as "nothing changed".
+
+        Colour stayed, below. That is a real choice and always was.
+      */}
+
       {/* ── Language ───────────────────────────────────────────────────── */}
       <Group title={t.settings.language} hint={t.settings.languageHint}>
         <Row label={t.settings.language}>
@@ -150,95 +219,220 @@ export function SettingsView() {
                 </option>
               ))}
             </select>
-            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <glyphs.chevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           </div>
         </Row>
       </Group>
 
-      {/* ── The sheet ──────────────────────────────────────────────────── */}
+      {/* ── Colour ─────────────────────────────────────────────────────── */}
       <Group
         title={t.settings.colour}
-        hint={t.settings.sheetHint}
         onReset={() =>
           setTheme({
             mode: "dark",
+            palette: "midnight",
             accent: null,
-            accentFromArtwork: true,
-            uiScale: 100,
+            accentFromArtwork: false,
             overrides: {},
           })
         }
       >
-        {/* Which stock the sheet is printed on. Not a palette picker: it is the
-            same sheet either way, and that is why there are two entries here
-            instead of seventeen. */}
-        <Row label={t.settings.printing}>
+        <Row label={t.settings.theme}>
           <Segmented
             value={theme.mode}
             onChange={(mode) => setTheme({ mode: mode as ThemeMode })}
             options={[
-              { id: "light", get label() {
-                return t.settings.themeLight;
-              } },
               { id: "dark", get label() {
-                return t.settings.themeDark;
-              } },
+    return t.settings.themeDark;
+  }, Icon: glyphs.dark },
+              { id: "light", get label() {
+    return t.settings.themeLight;
+  }, Icon: glyphs.light },
               { id: "system", get label() {
-                return t.settings.themeSystem;
-              } },
+    return t.settings.themeSystem;
+  }, Icon: glyphs.system },
             ]}
           />
         </Row>
 
-        {/* The accent, and the five bands are the whole choice. Anything outside
-            the ramp would be a colour with no entry in the legend. */}
+        <Row label={t.settings.palette}>
+          <div className="flex flex-wrap gap-2">
+            {[
+              ...PALETTE_IDS,
+              // Easter-egg palettes appear only once they've been found.
+              ...HIDDEN_PALETTE_IDS.filter((id) =>
+                unlocked.includes(`palette:${id}`),
+              ),
+            ].map((id) => {
+              const shade = PALETTES[id].dark;
+              return (
+                <button
+                  key={id}
+                  onClick={() => setTheme({ palette: id })}
+                  title={PALETTES[id].name}
+                  aria-label={PALETTES[id].name}
+                  className={cn(
+                    "h-8 w-8 overflow-hidden rounded-[var(--radius-round)] border-2 transition-transform duration-[var(--motion-fast)] hover:scale-110",
+                    theme.palette === id ? "border-foreground" : "border-transparent",
+                  )}
+                  // The accent is a *dot*, not a wedge.
+                  //
+                  // Any wedge of accent reads as "this theme is that colour",
+                  // which for the Apple palette meant a near-black theme
+                  // advertising itself as blue — and shrinking the wedge did not
+                  // help, because next to black the mid-grey wedge beside it is
+                  // invisible, so the swatch still looked half blue. A page-to-
+                  // card gradient with the accent as a spot says what the
+                  // interface is: a dark theme, tinted.
+                  style={{
+                    backgroundImage: [
+                      `radial-gradient(circle at 72% 72%, ${shade.brand} 0 30%, transparent 31%)`,
+                      `linear-gradient(140deg, ${shade.bg} 0%, ${shade.surface2} 100%)`,
+                    ].join(", "),
+                  }}
+                />
+              );
+            })}
+          </div>
+        </Row>
+
         <Row label={t.settings.accent} hint={t.settings.accentHint}>
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setTheme({ accent: null, accentFromArtwork: false })}
-              aria-pressed={!theme.accent && !theme.accentFromArtwork}
               className={cn(
-                "flex items-center gap-2 rounded-[var(--radius)] border-[1.5px] px-2 py-1 text-xs transition-colors duration-[var(--t-state)]",
+                "rounded-[var(--radius-control)] border px-2.5 py-1 text-xs transition-colors duration-[var(--motion-fast)]",
                 !theme.accent && !theme.accentFromArtwork
-                  ? "border-water text-foreground"
-                  : "border-contour text-muted-foreground hover:text-foreground",
+                  ? "border-brand bg-accent"
+                  : "border-border hover:bg-accent/60",
               )}
             >
-              <span
-                className="h-3 w-5 rounded-[1px] border-[1.5px] border-contour"
-                style={{ background: "var(--water)" }}
-              />
-              {t.settings.water}
+              {t.settings.accentAuto}
             </button>
-            {ACCENTS.map((id) => (
+            {ACCENT_IDS.map((id) => (
               <button
                 key={id}
                 onClick={() => setTheme({ accent: id, accentFromArtwork: false })}
-                aria-pressed={theme.accent === id && !theme.accentFromArtwork}
                 aria-label={id}
                 className={cn(
-                  "h-6 w-8 rounded-[var(--radius)] border-[1.5px] transition-colors duration-[var(--t-state)]",
+                  "h-7 w-7 rounded-[var(--radius-round)] border-2 transition-transform duration-[var(--motion-fast)] hover:scale-110",
                   theme.accent === id && !theme.accentFromArtwork
-                    ? "border-water"
-                    : "border-contour",
+                    ? "border-foreground"
+                    : "border-transparent",
                 )}
                 style={{
-                  background: accentValue(id as AccentId, resolveDark(theme.mode)),
+                  backgroundImage: `linear-gradient(135deg, ${ACCENTS[id].brand}, ${ACCENTS[id].brand2})`,
                 }}
               />
             ))}
           </div>
         </Row>
 
-        <Row label={t.settings.accentArtwork} hint={t.settings.accentArtworkHint}>
+        <Row label={t.settings.custom} hint={t.settings.customHint}>
+          <div className="flex flex-wrap items-center gap-2">
+            {COLOUR_SLOTS.map(({ token, label }) => (
+              <label
+                key={token}
+                title={label}
+                className="flex cursor-pointer items-center gap-1.5 rounded-[var(--radius-control)] border border-border px-1.5 py-1 text-[11px] text-muted-foreground hover:text-foreground"
+              >
+                <input
+                  type="color"
+                  // Colour inputs need a hex value; the token may hold oklch,
+                  // so the swatch starts neutral until the user picks.
+                  value={
+                    /^#/.test(theme.overrides[token] ?? "")
+                      ? (theme.overrides[token] as string)
+                      : "#808080"
+                  }
+                  onChange={(e) => setOverride(token, e.currentTarget.value)}
+                  className="h-4 w-4 cursor-pointer border-0 bg-transparent p-0"
+                />
+                {label}
+              </label>
+            ))}
+            {Object.keys(theme.overrides).length > 0 && (
+              <button
+                onClick={() => setTheme({ overrides: {} })}
+                className="rounded-[var(--radius-control)] border border-border px-2 py-1 text-[11px] text-muted-foreground hover:border-destructive hover:text-destructive"
+              >
+                {t.settings.customClear}
+              </button>
+            )}
+          </div>
+        </Row>
+
+        <Row
+          label={t.settings.accentArtwork}
+          hint={
+            // The switch keeps working under an achromatic palette, but what it
+            // does there is different enough to say so: the cover's brightness is
+            // kept and its hue is dropped. Silently applying a magenta accent to
+            // a monochrome interface would be the alternative.
+            PALETTES[theme.palette]?.achromatic
+              ? t.settings.monoArtworkHint
+              : t.settings.accentArtworkHint
+          }
+        >
           <Switch
             checked={theme.accentFromArtwork}
             onCheckedChange={(on) => setTheme({ accentFromArtwork: on })}
           />
         </Row>
 
-        {/* Scale, not density: the sheet is drawn larger, and nothing on it moves
-            relative to anything else. */}
+        <Row label={t.settings.monoArtwork} hint={t.settings.monoArtworkHint}>
+          <Switch
+            checked={theme.monoArtwork}
+            onCheckedChange={(on) => setTheme({ monoArtwork: on })}
+          />
+        </Row>
+      </Group>
+
+
+      {/* Locked on under Apple mode rather than hidden. A control that vanishes
+          when a look is chosen reads as the app having lost a feature; one that
+          is visibly held down says which look is holding it, and comes back the
+          moment that look does not. `buildVars` is the authority — this only
+          shows what it has already decided. */}
+      <Group
+        title={t.settings.glass}
+        hint={theme.apple ? t.settings.glassAppleLocked : t.settings.glassHint}
+        muted={theme.apple}
+      >
+        <Row
+          label={t.settings.glassOn}
+          hint={theme.apple ? t.settings.glassAppleLocked : t.settings.glassPerf}
+        >
+          <Switch
+            checked={theme.apple || theme.glass}
+            disabled={theme.apple}
+            onCheckedChange={(on) => setTheme({ glass: on })}
+          />
+        </Row>
+      </Group>
+
+      {/* ── Metrics ────────────────────────────────────────────────────── */}
+      <Group
+        title={t.settings.metrics}
+        onReset={() => setTheme({ density: "cozy", uiScale: 100 })}
+      >
+        <Row label={t.settings.density}>
+          <Segmented
+            value={theme.density}
+            onChange={(density) => setTheme({ density: density as Density })}
+            options={[
+              { id: "compact", get label() {
+    return t.settings.compact;
+  } },
+              { id: "cozy", get label() {
+    return t.settings.cozy;
+  } },
+              { id: "spacious", get label() {
+    return t.settings.spacious;
+  } },
+            ]}
+          />
+        </Row>
         <Row label={t.settings.uiScale}>
           <Slider
             value={theme.uiScale}
@@ -250,12 +444,146 @@ export function SettingsView() {
           />
         </Row>
       </Group>
+
       </>)}
 
       {section === "nit" && <NitSettings />}
 
       {section === "storage" && <StorageSettings />}
 
+      {section === "backdrop" && (<>
+      {/* ── Backdrop ───────────────────────────────────────────────────── */}
+      <Group
+        title={t.settings.backdrop}
+        hint={t.settings.backdropHint}
+        onReset={() =>
+          setBackdrop({ mode: "artwork", blur: 40, dim: 0.55, saturate: 1.2 })
+        }
+      >
+        <Row label={t.settings.backdropMode}>
+          <Segmented
+            value={backdrop.mode}
+            onChange={(mode) =>
+              setBackdrop({ mode: mode as typeof backdrop.mode })
+            }
+            options={[
+              { id: "none", get label() {
+    return t.settings.backdropNone;
+  } },
+              { id: "artwork", get label() {
+    return t.settings.backdropArtwork;
+  } },
+              { id: "image", get label() {
+    return t.settings.backdropImage;
+  } },
+            ]}
+          />
+        </Row>
+
+        <Row label={t.settings.backdropFile}>
+          <div className="flex items-center gap-2">
+            <input
+              ref={imageInput}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(e) => {
+                const file = e.currentTarget.files?.[0];
+                if (file) pickImage(file);
+                e.currentTarget.value = "";
+              }}
+            />
+            <button
+              onClick={() => imageInput.current?.click()}
+              className="flex items-center gap-2 rounded-[var(--radius-control)] border border-border bg-secondary px-3 py-1.5 text-sm transition-colors duration-[var(--motion-fast)] hover:bg-accent"
+            >
+              <glyphs.image className="h-4 w-4" />
+              {t.settings.choose}
+            </button>
+            {backdrop.image && (
+              <button
+                onClick={() => setBackdrop({ image: null, mode: "none" })}
+                aria-label={t.settings.remove}
+                className="rounded-[var(--radius-control)] p-1.5 text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground"
+              >
+                <glyphs.trash className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        </Row>
+
+        <Row label={t.settings.blur}>
+          <Slider
+            value={backdrop.blur}
+            min={0}
+            max={120}
+            step={2}
+            suffix="px"
+            onChange={(blur) => setBackdrop({ blur })}
+          />
+        </Row>
+        <Row label={t.settings.dim}>
+          <Slider
+            value={Math.round(backdrop.dim * 100)}
+            min={0}
+            max={100}
+            step={1}
+            suffix="%"
+            onChange={(v) => setBackdrop({ dim: v / 100 })}
+          />
+        </Row>
+        <Row label={t.settings.saturate}>
+          <Slider
+            value={Math.round(backdrop.saturate * 100)}
+            min={0}
+            max={200}
+            step={5}
+            suffix="%"
+            onChange={(v) => setBackdrop({ saturate: v / 100 })}
+          />
+        </Row>
+      </Group>
+
+      {/* ── Ambient effects ───────────────────────────────────────────────── */}
+      <Group
+        title={t.settings.effects}
+        hint={t.settings.effectsHint}
+        onReset={() => setBackdrop({ effect: "none", effectIntensity: 1 })}
+      >
+        <div className="flex flex-wrap gap-2 px-4 py-3">
+          {(["none", ...EFFECT_IDS] as const).map((id) => (
+            <button
+              key={id}
+              onClick={() => setBackdrop({ effect: id })}
+              className={cn(
+                "rounded-[var(--radius-control)] border px-3 py-1.5 text-sm transition-colors duration-[var(--motion-fast)]",
+                backdrop.effect === id
+                  ? "border-brand bg-accent text-foreground"
+                  : "border-border text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+              )}
+            >
+              {t.settings.effectNames[id]}
+            </button>
+          ))}
+        </div>
+
+        {backdrop.effect !== "none" && (
+          <Row label={t.settings.effectIntensity}>
+            <Slider
+              value={Math.round(backdrop.effectIntensity * 100)}
+              min={25}
+              max={200}
+              step={25}
+              suffix="%"
+              onChange={(v) => setBackdrop({ effectIntensity: v / 100 })}
+            />
+          </Row>
+        )}
+      </Group>
+
+      </>)}
+
+      
       {section === "playback" && (<>
       {/* ── Playback ───────────────────────────────────────────────────── */}
       <Group
@@ -307,30 +635,119 @@ export function SettingsView() {
 
 
 
-type SectionId = "appearance" | "nit" | "audio" | "playback" | "storage";
+/** The colour tokens worth exposing by hand; the rest derive from these. */
+const COLOUR_SLOTS: { token: string; label: string }[] = [
+  { token: "--background", get label() {
+    return t.settings.slotBackground;
+  } },
+  { token: "--card", get label() {
+    return t.settings.slotSurface;
+  } },
+  { token: "--foreground", get label() {
+    return t.settings.slotText;
+  } },
+  { token: "--muted-foreground", get label() {
+    return t.settings.slotMuted;
+  } },
+  { token: "--border", get label() {
+    return t.settings.slotBorder;
+  } },
+  { token: "--brand", get label() {
+    return t.settings.slotBrand;
+  } },
+  { token: "--brand-2", get label() {
+    return t.settings.slotBrand2;
+  } },
+];
+
+type SectionId =
+  | "appearance"
+  | "nit"
+  | "backdrop"
+  | "audio"
+  | "playback"
+  | "storage";
 
 /**
- * One glyph per section, from one set.
+ * Every glyph this page draws, in both idioms.
  *
- * There used to be two of these tables and a hook that chose between them, so
- * Apple mode could swap every icon on the page at once. One idiom, one set.
+ * Settings is where the icons are most visible and most obviously not Apple's —
+ * a gear, a palette, a ruler, a checkmark — so the page picks a set rather than
+ * importing one. Lucide's is the default; Apple mode swaps the lot at once,
+ * which is the only way that reads as deliberate instead of as a mix.
  */
-const SECTION_ICONS: Record<SectionId, LucideIcon> = {
-  appearance: PaletteIcon,
-  nit: Flag,
-  audio: Volume2,
-  playback: SlidersHorizontal,
-  storage: HardDrive,
+interface GlyphSet {
+  check: Glyph;
+  chevronDown: Glyph;
+  reset: Glyph;
+  trash: Glyph;
+  upload: Glyph;
+  download: Glyph;
+  image: Glyph;
+  dark: Glyph;
+  light: Glyph;
+  system: Glyph;
+  sections: Record<SectionId, Glyph>;
+}
+
+const LUCIDE_GLYPHS: GlyphSet = {
+  check: Check,
+  chevronDown: ChevronDown,
+  reset: RotateCcw,
+  trash: Trash2,
+  upload: Upload,
+  download: Download,
+  image: ImageIcon,
+  dark: Moon,
+  light: Sun,
+  system: Monitor,
+  sections: {
+    appearance: PaletteIcon,
+    nit: Flag,
+    backdrop: Wallpaper,
+    audio: Volume2,
+    playback: SlidersHorizontal,
+    storage: HardDrive,
+  },
 };
 
-/** The sections, in the order they are browsed. Labels are getters: `t` is a
-    live binding and a table built at import time freezes its language. */
+const APPLE_GLYPHS: GlyphSet = {
+  check: AppleCheck,
+  chevronDown: AppleChevronDown,
+  reset: AppleReset,
+  trash: AppleTrash,
+  upload: AppleUpload,
+  download: AppleDownload,
+  image: ApplePhoto,
+  dark: AppleMoon,
+  light: AppleSun,
+  system: AppleDisplay,
+  sections: {
+    appearance: AppleAppearance,
+    nit: AppleBookmark,
+    backdrop: ApplePhoto,
+    audio: AppleSpeaker,
+    playback: ApplePlayCircle,
+    storage: AppleList,
+  },
+};
+
+/** Which set is in force. A hook so nested building blocks can ask too. */
+function useGlyphs(): GlyphSet {
+  return useSettingsStore((s) => s.theme.apple)
+    ? APPLE_GLYPHS
+    : LUCIDE_GLYPHS;
+}
+
 const SECTIONS: { id: SectionId; label: string }[] = [
   { id: "appearance", get label() {
     return t.settings.secAppearance;
   } },
   { id: "nit", get label() {
     return t.settings.secNit;
+  } },
+  { id: "backdrop", get label() {
+    return t.settings.backdrop;
   } },
   { id: "audio", get label() {
     return t.audio.title;
@@ -365,6 +782,7 @@ function Group({
   muted?: boolean;
   children: React.ReactNode;
 }) {
+  const glyphs = useGlyphs();
   return (
     <section
       className={cn(
@@ -384,7 +802,7 @@ function Group({
             aria-label={t.settings.resetSection}
             className="mt-1 flex shrink-0 items-center gap-1.5 rounded-[var(--radius-control)] border border-border px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
           >
-            <RotateCcw className="h-3 w-3" />
+            <glyphs.reset className="h-3 w-3" />
             {t.settings.resetSection}
           </button>
         )}
@@ -423,7 +841,7 @@ function Segmented({
 }: {
   value: string;
   onChange: (id: string) => void;
-  options: { id: string; label: string; Icon?: LucideIcon }[];
+  options: { id: string; label: string; Icon?: Glyph }[];
 }) {
   return (
     // `data-segmented` is a styling hook: Apple mode turns this into a

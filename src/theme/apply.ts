@@ -1,45 +1,76 @@
-import { accentValue, SHEET, type AccentId } from "./palettes";
+import { PALETTES, ACCENTS, type PaletteId } from "./palettes";
+import { SKINS, type SkinId } from "./skins";
+import { THEME_EVENT } from "./particles";
+import { appleVars, blankAppleVars } from "./apple";
 import { foregroundFor } from "./contrast";
 import { shadeToVars, type ThemeVars } from "./tokens";
 
 /**
- * Composes the sheet and writes it to `<html>`.
+ * Composes the active theme and writes it to `<html>`.
  *
- * Everything visual funnels through here, in a fixed order — the sheet, then the
- * accent, then the scale, then the user's hand edits last so they always win.
- * Components never re-render for a theme change; the custom properties update
- * underneath them.
- *
- * ## What this function used to do
- *
- * It composed a palette against a skin, then patched the result for six switches:
- * glass on or off, Apple mode replacing the form outright, mono artwork, a print
- * offset, an accent pair, a density multiplier. Each patch existed because form
- * was negotiable, and the negotiation is what made the app feel like five apps.
- * Relief answers those questions in the language instead, so the function is
- * mostly gone — which is the point rather than a side effect.
+ * Everything visual funnels through this one function, in a fixed order —
+ * palette, then skin, then metrics, then backdrop, then the user's hand edits
+ * last so they always win. Components never re-render for a theme change; the
+ * custom properties update underneath them.
  */
 
 export type ThemeMode = "dark" | "light" | "system";
+export type Density = "compact" | "cozy" | "spacious";
 
 export interface ThemeInput {
   mode: ThemeMode;
-  /** A band of the relief ramp, or `null` for the water. */
-  accent: AccentId | null;
+  palette: PaletteId;
+  skin: SkinId;
+  /** Accent preset id, or `null` to keep the palette's own accent. */
+  accent: string | null;
+  density: Density;
   /** UI scale as a percentage, 80–140. */
   uiScale: number;
   /**
-   * An accent sampled from the playing cover, already snapped to a band of the
-   * ramp by `theme/artwork.ts`. Beats `accent` while something is playing.
-   *
-   * Kept because it was asked for by name, and made legal by the snapping: cover
-   * colour still reaches the interface, but only ever as a value the legend
-   * declares. A raw sampled colour would be a sixth band nobody can read.
+   * Frosted translucency. Off makes panels opaque and drops every
+   * `backdrop-filter`, which is the single biggest rendering cost on a
+   * software-composited desktop.
    */
-  artworkAccent: string | null;
+  glass: boolean;
+  /**
+   * Apple mode: a whole design language rather than a skin, so it replaces the
+   * skin, the shell and the player, and switches `styles/apple.css` on. Colour
+   * is not its to replace — it selects the `apple` palette on the way in and
+   * leaves the picker working. See `theme/apple.ts`.
+   */
+  apple: boolean;
+  /**
+   * Whether cover art is reduced to one tone.
+   *
+   * A setting rather than part of the skin because it is the one piece of
+   * Obsidian — and of Nit, where it is a two-ink duotone rather than greyscale —
+   * that people reasonably disagree with: the covers are the only place their
+   * library's own colour appears. Off simply blanks `--art-filter`; nothing else
+   * in the interface changes, the wallpaper included.
+   *
+   * One switch for both treatments rather than one each. What it means depends
+   * on the skin, because the skin is what says how art is treated; a second
+   * "duotone" switch beside it would be a second list that can disagree with the
+   * first about whether the covers are coloured.
+   */
+  monoArtwork: boolean;
+  /**
+   * Whether screen headings print twice, the second impression out of register.
+   *
+   * Same shape as `monoArtwork` and for the same reason: the skin decides how far
+   * (`--print-offset`), the setting decides whether. Inert under every skin that
+   * asks for no offset.
+   */
+  printShift: boolean;
   /** Per-property overrides authored by the user; applied last. */
   overrides: ThemeVars;
 }
+
+const DENSITY_SCALE: Record<Density, string> = {
+  compact: "0.85",
+  cozy: "1",
+  spacious: "1.18",
+};
 
 const prefersDark = () =>
   typeof window !== "undefined" &&
@@ -52,40 +83,77 @@ export function resolveDark(mode: ThemeMode): boolean {
 /** Build the full property map for a theme, without touching the DOM. */
 export function buildVars(input: ThemeInput): ThemeVars {
   const dark = resolveDark(input.mode);
+  const palette = PALETTES[input.palette] ?? PALETTES.signal;
+  const skin = SKINS[input.skin] ?? SKINS.nit;
+
+  // Apple mode owns *form*, not colour. Its own palette is an ordinary entry in
+  // `PALETTES` that the mode selects on the way in, so the picker keeps working
+  // while it is on and the shade below is whatever the user is actually on.
+  //
+  // The blank pass is what lets the mode be turned off again: `applyTheme`
+  // removes any property whose value is empty, so the `--ios-*` set does not
+  // linger on the document as dead weight.
   const vars: ThemeVars = {
-    ...shadeToVars(dark ? SHEET.dark : SHEET.light),
+    ...shadeToVars(dark ? palette.dark : palette.light),
+    ...(input.apple ? appleVars(dark) : { ...skin.vars, ...blankAppleVars() }),
+    "--density": DENSITY_SCALE[input.density],
     "--ui-scale": `${input.uiScale}%`,
   };
 
-  // The accent, in order of who gets the last word: the sheet's own water, then
-  // a band the user picked, then the cover of whatever is playing. Each is a
-  // value from the ramp, so none of them can introduce a colour the legend
-  // cannot name.
-  const chosen =
-    input.artworkAccent ??
-    (input.accent ? accentValue(input.accent, dark) : null);
-  if (chosen) vars["--brand"] = chosen;
+  // Apple mode is always glass, and the user cannot turn it off there. Liquid
+  // Glass *is* the design language — a version of it with `--blur: 0` is not a
+  // cheaper Apple mode, it is a different, worse interface wearing its
+  // proportions. Everywhere else the switch is the user's, and it stays the
+  // perf escape hatch it has always been.
+  const glass = input.apple || input.glass;
+  if (!glass) {
+    vars["--blur"] = "0px";
+    vars["--surface-alpha"] = "100%";
+  } else if (!input.apple) {
+    // Skins ship the opaque pair and describe their frost separately, so the
+    // setting has something to change on every one of them — Editorial and
+    // Studio previously baked opacity into the skin itself, which left the
+    // toggle switched on and visibly doing nothing.
+    vars["--blur"] = skin.glass.blur;
+    vars["--surface-alpha"] = skin.glass.alpha;
+  }
+
+  // Only ever *removes* a filter: a skin that does not ask for one has nothing
+  // here to turn off, so the switch is inert everywhere but Obsidian. A hand
+  // override of `--art-filter` still wins, like every other override.
+  if (!input.monoArtwork) {
+    vars["--art-filter"] = "none";
+    // The ink layer as well, or a cover would come back in colour with a
+    // duotone ramp still blended over it — which is neither treatment.
+    vars["--art-duotone-from"] = "transparent";
+    vars["--art-duotone-to"] = "transparent";
+  }
+  // Same shape, same inertness: a skin that never offsets its headings has
+  // nothing here to switch off.
+  if (!input.printShift) vars["--print-offset"] = "0px";
+
+  // An accent preset overrides only the two brand colours, so it composes with
+  // any palette instead of replacing it — Apple mode included. iOS ships one
+  // tint, but it is also a tint the user is allowed to change, and the mode
+  // supplies systemBlue as the default rather than as a rule: the palette below
+  // it is Apple's, so with nothing chosen that is what shows through.
+  const accent = input.accent ? ACCENTS[input.accent] : undefined;
+  if (accent) {
+    vars["--brand"] = accent.brand;
+    vars["--brand-2"] = accent.brand2;
+  }
 
   const composed = { ...vars, ...input.overrides };
 
-  // Last, because the accent can arrive from four places — the sheet, a band, a
-  // cover, or a hand-typed override — and only the final value says what ink
-  // stays legible on top of it. See `theme/contrast.ts`.
+  // Last, because the accent can come from four places — the palette, a preset,
+  // artwork, or a hand-typed override — and only the final value tells us what
+  // colour is legible on top of it. See `theme/contrast.ts`.
   composed["--brand-foreground"] = foregroundFor(
-    composed["--brand"] ?? SHEET.light.water,
+    composed["--brand"] ?? "rgb(255 255 255)",
   );
 
   return composed;
 }
-
-/**
- * Broadcast when the sheet changes.
- *
- * Anything that paints outside CSS — the visualiser's canvas — cannot observe a
- * custom property being rewritten, so it is told. Lives here rather than in the
- * deleted effects module because this is the only thing that changes a token.
- */
-export const THEME_EVENT = "cloudify:theme";
 
 /** Apply a theme to the document. */
 export function applyTheme(input: ThemeInput): void {
@@ -97,9 +165,30 @@ export function applyTheme(input: ThemeInput): void {
     else root.style.setProperty(name, value);
   }
 
-  // Which printing is on the screen. The stylesheet needs it for the handful of
-  // rules a custom property cannot carry, and Tailwind's `dark:` keys off it.
+  // Tailwind's `dark:` variant and any `.dark`-scoped CSS still key off this.
   root.classList.toggle("dark", resolveDark(input.mode));
+  // CSS gates every `backdrop-filter` on this attribute.
+  root.dataset.glass = input.apple || input.glass ? "1" : "0";
+  // The whole of `styles/apple.css` hangs off this one attribute, so the mode
+  // is a single flag on <html> rather than a class on every component.
+  root.dataset.apple = input.apple ? "1" : "0";
+  // For the handful of rules a skin cannot express as one custom property: the
+  // ambient light layer, the film of grain, the desaturated wallpaper. Written
+  // here rather than read by components, so no component branches on the skin —
+  // they set a class and CSS decides what it means. Apple mode replaces the skin
+  // outright, so while it is on that is what the attribute says.
+  root.dataset.skin = input.apple ? "apple" : input.skin;
 
+  // Anything painting outside CSS — the canvas effects — cannot see a custom
+  // property change, so it is announced.
   window.dispatchEvent(new Event(THEME_EVENT));
+}
+
+/** Write the backdrop layer (user image / artwork / gradient). */
+export function applyBackdrop(vars: ThemeVars): void {
+  const root = document.documentElement;
+  for (const [name, value] of Object.entries(vars)) {
+    if (value == null || value === "") root.style.removeProperty(name);
+    else root.style.setProperty(name, value);
+  }
 }
