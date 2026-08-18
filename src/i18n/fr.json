@@ -26,7 +26,8 @@
     "manualPlaceholder": "Collez le oauth_token",
     "manualSubmit": "Se connecter avec le jeton",
     "manualChecking": "Vérification du jeton…",
-    "sessionExpired": "Votre session a expiré — SoundCloud n’accepte plus le jeton enregistré. Reconnectez-vous."
+    "sessionExpired": "Votre session a expiré — SoundCloud n’accepte plus le jeton enregistré. Reconnectez-vous.",
+    "offline": "Pas de connexion à SoundCloud — vous restez connecté."
   },
   "home": {
     "morning": "Bonjour",

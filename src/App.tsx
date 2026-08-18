@@ -1,14 +1,18 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   scGetMe,
-  scIsLoggedIn,
   scLogin,
   scLoginBrowser,
-  scLogout,
   scSetToken,
   syncInsets,
-  type Me,
 } from "@/lib/tauri";
+import { useSession } from "@/hooks/useSession";
+import {
+  hasSession,
+  sessionUser,
+  useAuthStore,
+  type Session,
+} from "@/stores/useAuthStore";
 import { isAndroid } from "@/lib/platform";
 import { useNativeMediaSession } from "@/hooks/useNativeMediaSession";
 import { AppShell } from "@/components/shell/AppShell";
@@ -16,6 +20,7 @@ import { WindowControls } from "@/components/shell/WindowControls";
 import { ColumnShell } from "@/features/shell/ColumnShell";
 import { ApplePlayerBar } from "@/features/apple/ApplePlayerBar";
 import { Toaster } from "@/components/Toaster";
+import { NoNetworkNotice } from "@/components/NoNetworkNotice";
 import { ConfirmHost } from "@/components/ConfirmHost";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SkinLight } from "@/components/Ambient";
@@ -47,17 +52,15 @@ import { useSettingsStore } from "@/stores/useSettingsStore";
 import { SKINS } from "@/theme/skins";
 import { t } from "@/i18n";
 
-type AuthStatus =
-  | { state: "unknown" }
-  | { state: "loggedOut" }
-  /** Had a session; SoundCloud rejected it. Needs a fresh sign-in. */
-  | { state: "expired" }
-  | { state: "loggingIn" }
-  | { state: "loggedIn"; me: Me }
-  | { state: "error"; message: string };
-
 function App() {
-  const [auth, setAuth] = useState<AuthStatus>({ state: "unknown" });
+  // Asks Rust where we stand on mount, and again whenever the network returns.
+  // The states themselves, and why losing the network is not one of them that
+  // signs anybody out, are in `stores/useAuthStore`.
+  const session = useSession();
+  const beginLogin = useAuthStore((s) => s.beginLogin);
+  const signedIn = useAuthStore((s) => s.signedIn);
+  const loginFailed = useAuthStore((s) => s.loginFailed);
+  const signOut = useAuthStore((s) => s.signOut);
   const [showHelp, setShowHelp] = useState(false);
   const [showPalette, setShowPalette] = useState(false);
   // Navigation lives in the store now: notifications, profiles and pasted
@@ -144,73 +147,54 @@ function App() {
     void setArtwork(currentArt);
   }, [currentArt, setArtwork]);
 
-  const refreshMe = useCallback(async () => {
-    try {
-      if (!(await scIsLoggedIn())) {
-        setAuth({ state: "loggedOut" });
-        return;
-      }
-      setAuth({ state: "loggedIn", me: await scGetMe() });
-    } catch (e) {
-      // Rust clears a token SoundCloud has permanently rejected and reports
-      // this marker; that is the signed-out state, not a failure to explain.
-      if (String(e).includes("session-expired")) {
-        setAuth({ state: "expired" });
-        return;
-      }
-      setAuth({ state: "error", message: String(e) });
-    }
-  }, []);
-
-  useEffect(() => {
-    void refreshMe();
-  }, [refreshMe]);
-
   // The host cannot publish its safe-area insets until a document exists to
   // receive them, so the document asks. No-op off Android; see `syncInsets`.
   useEffect(() => {
     void syncInsets();
   }, []);
 
-  if (auth.state === "unknown") {
+  if (session.state === "unknown") {
     return <Chrome><div className="h-full w-full bg-background" /></Chrome>;
   }
 
-  if (auth.state !== "loggedIn") {
+  // `hasSession` rather than `state === "loggedIn"`, and that is the whole fix
+  // for task 23: offline with a remembered user is a session. There is a token
+  // in the keyring and a library cached on disk; the only thing missing is
+  // SoundCloud, and a sign-in screen would neither say so nor help.
+  const me = sessionUser(session);
+  if (!hasSession(session) || !me) {
     return (
       <Chrome>
       <LoginView
-        status={auth}
+        status={session}
         onLogin={async () => {
-          setAuth({ state: "loggingIn" });
+          beginLogin();
           try {
             if (isAndroid) {
               // A native webview inside the app, since there is no second
               // browser to read a cookie out of — and Rust reports only success,
               // so who we are is a separate question.
               await scLogin();
-              setAuth({ state: "loggedIn", me: await scGetMe() });
+              signedIn(await scGetMe());
             } else {
-              setAuth({ state: "loggedIn", me: await scLoginBrowser() });
+              signedIn(await scLoginBrowser());
             }
           } catch (e) {
-            setAuth({ state: "error", message: String(e) });
+            loginFailed(e);
           }
         }}
         onTokenLogin={async (token) => {
-          setAuth({ state: "loggingIn" });
+          beginLogin();
           try {
-            setAuth({ state: "loggedIn", me: await scSetToken(token) });
+            signedIn(await scSetToken(token));
           } catch (e) {
-            setAuth({ state: "error", message: String(e) });
+            loginFailed(e);
           }
         }}
       />
       </Chrome>
     );
   }
-
-  const { me } = auth;
   const Shell = apple ? ColumnShell : AppShell;
 
   return (
@@ -226,6 +210,9 @@ function App() {
     >
       <SocialSeed userId={me.id} />
       <Toaster />
+      {/* Only visible while SoundCloud is unreachable, and it says so instead of
+          the app pretending the session ended. */}
+      <NoNetworkNotice />
       <ConfirmHost />
       {showHelp && <HotkeyHelp onClose={() => setShowHelp(false)} />}
       {showPalette && <CommandPalette onClose={() => setShowPalette(false)} />}
@@ -255,10 +242,7 @@ function App() {
               <SettingsView />
               <div className="mt-8 border-t border-border pt-6">
                 <button
-                  onClick={async () => {
-                    await scLogout();
-                    setAuth({ state: "loggedOut" });
-                  }}
+                  onClick={() => void signOut()}
                   className="text-sm text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:text-destructive"
                 >
                   {t.auth.logout} · {me.username}
@@ -369,7 +353,7 @@ function LoginView({
   onLogin,
   onTokenLogin,
 }: {
-  status: AuthStatus;
+  status: Session;
   onLogin: () => void;
   onTokenLogin: (token: string) => void;
 }) {
@@ -451,7 +435,16 @@ function LoginView({
 
         {status.state === "error" && (
           <p className="text-center text-sm text-destructive">
-            {t.auth.loginFailed}: {status.message}
+            {t.auth.loginFailed}: {status.failure.message}
+          </p>
+        )}
+
+        {/* Reachable when there is a token but no user was ever remembered — a
+            first launch that never got through. Says what is wrong rather than
+            leaving the sign-in button looking broken. */}
+        {status.state === "offline" && (
+          <p className="text-center text-sm text-muted-foreground">
+            {t.auth.offline}
           </p>
         )}
       </div>

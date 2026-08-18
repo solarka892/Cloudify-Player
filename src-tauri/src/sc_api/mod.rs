@@ -110,16 +110,17 @@ mod error {
         #[error("SoundCloud's bot filter blocked this — open soundcloud.com in your browser, then try again")]
         BotFiltered,
 
-        /// A write SoundCloud refused for a reason that is not one of the
+        /// A request SoundCloud refused for a reason that is not one of the
         /// above, carrying what it actually said.
         ///
-        /// The write routes are the unverified half of this module (see the
-        /// file header in `actions.rs`), so when one of them is refused the
-        /// status and the body are the only evidence there is. Both are put in
-        /// front of the user rather than swallowed: an ugly message that names
-        /// the fault beats a tidy one that guesses at it, and this is how the
-        /// next report arrives with something in it.
-        #[error("soundcloud refused the write ({status}){detail}")]
+        /// Mostly the write routes, which are the unverified half of this module
+        /// (see the file header in `actions.rs`) — but `/me` reaches it too, for
+        /// the 403 that is neither the bot filter nor a dead token. Either way
+        /// the status and the body are the only evidence there is, and both are
+        /// put in front of the user rather than swallowed: an ugly message that
+        /// names the fault beats a tidy one that guesses at it, and this is how
+        /// the next report arrives with something in it.
+        #[error("soundcloud refused the request ({status}){detail}")]
         Refused { status: u16, detail: String },
 
         /// A pasted link that does not point at SoundCloud. Refused before the
@@ -130,6 +131,44 @@ mod error {
         /// A URL from an API payload pointed somewhere we do not fetch from.
         #[error("unexpected host in a soundcloud payload")]
         UnexpectedHost,
+    }
+
+    impl ScApiError {
+        /// A stable slug naming *what kind* of failure this is.
+        ///
+        /// The display strings above are diagnostics: they are English, they
+        /// carry SoundCloud's own words, and they change whenever a message is
+        /// improved. The frontend needs neither — it needs to decide which
+        /// sentence to show in the user's language and which button to offer,
+        /// and one of those decisions is load-bearing enough to have cost a bug:
+        /// telling "the network is down" apart from "your session is over"
+        /// decides whether the app keeps the user signed in or throws them out.
+        ///
+        /// Matching on the English text from TypeScript would tie every locale
+        /// to a wording nobody promised to keep. These slugs are the promise.
+        /// They are also deliberately coarser than the variants: `Regex` and a
+        /// missing TLS backend are both "the app is broken, not you", and the
+        /// user can act on neither.
+        pub fn kind(&self) -> &'static str {
+            match self {
+                // Split by what reqwest knows about its own failure. A refused
+                // connection, an unresolved name and a timeout are all "no
+                // network" and must never be read as a rejected session; a
+                // failure while decoding a reply that did arrive is not.
+                Self::Http(e) if e.is_connect() || e.is_timeout() || e.is_request() => "offline",
+                Self::Http(_) => "bad-reply",
+                Self::Client(_) | Self::Regex(_) => "broken",
+                Self::NoBundles | Self::ClientIdNotFound => "client-id",
+                Self::NoStream => "no-stream",
+                Self::StaleClientId => "rejected",
+                Self::RateLimited => "rate-limited",
+                Self::SessionExpired => "session-expired",
+                Self::BotFiltered => "bot-filtered",
+                Self::Refused { .. } => "refused",
+                Self::NotSoundCloudUrl => "not-soundcloud-url",
+                Self::UnexpectedHost => "unexpected-host",
+            }
+        }
     }
 
     impl Serialize for ScApiError {

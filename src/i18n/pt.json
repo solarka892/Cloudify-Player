@@ -26,7 +26,8 @@
     "manualPlaceholder": "Cole o oauth_token",
     "manualSubmit": "Entrar com o token",
     "manualChecking": "Validando o token…",
-    "sessionExpired": "Sua sessão expirou — o SoundCloud não aceita mais o token salvo. Entre novamente."
+    "sessionExpired": "Sua sessão expirou — o SoundCloud não aceita mais o token salvo. Entre novamente.",
+    "offline": "Sem conexão com o SoundCloud — você continua conectado."
   },
   "home": {
     "morning": "Bom dia",

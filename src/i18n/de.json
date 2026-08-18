@@ -26,7 +26,8 @@
     "manualPlaceholder": "oauth_token einfügen",
     "manualSubmit": "Mit Token anmelden",
     "manualChecking": "Token wird geprüft…",
-    "sessionExpired": "Die Sitzung ist abgelaufen — SoundCloud akzeptiert das gespeicherte Token nicht mehr. Bitte neu anmelden."
+    "sessionExpired": "Die Sitzung ist abgelaufen — SoundCloud akzeptiert das gespeicherte Token nicht mehr. Bitte neu anmelden.",
+    "offline": "Keine Verbindung zu SoundCloud — Sie sind weiterhin angemeldet."
   },
   "home": {
     "morning": "Guten Morgen",

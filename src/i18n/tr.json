@@ -26,7 +26,8 @@
     "manualPlaceholder": "oauth_token’ı yapıştır",
     "manualSubmit": "Token ile giriş yap",
     "manualChecking": "Token doğrulanıyor…",
-    "sessionExpired": "Oturumun sona erdi — SoundCloud kayıtlı token’ı artık kabul etmiyor. Yeniden giriş yap."
+    "sessionExpired": "Oturumun sona erdi — SoundCloud kayıtlı token’ı artık kabul etmiyor. Yeniden giriş yap.",
+    "offline": "SoundCloud'a bağlanılamıyor — oturumun açık kalıyor."
   },
   "home": {
     "morning": "Günaydın",

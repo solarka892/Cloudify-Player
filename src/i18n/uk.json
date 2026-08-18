@@ -27,7 +27,8 @@
     "manualPlaceholder": "Вставте oauth_token",
     "manualSubmit": "Увійти за токеном",
     "manualChecking": "Перевірка токена…",
-    "sessionExpired": "Сесія завершилася — SoundCloud більше не приймає збережений токен. Увійдіть знову."
+    "sessionExpired": "Сесія завершилася — SoundCloud більше не приймає збережений токен. Увійдіть знову.",
+    "offline": "Немає зв'язку з SoundCloud — ви залишаєтесь в акаунті."
   },
   "home": {
     "morning": "Доброго ранку",

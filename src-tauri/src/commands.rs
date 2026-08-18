@@ -7,7 +7,7 @@
 use std::time::{Duration, Instant};
 
 use crate::sc_api::models::Track;
-use crate::{auth, cache, sc_api};
+use crate::{auth, bridge, cache, sc_api};
 
 /// How long to wait for the user to finish logging in in their browser.
 #[cfg(not(target_os = "android"))]
@@ -73,20 +73,32 @@ pub fn sc_is_logged_in() -> Result<bool, auth::AuthError> {
 
 /// Fetch the logged-in user (`/me`). Errors if not logged in.
 ///
-/// A token SoundCloud still rejects after a `client_id` refresh is dead for
-/// good, so it is cleared rather than left to fail on every launch. The error
-/// string is a marker the frontend matches on to show the sign-in screen
-/// instead of an HTTP dump.
+/// ## What is allowed to end a session
+///
+/// Exactly two things: SoundCloud answering 401 to a token, or the user asking
+/// to sign out. Nothing else, and this command is where that rule is kept —
+/// deleting the token here is irreversible from the app's side, because the
+/// replacement has to be fetched through a browser round trip.
+///
+/// It used to delete on `StaleClientId`, which `sc_api::classify` raises for
+/// **both** 401 and 403. So a bot filter, a region block, or SoundCloud having a
+/// bad afternoon signed the user out and made them do that round trip. `me.rs`
+/// now reaches its own verdict and only says `SessionExpired` when the token was
+/// refused a second time with a key fetched seconds earlier.
+///
+/// A failure to *ask* — no network, a timeout, a rate limit — leaves the token
+/// exactly where it is. It says nothing about whether the token is good, and the
+/// frontend keeps the user signed in and shows the sheet it already has.
 #[tauri::command]
-pub async fn sc_get_me() -> Result<sc_api::me::Me, String> {
-    let token = require_token()?;
+pub async fn sc_get_me() -> Result<sc_api::me::Me, bridge::Failure> {
+    let token = require_token().map_err(|m| bridge::stated("not-logged-in", m))?;
     match sc_api::me::get(&token).await {
         Ok(me) => Ok(me),
-        Err(sc_api::ScApiError::StaleClientId) => {
+        Err(e @ sc_api::ScApiError::SessionExpired) => {
             let _ = auth::clear_token();
-            Err("session-expired".to_string())
+            Err(bridge::failure(e))
         }
-        Err(e) => Err(e.to_string()),
+        Err(e) => Err(bridge::failure(e)),
     }
 }
 

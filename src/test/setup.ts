@@ -32,6 +32,40 @@ if (!(internals in window)) {
   };
 }
 
+/**
+ * A working `localStorage`, because the one in scope is not jsdom's.
+ *
+ * Node ships its own `localStorage` global now, and it is present but unusable
+ * unless the process was started with `--localstorage-file` — which is where the
+ * "localStorage is not available" warning in the test output comes from. Being
+ * present is enough to win: `zustand/persist` resolves the bare global and gets
+ * Node's broken one rather than the working one on `window`, and any store with
+ * `persist` on it then throws `Cannot read properties of undefined` on its first
+ * write. Every persisted store in this app is affected, not only the one whose
+ * test found it.
+ *
+ * An in-memory map rather than a passthrough to `window.localStorage`: tests
+ * should not be able to leak state into each other through the disk.
+ */
+if (!globalThis.localStorage?.setItem) {
+  const cells = new Map<string, string>();
+  const shim: Storage = {
+    get length() {
+      return cells.size;
+    },
+    key: (i) => [...cells.keys()][i] ?? null,
+    getItem: (k) => cells.get(k) ?? null,
+    setItem: (k, v) => void cells.set(k, String(v)),
+    removeItem: (k) => void cells.delete(k),
+    clear: () => cells.clear(),
+  };
+  Object.defineProperty(globalThis, "localStorage", {
+    value: shim,
+    configurable: true,
+    writable: true,
+  });
+}
+
 if (!window.matchMedia) {
   window.matchMedia = (query: string): MediaQueryList =>
     ({

@@ -26,7 +26,8 @@
     "manualPlaceholder": "Incolla oauth_token",
     "manualSubmit": "Accedi con il token",
     "manualChecking": "Verifica del token…",
-    "sessionExpired": "La sessione è scaduta: SoundCloud non accetta più il token salvato. Accedi di nuovo."
+    "sessionExpired": "La sessione è scaduta: SoundCloud non accetta più il token salvato. Accedi di nuovo.",
+    "offline": "Nessuna connessione a SoundCloud: la sessione resta attiva."
   },
   "home": {
     "morning": "Buongiorno",
