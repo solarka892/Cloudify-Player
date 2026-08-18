@@ -9,6 +9,7 @@ import {
 import { useNavStore } from "@/stores/useNavStore";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { toast } from "@/stores/useToastStore";
+import { toastFailure } from "@/lib/notify";
 import { formatTime } from "@/features/player/time";
 import { artwork, cn } from "@/lib/utils";
 import { t } from "@/i18n";
@@ -69,7 +70,7 @@ export function Comments({
       toast(t.trackPage.commentDeleted, "success");
     } catch (e) {
       onChange(before);
-      toast(String(e), "error");
+      toastFailure(e);
     }
   }
 

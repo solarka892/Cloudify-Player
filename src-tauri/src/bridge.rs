@@ -71,6 +71,54 @@ impl Kind for crate::auth::AuthError {
     }
 }
 
+/// Whether a `reqwest` failure means the request never landed.
+///
+/// Three error types wrap `reqwest::Error` and all three have to answer this the
+/// same way, because the answer decides whether the app treats itself as offline.
+fn http_kind(e: &reqwest::Error) -> &'static str {
+    if e.is_connect() || e.is_timeout() || e.is_request() {
+        "offline"
+    } else {
+        "bad-reply"
+    }
+}
+
+impl Kind for crate::lyrics::LyricsError {
+    fn kind(&self) -> &'static str {
+        match self {
+            Self::Http(e) => http_kind(e),
+            Self::Client(_) => "broken",
+        }
+    }
+}
+
+impl Kind for crate::downloads::DownloadError {
+    fn kind(&self) -> &'static str {
+        match self {
+            Self::Http(e) => http_kind(e),
+            // A full disk and a read-only directory are the same story to the
+            // user: the file could not be written. The message says which.
+            Self::Io(_) => "disk",
+            Self::Db(_) => "local-library",
+            // Written the file, could not label it. Distinct because the
+            // download did in fact happen.
+            Self::Tag(_) => "tagging",
+            Self::ScApi(e) => Kind::kind(e),
+            Self::NoAppDir => "disk",
+            Self::NotDownloadable => "not-downloadable",
+        }
+    }
+}
+
+impl Kind for crate::cache::CacheError {
+    fn kind(&self) -> &'static str {
+        match self {
+            Self::Db(_) => "local-library",
+            Self::Io(_) | Self::NoAppDir => "disk",
+        }
+    }
+}
+
 /// Wrap an error for the trip across the bridge.
 ///
 /// Written to be used as `map_err(failure)` so the call sites stay as short as

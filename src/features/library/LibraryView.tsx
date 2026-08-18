@@ -21,6 +21,8 @@ import { DownloadAllButton } from "@/components/DownloadAllButton";
 import { useLibraryStore, type Section } from "@/stores/useLibraryStore";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
 import { usePlayerStore } from "@/stores/usePlayerStore";
+import { FailureNotice } from "@/components/FailureNotice";
+import { toastFailure } from "@/lib/notify";
 import { t } from "@/i18n";
 import { ViewHead } from "@/components/ViewHead";
 import { Strip, StripAction } from "@/components/Strip";
@@ -408,7 +410,7 @@ function RepostsSection({ userId }: { userId: number }) {
           tracks: [],
           playlists: [],
           status: "error",
-          error: String(e),
+          error: e,
         }),
       );
   }, [userId]);
@@ -551,7 +553,10 @@ function StationsSection({ userId }: { userId: number }) {
       if (first) await playTrack(first, tracks);
       else setError(t.library.noHistory);
     } catch (e) {
-      setError(String(e));
+      // A toast rather than the inline line: `error` here doubles as the
+      // "nothing to build a station from" message, and a failure deserves the
+      // full treatment — reason, and the diagnostic behind a toggle.
+      toastFailure(e);
     } finally {
       setBusy(null);
     }
@@ -844,9 +849,7 @@ function Shell({
       )}
 
       {section.status === "error" && (
-        <p className="text-sm text-destructive">
-          {t.library.error}: {section.error}
-        </p>
+        <FailureNotice error={section.error} onRetry={onRefresh} />
       )}
 
       {section.status === "ok" && count === 0 && (

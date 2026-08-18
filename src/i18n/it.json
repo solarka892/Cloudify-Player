@@ -29,6 +29,80 @@
     "sessionExpired": "La sessione è scaduta: SoundCloud non accetta più il token salvato. Accedi di nuovo.",
     "offline": "Nessuna connessione a SoundCloud: la sessione resta attiva."
   },
+  "errors": {
+    "detailsToggle": "Dettagli",
+    "retry": "Riprova",
+    "signIn": "Accedi di nuovo",
+    "openSoundCloud": "Apri soundcloud.com",
+    "offline": {
+      "what": "Nessuna connessione.",
+      "why": "L'app non è riuscita a raggiungere SoundCloud. Controlla la connessione."
+    },
+    "rateLimited": {
+      "what": "SoundCloud chiede di rallentare.",
+      "why": "Troppe richieste in poco tempo. Attendi un minuto."
+    },
+    "sessionExpired": {
+      "what": "La sessione è terminata.",
+      "why": "SoundCloud non accetta più l'accesso salvato."
+    },
+    "notLoggedIn": {
+      "what": "Per questo serve l'accesso.",
+      "why": ""
+    },
+    "botFiltered": {
+      "what": "La protezione anti-bot di SoundCloud ha bloccato la richiesta.",
+      "why": "Vuole la prova che sei una persona. Apri soundcloud.com nel browser e riprova."
+    },
+    "noStream": {
+      "what": "Questo brano non parte.",
+      "why": "SoundCloud non fornisce un file audio per esso."
+    },
+    "notDownloadable": {
+      "what": "Questo brano non si può scaricare.",
+      "why": "SoundCloud lo offre solo in streaming."
+    },
+    "disk": {
+      "what": "Non è stato possibile scrivere il file.",
+      "why": "Verifica lo spazio libero e i permessi di scrittura della cartella."
+    },
+    "badLink": {
+      "what": "Questo non è un link di SoundCloud.",
+      "why": ""
+    },
+    "refused": {
+      "what": "SoundCloud ha rifiutato la richiesta.",
+      "why": "Di solito è temporaneo: riprovare spesso funziona."
+    },
+    "emptyInput": {
+      "what": "Niente da inviare.",
+      "why": ""
+    },
+    "loginTimeout": {
+      "what": "L'accesso non è stato completato.",
+      "why": "L'app ha atteso tre minuti senza vedere alcun accesso."
+    },
+    "unsupported": {
+      "what": "Non disponibile su questo dispositivo.",
+      "why": ""
+    },
+    "tagging": {
+      "what": "Scaricato, ma senza i dati dentro il file.",
+      "why": "L'audio è a posto; titolo e copertina non sono stati scritti nel file."
+    },
+    "localLibrary": {
+      "what": "La libreria locale non ha risposto.",
+      "why": "Riavviare l'app di solito risolve."
+    },
+    "keyring": {
+      "what": "L'archivio password del sistema non è raggiungibile.",
+      "why": "È lì che viene conservato il tuo accesso."
+    },
+    "unknown": {
+      "what": "Qualcosa è andato storto.",
+      "why": ""
+    }
+  },
   "home": {
     "morning": "Buongiorno",
     "day": "Buon pomeriggio",

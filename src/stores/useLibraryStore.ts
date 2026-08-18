@@ -38,7 +38,14 @@ type Status = "idle" | "loading" | "ok" | "error";
 export interface Section<T> {
   items: T[];
   status: Status;
-  error: string | null;
+  /**
+   * The failure that stopped this section loading, or `null`.
+   *
+   * Kept as it arrived rather than as `String(e)`: the kind travels inside it
+   * (`lib/failure.ts`), and it is the kind that decides which sentence the
+   * reader gets and whether "try again" is worth offering.
+   */
+  error: unknown;
 }
 
 const emptySection = <T>(): Section<T> => ({
@@ -152,7 +159,7 @@ export const useLibraryStore = create<LibraryState>()(
       const failed = Object.fromEntries(
         keys.map((k) => [
           k,
-          { items: [], status: "error", error: String(e) } as Section<unknown>,
+          { items: [], status: "error", error: e } as Section<unknown>,
         ]),
       );
       set(failed as Partial<LibraryState>);

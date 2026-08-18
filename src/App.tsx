@@ -21,6 +21,7 @@ import { ColumnShell } from "@/features/shell/ColumnShell";
 import { ApplePlayerBar } from "@/features/apple/ApplePlayerBar";
 import { Toaster } from "@/components/Toaster";
 import { NoNetworkNotice } from "@/components/NoNetworkNotice";
+import { FailureNotice } from "@/components/FailureNotice";
 import { ConfirmHost } from "@/components/ConfirmHost";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SkinLight } from "@/components/Ambient";
@@ -433,11 +434,11 @@ function LoginView({
           </p>
         )}
 
-        {status.state === "error" && (
-          <p className="text-center text-sm text-destructive">
-            {t.auth.loginFailed}: {status.failure.message}
-          </p>
-        )}
+        {/* The sign-in screen is the one place a failure is certain to be read,
+            so it gets the full explanation rather than the diagnostic it used to
+            print. `cancelled` — the user closing the window themselves — is
+            silent, and `FailureNotice` knows that. */}
+        {status.state === "error" && <FailureNotice error={status.failure} />}
 
         {/* Reachable when there is a token but no user was ever remembered — a
             first launch that never got through. Says what is wrong rather than

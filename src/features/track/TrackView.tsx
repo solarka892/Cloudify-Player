@@ -40,6 +40,7 @@ import { useDownloadsStore } from "@/stores/useDownloadsStore";
 import { toast } from "@/stores/useToastStore";
 import { openExternal } from "@/lib/open";
 import { artwork, cn } from "@/lib/utils";
+import { FailureNotice } from "@/components/FailureNotice";
 import { t } from "@/i18n";
 import { ArtFallback } from "@/components/ArtFallback";
 
@@ -84,7 +85,10 @@ type Side =
  */
 export function TrackView({ trackId, meId }: { trackId: number; meId: number }) {
   const [detail, setDetail] = useState<TrackDetail | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  /** The failure that stopped the page loading, kept as it arrived. */
+  const [error, setError] = useState<unknown>(null);
+  /** Bumped by "try again"; part of the fetch's dependencies. */
+  const [attempt, setAttempt] = useState(0);
   const [wave, setWave] = useState<WaveformData | null>(null);
   const [side, setSide] = useState<Side>("comments");
   const [comments, setComments] = useState<Comment[]>([]);
@@ -130,12 +134,13 @@ export function TrackView({ trackId, meId }: { trackId: number; meId: number }) 
             .catch(() => undefined);
         }
       })
-      .catch((e) => !cancelled && setError(String(e)));
+      .catch((e) => !cancelled && setError(e));
 
     return () => {
       cancelled = true;
     };
-  }, [trackId]);
+    // `attempt` is what makes "try again" mean anything.
+  }, [trackId, attempt]);
 
   // Comments load with the page: they are the reason the waveform has markers,
   // so deferring them to a tab click would leave the bar looking empty.
@@ -196,9 +201,13 @@ export function TrackView({ trackId, meId }: { trackId: number; meId: number }) 
     return (
       <div className="stack">
         <BackButton onClick={back} />
-        <p className="text-sm text-destructive">
-          {t.trackPage.error}: {error}
-        </p>
+        <FailureNotice
+          error={error}
+          onRetry={() => {
+            setError(null);
+            setAttempt((n) => n + 1);
+          }}
+        />
       </div>
     );
   }

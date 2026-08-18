@@ -11,12 +11,14 @@ import { TrackView } from "@/features/track/TrackView";
 import { useLibraryStore } from "@/stores/useLibraryStore";
 import { useNavStore, type Detail } from "@/stores/useNavStore";
 import { usePlayerStore } from "@/stores/usePlayerStore";
+import { FailureNotice } from "@/components/FailureNotice";
 import { t } from "@/i18n";
 
 type State =
   | { status: "loading" }
   | { status: "ok"; tracks: Track[] }
-  | { status: "error"; message: string };
+  /** The failure itself, not a string: `FailureNotice` needs the kind. */
+  | { status: "error"; error: unknown };
 
 /** Whatever was drilled into: a playlist, a user, or a track. */
 export function DetailView({ detail, meId }: { detail: Detail; meId: number }) {
@@ -46,6 +48,8 @@ function UserDetail({ detail }: { detail: Detail }) {
 
 function PlaylistDetail({ detail }: { detail: Detail }) {
   const [state, setState] = useState<State>({ status: "loading" });
+  /** Bumped by "try again"; part of the fetch's dependencies. */
+  const [attempt, setAttempt] = useState(0);
   const [editing, setEditing] = useState(false);
   const back = useNavStore((s) => s.back);
   const playTrack = usePlayerStore((s) => s.playTrack);
@@ -59,13 +63,13 @@ function PlaylistDetail({ detail }: { detail: Detail }) {
     setState({ status: "loading" });
     scGetPlaylistTracks(detail.id)
       .then((tracks) => !cancelled && setState({ status: "ok", tracks }))
-      .catch(
-        (e) => !cancelled && setState({ status: "error", message: String(e) }),
-      );
+      .catch((e) => !cancelled && setState({ status: "error", error: e }));
     return () => {
       cancelled = true;
     };
-  }, [detail.kind, detail.id]);
+    // `attempt` is what makes "try again" mean anything: bumping it re-runs the
+    // fetch rather than leaving a button that only looks like it does something.
+  }, [detail.kind, detail.id, attempt]);
 
   const tracks = state.status === "ok" ? state.tracks : [];
 
@@ -137,9 +141,10 @@ function PlaylistDetail({ detail }: { detail: Detail }) {
       )}
 
       {state.status === "error" && (
-        <p className="text-sm text-red-400">
-          {t.detail.error}: {state.message}
-        </p>
+        <FailureNotice
+          error={state.error}
+          onRetry={() => setAttempt((n) => n + 1)}
+        />
       )}
 
       {state.status === "ok" && tracks.length === 0 && (

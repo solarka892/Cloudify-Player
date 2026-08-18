@@ -18,6 +18,7 @@ import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useCompact } from "@/hooks/useCompact";
 import { confirmAction } from "@/stores/useConfirmStore";
 import { toast } from "@/stores/useToastStore";
+import { toastFailure } from "@/lib/notify";
 import { artwork, cn } from "@/lib/utils";
 import { t } from "@/i18n";
 import { ViewHead } from "@/components/ViewHead";
@@ -179,7 +180,7 @@ export function MessagesView() {
                         void markRead(
                           conversation.user.id,
                           conversation.unread,
-                        ).catch((e) => toast(String(e), "error"))
+                        ).catch((e) => toastFailure(e))
                       }
                       title={
                         conversation.unread
@@ -205,7 +206,7 @@ export function MessagesView() {
                           }
                           return remove(conversation.user.id)
                             .then(() => toast(t.messages.deleted, "success"))
-                            .catch((e) => toast(String(e), "error"));
+                            .catch((e) => toastFailure(e));
                         });
                       }}
                       title={t.messages.delete}

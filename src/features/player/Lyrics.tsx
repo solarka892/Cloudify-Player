@@ -3,6 +3,8 @@ import { getLyrics, type Lyrics as LyricsData, type Track } from "@/lib/tauri";
 import { el } from "@/audio/engine";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
+import { explain } from "@/lib/errorText";
+import { asFailure } from "@/lib/failure";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 
@@ -61,7 +63,8 @@ type State =
    * "the lyrics service is unreachable from here": both said "no lyrics, normal
    * for remixes", so a total failure read as a catalogue full of instrumentals.
    */
-  | { status: "error"; message: string };
+  /** The failure itself, not a string: the reason is looked up from it. */
+  | { status: "error"; error: unknown };
 
 /**
  * How far ahead of the clock a line lights up, in seconds.
@@ -139,7 +142,7 @@ export function LyricsPanel({
       })
       .catch((error) => {
         if (cancelled) return;
-        setState({ status: "error", message: String(error) });
+        setState({ status: "error", error });
       });
     return () => {
       cancelled = true;
@@ -186,7 +189,10 @@ export function LyricsPanel({
     return (
       <Empty>
         <p>{t.lyrics.failed}</p>
-        <p className="max-w-sm break-words text-xs opacity-70">{state.message}</p>
+        {/* `t.lyrics.failed` above already says lyrics did not arrive, so
+            this line is the reason rather than a second announcement — and
+            a reason in the reader's language, not a status code. */}
+        <p className="max-w-sm break-words text-xs opacity-70">{lyricsReason(state.error)}</p>
         <button
           onClick={() => setAttempt((n) => n + 1)}
           className="rounded-[var(--radius-control)] border border-border px-3 py-1 text-xs transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground"
@@ -294,4 +300,15 @@ function Empty({ children }: { children: React.ReactNode }) {
       {children}
     </div>
   );
+}
+
+/**
+ * Why the lyrics did not arrive, in one line.
+ *
+ * `why` when there is one, `what` otherwise: every failure has a `what`, and a
+ * blank second line under "could not get the lyrics" reads as a bug.
+ */
+function lyricsReason(error: unknown): string {
+  const explained = explain(asFailure(error));
+  return explained.why ?? explained.what;
 }
