@@ -22,11 +22,92 @@
     "loginFailed": "Anmeldung fehlgeschlagen",
     "followers": "Follower",
     "manualToggle": "Mit Token anmelden",
+    "loginInApp": "Im Programm anmelden",
+    "loginInAppHint": "Öffnet ein SoundCloud-Fenster in cloudify. Braucht keinen bestimmten Browser; eventuell ist einmal ein Captcha zu lösen.",
     "manualHint": "Auf soundcloud.com anmelden → F12 → Speicher (Firefox) bzw. Application (Chrome) → Cookies → soundcloud.com → Wert von oauth_token kopieren",
     "manualPlaceholder": "oauth_token einfügen",
     "manualSubmit": "Mit Token anmelden",
     "manualChecking": "Token wird geprüft…",
-    "sessionExpired": "Die Sitzung ist abgelaufen — SoundCloud akzeptiert das gespeicherte Token nicht mehr. Bitte neu anmelden."
+    "sessionExpired": "Die Sitzung ist abgelaufen — SoundCloud akzeptiert das gespeicherte Token nicht mehr. Bitte neu anmelden.",
+    "offline": "Keine Verbindung zu SoundCloud — Sie sind weiterhin angemeldet."
+  },
+  "errors": {
+    "detailsToggle": "Details",
+    "retry": "Erneut versuchen",
+    "signIn": "Neu anmelden",
+    "openSoundCloud": "soundcloud.com öffnen",
+    "offline": {
+      "what": "Keine Verbindung.",
+      "why": "Die App konnte SoundCloud nicht erreichen. Prüfen Sie Ihr Internet."
+    },
+    "noReadableBrowser": {
+      "what": "Kein Browser hier kann die Anmeldung übergeben.",
+      "why": "Melden Sie sich stattdessen im Programm an oder fügen Sie ein Token ein."
+    },
+    "rateLimited": {
+      "what": "SoundCloud bittet um eine Pause.",
+      "why": "Zu viele Anfragen in kurzer Zeit. Warten Sie eine Minute."
+    },
+    "sessionExpired": {
+      "what": "Die Sitzung ist beendet.",
+      "why": "SoundCloud akzeptiert die gespeicherte Anmeldung nicht mehr."
+    },
+    "notLoggedIn": {
+      "what": "Dafür ist eine Anmeldung nötig.",
+      "why": ""
+    },
+    "botFiltered": {
+      "what": "Der Bot-Schutz von SoundCloud hat das blockiert.",
+      "why": "Er will einen Nachweis, dass Sie ein Mensch sind. Öffnen Sie soundcloud.com im Browser und versuchen Sie es erneut."
+    },
+    "noStream": {
+      "what": "Dieser Titel lässt sich nicht abspielen.",
+      "why": "SoundCloud gibt keine Audiodatei dafür heraus."
+    },
+    "notDownloadable": {
+      "what": "Dieser Titel lässt sich nicht herunterladen.",
+      "why": "SoundCloud bietet ihn nur als Stream an."
+    },
+    "disk": {
+      "what": "Die Datei konnte nicht geschrieben werden.",
+      "why": "Prüfen Sie freien Speicherplatz und die Schreibrechte des Ordners."
+    },
+    "badLink": {
+      "what": "Das ist kein SoundCloud-Link.",
+      "why": ""
+    },
+    "refused": {
+      "what": "SoundCloud hat die Anfrage abgelehnt.",
+      "why": "Meist nur vorübergehend — ein neuer Versuch hilft oft."
+    },
+    "emptyInput": {
+      "what": "Es gibt nichts zu senden.",
+      "why": ""
+    },
+    "loginTimeout": {
+      "what": "Die Anmeldung wurde nicht abgeschlossen.",
+      "why": "Die App hat drei Minuten gewartet und keine Anmeldung gesehen."
+    },
+    "unsupported": {
+      "what": "Auf diesem Gerät nicht verfügbar.",
+      "why": ""
+    },
+    "tagging": {
+      "what": "Heruntergeladen, aber ohne Titelangaben in der Datei.",
+      "why": "Der Ton ist in Ordnung; Titel und Cover ließen sich nicht in die Datei schreiben."
+    },
+    "localLibrary": {
+      "what": "Die lokale Bibliothek hat nicht geantwortet.",
+      "why": "Ein Neustart der App hilft meist."
+    },
+    "keyring": {
+      "what": "Der Passwortspeicher des Systems ist nicht erreichbar.",
+      "why": "Dort liegt Ihre Anmeldung."
+    },
+    "unknown": {
+      "what": "Etwas ist schiefgelaufen.",
+      "why": ""
+    }
   },
   "home": {
     "morning": "Guten Morgen",

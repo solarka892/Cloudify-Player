@@ -14,6 +14,7 @@
 #[cfg(target_os = "android")]
 mod android;
 mod auth;
+mod bridge;
 mod cache;
 mod commands;
 mod downloads;

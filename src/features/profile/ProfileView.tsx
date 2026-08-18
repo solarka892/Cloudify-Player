@@ -33,6 +33,7 @@ import { useLibraryStore } from "@/stores/useLibraryStore";
 import { useNavStore } from "@/stores/useNavStore";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { toast } from "@/stores/useToastStore";
+import { toastFailure } from "@/lib/notify";
 import { t } from "@/i18n";
 import { openExternal } from "@/lib/open";
 import { artwork, cn } from "@/lib/utils";
@@ -125,7 +126,7 @@ export function ProfileView({
       const first = tracks[0];
       if (first) await playTrack(first, tracks);
     } catch (e) {
-      toast(String(e), "error");
+      toastFailure(e);
     } finally {
       setStationBusy(false);
     }

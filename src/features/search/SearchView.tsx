@@ -19,7 +19,8 @@ import { TrackList } from "@/components/TrackList";
 import { PlaylistList } from "@/components/PlaylistList";
 import { UserList } from "@/components/UserList";
 import { useNavStore } from "@/stores/useNavStore";
-import { toast } from "@/stores/useToastStore";
+import { toastFailure } from "@/lib/notify";
+import { FailureNotice } from "@/components/FailureNotice";
 import { t } from "@/i18n";
 import { ViewHead } from "@/components/ViewHead";
 import { cn } from "@/lib/utils";
@@ -43,7 +44,8 @@ type State =
       total: number | null;
       loadingMore: boolean;
     }
-  | { status: "error"; message: string };
+  /** The failure itself, not a string: `FailureNotice` needs the kind. */
+  | { status: "error"; error: unknown };
 
 /** Wait this long after the last keystroke before hitting the API. */
 const DEBOUNCE_MS = 350;
@@ -140,6 +142,8 @@ export function SearchView() {
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState<Kind>("all");
   const [state, setState] = useState<State>({ status: "idle" });
+  /** Bumped by "try again"; part of the search's dependencies. */
+  const [attempt, setAttempt] = useState(0);
   const [filters, setFilters] = useState<SearchFilters>({});
   const [showFilters, setShowFilters] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -206,7 +210,9 @@ export function SearchView() {
         else openPlaylist(resolved);
         setQuery("");
       } catch (e) {
-        toast(`${t.search.resolveFailed}: ${e}`, "error");
+        // The pasted link failed to resolve. `toastFailure` says which of
+        // the reasons it was, in the reader's language.
+        toastFailure(e);
       } finally {
         setResolving(false);
       }
@@ -238,16 +244,16 @@ export function SearchView() {
           });
           remember(q);
         })
-        .catch(
-          (e) => !cancelled && setState({ status: "error", message: String(e) }),
-        );
+        .catch((e) => !cancelled && setState({ status: "error", error: e }));
     }, DEBOUNCE_MS);
 
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [query, kind, filters, remember]);
+    // `attempt` is what makes "try again" mean anything: bumping it re-runs
+    // the search rather than leaving a button that only looks like it does.
+  }, [query, kind, filters, remember, attempt]);
 
   // Autocomplete runs on its own, shorter clock than the search itself.
   useEffect(() => {
@@ -480,9 +486,7 @@ export function SearchView() {
       )}
 
       {state.status === "error" && (
-        <p className="text-sm text-red-400">
-          {t.search.error}: {state.message}
-        </p>
+        <FailureNotice error={state.error} onRetry={() => setAttempt((n) => n + 1)} />
       )}
 
       {state.status === "ok" && (

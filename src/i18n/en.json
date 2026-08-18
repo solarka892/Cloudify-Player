@@ -26,11 +26,92 @@
     "loginFailed": "Sign-in failed",
     "followers": "followers",
     "manualToggle": "Sign in with a token",
+    "loginInApp": "Sign in inside the app",
+    "loginInAppHint": "Opens a SoundCloud window inside cloudify. Needs no particular browser; you may have to pass a captcha once.",
     "manualHint": "Log in on soundcloud.com → F12 → Storage (Firefox) or Application (Chrome) → Cookies → soundcloud.com → copy the oauth_token value",
     "manualPlaceholder": "Paste oauth_token",
     "manualSubmit": "Sign in with token",
     "manualChecking": "Validating token…",
-    "sessionExpired": "Your session expired — SoundCloud no longer accepts the stored token. Sign in again."
+    "sessionExpired": "Your session expired — SoundCloud no longer accepts the stored token. Sign in again.",
+    "offline": "No connection to SoundCloud — you are still signed in."
+  },
+  "errors": {
+    "detailsToggle": "Details",
+    "retry": "Try again",
+    "signIn": "Sign in again",
+    "openSoundCloud": "Open soundcloud.com",
+    "offline": {
+      "what": "No connection.",
+      "why": "The app could not reach SoundCloud. Check your internet."
+    },
+    "noReadableBrowser": {
+      "what": "No browser here can hand over the sign-in.",
+      "why": "Sign in inside the app instead, or paste a token."
+    },
+    "rateLimited": {
+      "what": "SoundCloud is asking us to slow down.",
+      "why": "Too many requests in a short time. Wait a minute."
+    },
+    "sessionExpired": {
+      "what": "Your session has ended.",
+      "why": "SoundCloud no longer accepts the saved sign-in."
+    },
+    "notLoggedIn": {
+      "what": "This needs a sign-in.",
+      "why": ""
+    },
+    "botFiltered": {
+      "what": "SoundCloud's bot protection blocked this.",
+      "why": "It wants proof you are a person. Open soundcloud.com in your browser, then try again."
+    },
+    "noStream": {
+      "what": "This track will not play.",
+      "why": "SoundCloud is not giving out a sound file for it."
+    },
+    "notDownloadable": {
+      "what": "This track cannot be downloaded.",
+      "why": "SoundCloud offers it only as a stream."
+    },
+    "disk": {
+      "what": "The file could not be written.",
+      "why": "Check there is free space and that the folder can be written to."
+    },
+    "badLink": {
+      "what": "That link is not a SoundCloud link.",
+      "why": ""
+    },
+    "refused": {
+      "what": "SoundCloud refused the request.",
+      "why": "Usually temporary — trying again often works."
+    },
+    "emptyInput": {
+      "what": "Nothing to send.",
+      "why": ""
+    },
+    "loginTimeout": {
+      "what": "Sign-in did not finish.",
+      "why": "The app waited three minutes and saw no sign-in."
+    },
+    "unsupported": {
+      "what": "Not available on this device.",
+      "why": ""
+    },
+    "tagging": {
+      "what": "Downloaded, but the file carries no track info.",
+      "why": "The audio is fine; the title and cover could not be written into it."
+    },
+    "localLibrary": {
+      "what": "The local library did not answer.",
+      "why": "Restarting the app usually fixes it."
+    },
+    "keyring": {
+      "what": "The system password store is out of reach.",
+      "why": "That is where your sign-in is kept."
+    },
+    "unknown": {
+      "what": "Something went wrong.",
+      "why": ""
+    }
   },
   "home": {
     "morning": "Good morning",

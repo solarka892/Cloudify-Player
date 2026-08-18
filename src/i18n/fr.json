@@ -22,11 +22,92 @@
     "loginFailed": "Échec de la connexion",
     "followers": "abonnés",
     "manualToggle": "Se connecter avec un jeton",
+    "loginInApp": "Se connecter dans l'application",
+    "loginInAppHint": "Ouvre une fenêtre SoundCloud dans cloudify. Aucun navigateur particulier n'est nécessaire ; un captcha peut être demandé une fois.",
     "manualHint": "Connectez-vous sur soundcloud.com → F12 → Stockage (Firefox) ou Application (Chrome) → Cookies → soundcloud.com → copiez la valeur de oauth_token",
     "manualPlaceholder": "Collez le oauth_token",
     "manualSubmit": "Se connecter avec le jeton",
     "manualChecking": "Vérification du jeton…",
-    "sessionExpired": "Votre session a expiré — SoundCloud n’accepte plus le jeton enregistré. Reconnectez-vous."
+    "sessionExpired": "Votre session a expiré — SoundCloud n’accepte plus le jeton enregistré. Reconnectez-vous.",
+    "offline": "Pas de connexion à SoundCloud — vous restez connecté."
+  },
+  "errors": {
+    "detailsToggle": "Détails",
+    "retry": "Réessayer",
+    "signIn": "Se reconnecter",
+    "openSoundCloud": "Ouvrir soundcloud.com",
+    "offline": {
+      "what": "Pas de connexion.",
+      "why": "L'application n'a pas pu joindre SoundCloud. Vérifiez votre connexion."
+    },
+    "noReadableBrowser": {
+      "what": "Aucun navigateur ici ne peut transmettre la connexion.",
+      "why": "Connectez-vous dans l'application ou collez un jeton."
+    },
+    "rateLimited": {
+      "what": "SoundCloud demande de ralentir.",
+      "why": "Trop de requêtes en peu de temps. Attendez une minute."
+    },
+    "sessionExpired": {
+      "what": "La session est terminée.",
+      "why": "SoundCloud n'accepte plus la connexion enregistrée."
+    },
+    "notLoggedIn": {
+      "what": "Il faut être connecté pour cela.",
+      "why": ""
+    },
+    "botFiltered": {
+      "what": "La protection anti-robot de SoundCloud a bloqué la requête.",
+      "why": "Elle veut une preuve que vous êtes une personne. Ouvrez soundcloud.com dans votre navigateur, puis réessayez."
+    },
+    "noStream": {
+      "what": "Ce morceau ne se lance pas.",
+      "why": "SoundCloud ne fournit pas de fichier audio pour lui."
+    },
+    "notDownloadable": {
+      "what": "Ce morceau ne peut pas être téléchargé.",
+      "why": "SoundCloud ne le propose qu'en streaming."
+    },
+    "disk": {
+      "what": "Le fichier n'a pas pu être écrit.",
+      "why": "Vérifiez l'espace libre et les droits d'écriture du dossier."
+    },
+    "badLink": {
+      "what": "Ce lien n'est pas un lien SoundCloud.",
+      "why": ""
+    },
+    "refused": {
+      "what": "SoundCloud a refusé la requête.",
+      "why": "C'est souvent temporaire — réessayer suffit généralement."
+    },
+    "emptyInput": {
+      "what": "Rien à envoyer.",
+      "why": ""
+    },
+    "loginTimeout": {
+      "what": "La connexion n'a pas abouti.",
+      "why": "L'application a attendu trois minutes sans voir de connexion."
+    },
+    "unsupported": {
+      "what": "Indisponible sur cet appareil.",
+      "why": ""
+    },
+    "tagging": {
+      "what": "Téléchargé, mais sans les informations dans le fichier.",
+      "why": "Le son est intact ; le titre et la pochette n'ont pas pu être écrits dans le fichier."
+    },
+    "localLibrary": {
+      "what": "La bibliothèque locale n'a pas répondu.",
+      "why": "Redémarrer l'application suffit en général."
+    },
+    "keyring": {
+      "what": "Le trousseau du système est inaccessible.",
+      "why": "C'est là qu'est conservée votre connexion."
+    },
+    "unknown": {
+      "what": "Quelque chose n'a pas fonctionné.",
+      "why": ""
+    }
   },
   "home": {
     "morning": "Bonjour",

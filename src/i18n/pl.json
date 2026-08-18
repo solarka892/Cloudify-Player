@@ -22,11 +22,92 @@
     "loginFailed": "Nie udało się zalogować",
     "followers": "obserwujących",
     "manualToggle": "Zaloguj się tokenem",
+    "loginInApp": "Zaloguj się w aplikacji",
+    "loginInAppHint": "Otwiera okno SoundCloud w cloudify. Nie potrzebuje konkretnej przeglądarki; być może raz trzeba przejść captchę.",
     "manualHint": "Zaloguj się na soundcloud.com → F12 → Magazyn (Firefox) lub Application (Chrome) → Ciasteczka → soundcloud.com → skopiuj wartość oauth_token",
     "manualPlaceholder": "Wklej oauth_token",
     "manualSubmit": "Zaloguj się tokenem",
     "manualChecking": "Sprawdzanie tokena…",
-    "sessionExpired": "Sesja wygasła — SoundCloud nie przyjmuje już zapisanego tokena. Zaloguj się ponownie."
+    "sessionExpired": "Sesja wygasła — SoundCloud nie przyjmuje już zapisanego tokena. Zaloguj się ponownie.",
+    "offline": "Brak połączenia z SoundCloud — nadal jesteś zalogowany."
+  },
+  "errors": {
+    "detailsToggle": "Szczegóły",
+    "retry": "Spróbuj ponownie",
+    "signIn": "Zaloguj się ponownie",
+    "openSoundCloud": "Otwórz soundcloud.com",
+    "offline": {
+      "what": "Brak połączenia.",
+      "why": "Aplikacja nie mogła połączyć się z SoundCloud. Sprawdź internet."
+    },
+    "noReadableBrowser": {
+      "what": "Żadna przeglądarka tutaj nie może przekazać logowania.",
+      "why": "Zaloguj się w aplikacji albo wklej token."
+    },
+    "rateLimited": {
+      "what": "SoundCloud prosi o zwolnienie.",
+      "why": "Za dużo zapytań w krótkim czasie. Odczekaj minutę."
+    },
+    "sessionExpired": {
+      "what": "Sesja się skończyła.",
+      "why": "SoundCloud nie przyjmuje już zapisanego logowania."
+    },
+    "notLoggedIn": {
+      "what": "Do tego potrzebne jest zalogowanie.",
+      "why": ""
+    },
+    "botFiltered": {
+      "what": "Ochrona przed botami SoundCloud to zablokowała.",
+      "why": "Chce dowodu, że jesteś człowiekiem. Otwórz soundcloud.com w przeglądarce i spróbuj ponownie."
+    },
+    "noStream": {
+      "what": "Ten utwór się nie odtwarza.",
+      "why": "SoundCloud nie udostępnia dla niego pliku audio."
+    },
+    "notDownloadable": {
+      "what": "Tego utworu nie można pobrać.",
+      "why": "SoundCloud oferuje go tylko jako strumień."
+    },
+    "disk": {
+      "what": "Nie udało się zapisać pliku.",
+      "why": "Sprawdź, czy jest wolne miejsce i czy można pisać w folderze."
+    },
+    "badLink": {
+      "what": "To nie jest link do SoundCloud.",
+      "why": ""
+    },
+    "refused": {
+      "what": "SoundCloud odrzucił zapytanie.",
+      "why": "Zwykle to chwilowe — ponowna próba często pomaga."
+    },
+    "emptyInput": {
+      "what": "Nie ma czego wysłać.",
+      "why": ""
+    },
+    "loginTimeout": {
+      "what": "Logowanie nie zostało ukończone.",
+      "why": "Aplikacja czekała trzy minuty i nie zobaczyła logowania."
+    },
+    "unsupported": {
+      "what": "Niedostępne na tym urządzeniu.",
+      "why": ""
+    },
+    "tagging": {
+      "what": "Pobrano, ale bez danych w pliku.",
+      "why": "Dźwięk jest w porządku; tytułu i okładki nie udało się zapisać w pliku."
+    },
+    "localLibrary": {
+      "what": "Lokalna biblioteka nie odpowiedziała.",
+      "why": "Zwykle pomaga ponowne uruchomienie aplikacji."
+    },
+    "keyring": {
+      "what": "Systemowy magazyn haseł jest nieosiągalny.",
+      "why": "Tam przechowywane jest twoje logowanie."
+    },
+    "unknown": {
+      "what": "Coś poszło nie tak.",
+      "why": ""
+    }
   },
   "home": {
     "morning": "Dzień dobry",

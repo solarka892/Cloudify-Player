@@ -22,11 +22,92 @@
     "loginFailed": "Giriş yapılamadı",
     "followers": "takipçi",
     "manualToggle": "Token ile giriş yap",
+    "loginInApp": "Uygulama içinde giriş yap",
+    "loginInAppHint": "cloudify içinde bir SoundCloud penceresi açar. Belirli bir tarayıcı gerekmez; bir kez captcha çözmen gerekebilir.",
     "manualHint": "soundcloud.com’da giriş yap → F12 → Depolama (Firefox) veya Application (Chrome) → Çerezler → soundcloud.com → oauth_token değerini kopyala",
     "manualPlaceholder": "oauth_token’ı yapıştır",
     "manualSubmit": "Token ile giriş yap",
     "manualChecking": "Token doğrulanıyor…",
-    "sessionExpired": "Oturumun sona erdi — SoundCloud kayıtlı token’ı artık kabul etmiyor. Yeniden giriş yap."
+    "sessionExpired": "Oturumun sona erdi — SoundCloud kayıtlı token’ı artık kabul etmiyor. Yeniden giriş yap.",
+    "offline": "SoundCloud'a bağlanılamıyor — oturumun açık kalıyor."
+  },
+  "errors": {
+    "detailsToggle": "Ayrıntılar",
+    "retry": "Tekrar dene",
+    "signIn": "Yeniden giriş yap",
+    "openSoundCloud": "soundcloud.com'u aç",
+    "offline": {
+      "what": "Bağlantı yok.",
+      "why": "Uygulama SoundCloud'a ulaşamadı. İnternetini kontrol et."
+    },
+    "noReadableBrowser": {
+      "what": "Buradaki hiçbir tarayıcı girişi aktaramıyor.",
+      "why": "Uygulama içinde giriş yap ya da bir token yapıştır."
+    },
+    "rateLimited": {
+      "what": "SoundCloud yavaşlamamızı istiyor.",
+      "why": "Kısa sürede çok fazla istek. Bir dakika bekle."
+    },
+    "sessionExpired": {
+      "what": "Oturum sona erdi.",
+      "why": "SoundCloud kayıtlı girişi artık kabul etmiyor."
+    },
+    "notLoggedIn": {
+      "what": "Bunun için giriş yapmak gerekiyor.",
+      "why": ""
+    },
+    "botFiltered": {
+      "what": "SoundCloud'un bot koruması bunu engelledi.",
+      "why": "İnsan olduğunun kanıtını istiyor. Tarayıcıda soundcloud.com'u aç, sonra tekrar dene."
+    },
+    "noStream": {
+      "what": "Bu parça çalmıyor.",
+      "why": "SoundCloud onun için ses dosyası vermiyor."
+    },
+    "notDownloadable": {
+      "what": "Bu parça indirilemiyor.",
+      "why": "SoundCloud onu yalnızca akış olarak sunuyor."
+    },
+    "disk": {
+      "what": "Dosya yazılamadı.",
+      "why": "Boş alan olduğunu ve klasöre yazılabildiğini kontrol et."
+    },
+    "badLink": {
+      "what": "Bu bir SoundCloud bağlantısı değil.",
+      "why": ""
+    },
+    "refused": {
+      "what": "SoundCloud isteği reddetti.",
+      "why": "Genelde geçicidir — tekrar denemek çoğu zaman işe yarar."
+    },
+    "emptyInput": {
+      "what": "Gönderilecek bir şey yok.",
+      "why": ""
+    },
+    "loginTimeout": {
+      "what": "Giriş tamamlanmadı.",
+      "why": "Uygulama üç dakika bekledi ve giriş görmedi."
+    },
+    "unsupported": {
+      "what": "Bu cihazda kullanılamıyor.",
+      "why": ""
+    },
+    "tagging": {
+      "what": "İndirildi, ama dosyanın içinde bilgiler yok.",
+      "why": "Ses sorunsuz; başlık ve kapak dosyaya yazılamadı."
+    },
+    "localLibrary": {
+      "what": "Yerel kitaplık yanıt vermedi.",
+      "why": "Uygulamayı yeniden başlatmak genelde çözer."
+    },
+    "keyring": {
+      "what": "Sistemin şifre deposuna erişilemiyor.",
+      "why": "Girişin orada saklanıyor."
+    },
+    "unknown": {
+      "what": "Bir şeyler ters gitti.",
+      "why": ""
+    }
   },
   "home": {
     "morning": "Günaydın",

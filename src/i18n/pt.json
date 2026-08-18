@@ -22,11 +22,92 @@
     "loginFailed": "Não foi possível entrar",
     "followers": "seguidores",
     "manualToggle": "Entrar com um token",
+    "loginInApp": "Entrar dentro do aplicativo",
+    "loginInAppHint": "Abre uma janela do SoundCloud dentro do cloudify. Não precisa de um navegador específico; talvez seja preciso passar um captcha uma vez.",
     "manualHint": "Faça login em soundcloud.com → F12 → Armazenamento (Firefox) ou Application (Chrome) → Cookies → soundcloud.com → copie o valor de oauth_token",
     "manualPlaceholder": "Cole o oauth_token",
     "manualSubmit": "Entrar com o token",
     "manualChecking": "Validando o token…",
-    "sessionExpired": "Sua sessão expirou — o SoundCloud não aceita mais o token salvo. Entre novamente."
+    "sessionExpired": "Sua sessão expirou — o SoundCloud não aceita mais o token salvo. Entre novamente.",
+    "offline": "Sem conexão com o SoundCloud — você continua conectado."
+  },
+  "errors": {
+    "detailsToggle": "Detalhes",
+    "retry": "Tentar de novo",
+    "signIn": "Entrar novamente",
+    "openSoundCloud": "Abrir soundcloud.com",
+    "offline": {
+      "what": "Sem conexão.",
+      "why": "O aplicativo não conseguiu falar com o SoundCloud. Verifique sua internet."
+    },
+    "noReadableBrowser": {
+      "what": "Nenhum navegador aqui pode entregar o login.",
+      "why": "Entre dentro do aplicativo ou cole um token."
+    },
+    "rateLimited": {
+      "what": "O SoundCloud pede para ir mais devagar.",
+      "why": "Muitas requisições em pouco tempo. Espere um minuto."
+    },
+    "sessionExpired": {
+      "what": "A sessão terminou.",
+      "why": "O SoundCloud não aceita mais o login salvo."
+    },
+    "notLoggedIn": {
+      "what": "Para isso é preciso entrar.",
+      "why": ""
+    },
+    "botFiltered": {
+      "what": "A proteção antibots do SoundCloud bloqueou isso.",
+      "why": "Ela quer prova de que você é uma pessoa. Abra soundcloud.com no navegador e tente de novo."
+    },
+    "noStream": {
+      "what": "Esta faixa não toca.",
+      "why": "O SoundCloud não fornece um arquivo de áudio para ela."
+    },
+    "notDownloadable": {
+      "what": "Esta faixa não pode ser baixada.",
+      "why": "O SoundCloud a oferece apenas como transmissão."
+    },
+    "disk": {
+      "what": "Não foi possível gravar o arquivo.",
+      "why": "Verifique se há espaço livre e se a pasta permite gravação."
+    },
+    "badLink": {
+      "what": "Esse link não é do SoundCloud.",
+      "why": ""
+    },
+    "refused": {
+      "what": "O SoundCloud recusou a requisição.",
+      "why": "Geralmente é temporário — tentar de novo costuma funcionar."
+    },
+    "emptyInput": {
+      "what": "Nada para enviar.",
+      "why": ""
+    },
+    "loginTimeout": {
+      "what": "O login não foi concluído.",
+      "why": "O aplicativo esperou três minutos e não viu nenhum login."
+    },
+    "unsupported": {
+      "what": "Indisponível neste dispositivo.",
+      "why": ""
+    },
+    "tagging": {
+      "what": "Baixado, mas sem as informações dentro do arquivo.",
+      "why": "O áudio está bem; o título e a capa não puderam ser gravados no arquivo."
+    },
+    "localLibrary": {
+      "what": "A biblioteca local não respondeu.",
+      "why": "Reiniciar o aplicativo geralmente resolve."
+    },
+    "keyring": {
+      "what": "O cofre de senhas do sistema está inacessível.",
+      "why": "É onde seu login fica guardado."
+    },
+    "unknown": {
+      "what": "Algo deu errado.",
+      "why": ""
+    }
   },
   "home": {
     "morning": "Bom dia",

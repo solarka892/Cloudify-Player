@@ -22,11 +22,92 @@
     "loginFailed": "No se pudo iniciar sesión",
     "followers": "seguidores",
     "manualToggle": "Iniciar sesión con un token",
+    "loginInApp": "Iniciar sesión dentro de la aplicación",
+    "loginInAppHint": "Abre una ventana de SoundCloud dentro de cloudify. No necesita un navegador concreto; puede que haya que pasar un captcha una vez.",
     "manualHint": "Inicia sesión en soundcloud.com → F12 → Almacenamiento (Firefox) o Application (Chrome) → Cookies → soundcloud.com → copia el valor de oauth_token",
     "manualPlaceholder": "Pega el oauth_token",
     "manualSubmit": "Iniciar sesión con el token",
     "manualChecking": "Validando el token…",
-    "sessionExpired": "Tu sesión ha caducado: SoundCloud ya no acepta el token guardado. Vuelve a iniciar sesión."
+    "sessionExpired": "Tu sesión ha caducado: SoundCloud ya no acepta el token guardado. Vuelve a iniciar sesión.",
+    "offline": "Sin conexión con SoundCloud: sigues con la sesión iniciada."
+  },
+  "errors": {
+    "detailsToggle": "Detalles",
+    "retry": "Intentar de nuevo",
+    "signIn": "Iniciar sesión otra vez",
+    "openSoundCloud": "Abrir soundcloud.com",
+    "offline": {
+      "what": "Sin conexión.",
+      "why": "La aplicación no pudo comunicarse con SoundCloud. Comprueba tu internet."
+    },
+    "noReadableBrowser": {
+      "what": "Ningún navegador de aquí puede entregar el inicio de sesión.",
+      "why": "Inicia sesión dentro de la aplicación o pega un token."
+    },
+    "rateLimited": {
+      "what": "SoundCloud pide ir más despacio.",
+      "why": "Demasiadas peticiones en poco tiempo. Espera un minuto."
+    },
+    "sessionExpired": {
+      "what": "La sesión ha terminado.",
+      "why": "SoundCloud ya no acepta el inicio de sesión guardado."
+    },
+    "notLoggedIn": {
+      "what": "Para esto hay que iniciar sesión.",
+      "why": ""
+    },
+    "botFiltered": {
+      "what": "La protección antibots de SoundCloud lo ha bloqueado.",
+      "why": "Quiere comprobar que eres una persona. Abre soundcloud.com en el navegador y vuelve a intentarlo."
+    },
+    "noStream": {
+      "what": "Esta pista no se reproduce.",
+      "why": "SoundCloud no entrega un archivo de audio para ella."
+    },
+    "notDownloadable": {
+      "what": "Esta pista no se puede descargar.",
+      "why": "SoundCloud solo la ofrece en streaming."
+    },
+    "disk": {
+      "what": "No se pudo escribir el archivo.",
+      "why": "Comprueba que haya espacio libre y que se pueda escribir en la carpeta."
+    },
+    "badLink": {
+      "what": "Ese enlace no es de SoundCloud.",
+      "why": ""
+    },
+    "refused": {
+      "what": "SoundCloud rechazó la petición.",
+      "why": "Suele ser temporal: volver a intentarlo funciona a menudo."
+    },
+    "emptyInput": {
+      "what": "No hay nada que enviar.",
+      "why": ""
+    },
+    "loginTimeout": {
+      "what": "El inicio de sesión no se completó.",
+      "why": "La aplicación esperó tres minutos y no vio ningún inicio de sesión."
+    },
+    "unsupported": {
+      "what": "No disponible en este dispositivo.",
+      "why": ""
+    },
+    "tagging": {
+      "what": "Descargado, pero sin los datos dentro del archivo.",
+      "why": "El audio está bien; no se pudieron escribir el título y la portada en el archivo."
+    },
+    "localLibrary": {
+      "what": "La biblioteca local no respondió.",
+      "why": "Reiniciar la aplicación suele arreglarlo."
+    },
+    "keyring": {
+      "what": "No se puede acceder al almacén de contraseñas del sistema.",
+      "why": "Ahí se guarda tu inicio de sesión."
+    },
+    "unknown": {
+      "what": "Algo salió mal.",
+      "why": ""
+    }
   },
   "home": {
     "morning": "Buenos días",
