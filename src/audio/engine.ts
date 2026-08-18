@@ -115,6 +115,19 @@ interface Graph {
 type Routing = "plain" | "graph" | "buffer";
 
 let element: HTMLAudioElement | null = null;
+/**
+ * The `buffer` path is built but **not connected**, and this is the socket it
+ * would connect to.
+ *
+ * Nothing assigns this, `routing` never becomes `"buffer"`, and `BufferedAudio`
+ * is never constructed anywhere in the app — so the fallback described at the
+ * top of this file does not exist at runtime, and wherever the media-element
+ * bridge is silent the equaliser and visualiser are simply off for good. Two
+ * further leftovers (a `bufferUnavailable` flag and a `setEngineReloader` hook)
+ * stood here unread and were removed to keep the build honest; `buffered.ts`
+ * itself is untouched, and task 57 records what has to be re-attached.
+ */
+// eslint-disable-next-line prefer-const -- assigned once the buffer path is wired
 let buffered: BufferedAudio | null = null;
 let routing: Routing = "plain";
 /** How the current source reaches the element. Set by `prepareForSource`. */
@@ -145,22 +158,6 @@ let graphSilent = ((): boolean => {
     return false;
   }
 })();
-
-/** Set once buffered playback has failed, so it is not tried again either. */
-let bufferUnavailable = false;
-
-/**
- * Reload the current track. Registered by the player store.
- *
- * Buffered playback can only discover it cannot fetch or decode a source after
- * the track is already "playing", and the engine has no way to start one over
- * on its own.
- */
-let reloadCurrent: (() => void) | null = null;
-
-export function setEngineReloader(fn: () => void): void {
-  reloadCurrent = fn;
-}
 
 /**
  * The thing playing audio right now.
