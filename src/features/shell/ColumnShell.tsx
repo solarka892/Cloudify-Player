@@ -375,8 +375,12 @@ function NowPlayingPanel() {
             <Music className="h-10 w-10 text-muted-foreground" />
           </span>
         )}
-        <span className="absolute inset-0 flex items-end justify-end bg-gradient-to-t from-black/45 to-transparent p-2 opacity-0 transition-opacity duration-[var(--motion-fast)] group-hover/art:opacity-100">
-          <ChevronUp className="h-5 w-5 text-white" />
+        {/* `art-overlay` rather than a gradient plus a hardcoded white ink: a
+            fixed black-and-white pair is right here — what is underneath is a
+            photograph the app did not choose — and the class is where that pair
+            is already stated once for every control that sits on cover art. */}
+        <span className="art-overlay absolute inset-0 flex items-end justify-end p-2 opacity-0 transition-opacity duration-[var(--motion-fast)] group-hover/art:opacity-100">
+          <ChevronUp className="h-5 w-5" />
         </span>
       </button>
 
