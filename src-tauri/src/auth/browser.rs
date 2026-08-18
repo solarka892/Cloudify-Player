@@ -40,16 +40,21 @@ pub fn open_signin() -> Result<(), AuthError> {
 /// Scan every supported browser's cookie store for a SoundCloud `oauth_token`.
 /// Returns the first non-empty value found.
 pub fn find_token() -> Option<String> {
+    find_cookie("oauth_token")
+}
+
+/// First non-empty value of `name` for soundcloud.com, across every store.
+fn find_cookie(name: &str) -> Option<String> {
     for db in cookie_dbs() {
-        if let Some(token) = read_oauth_token(&db) {
-            return Some(token);
+        if let Some(value) = read_cookie(&db, name) {
+            return Some(value);
         }
     }
 
     #[cfg(target_os = "macos")]
     for jar in safari_jars() {
-        if let Some(token) = safari::read_oauth_token(&jar) {
-            return Some(token);
+        if let Some(value) = safari::read_cookie(&jar, name) {
+            return Some(value);
         }
     }
 
@@ -149,12 +154,12 @@ fn cookie_dbs() -> Vec<PathBuf> {
     dbs
 }
 
-/// Read the `oauth_token` cookie for soundcloud.com from one cookies.sqlite.
+/// Read a named cookie for soundcloud.com from one cookies.sqlite.
 ///
 /// The browser keeps the DB open in WAL mode, so we copy it (plus its -wal/-shm
 /// sidecars, to see freshly-written cookies) to a temp file and read that copy
 /// read-only — avoiding lock contention with the running browser.
-fn read_oauth_token(db: &Path) -> Option<String> {
+fn read_cookie(db: &Path, name: &str) -> Option<String> {
     let stamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_nanos())
@@ -175,9 +180,9 @@ fn read_oauth_token(db: &Path) -> Option<String> {
                 .ok()?;
         conn.query_row(
             "SELECT value FROM moz_cookies \
-             WHERE name = 'oauth_token' AND host LIKE '%soundcloud.com' \
+             WHERE name = ?1 AND host LIKE '%soundcloud.com' \
              ORDER BY LENGTH(value) DESC LIMIT 1",
-            [],
+            [name],
             |row| row.get::<_, String>(0),
         )
         .ok()
@@ -220,11 +225,11 @@ fn with_suffix(path: &Path, suffix: &str) -> PathBuf {
 /// the filesystem on macOS.
 #[cfg(any(target_os = "macos", test))]
 mod safari {
-    /// Read the SoundCloud `oauth_token` cookie out of a binarycookies file.
+    /// Read a named SoundCloud cookie out of a binarycookies file.
     #[cfg(target_os = "macos")]
-    pub fn read_oauth_token(path: &std::path::Path) -> Option<String> {
+    pub fn read_cookie(path: &std::path::Path, name: &str) -> Option<String> {
         let bytes = std::fs::read(path).ok()?;
-        find_cookie(&bytes, "oauth_token", "soundcloud.com")
+        find_cookie(&bytes, name, "soundcloud.com")
     }
 
     fn u32be(b: &[u8], at: usize) -> Option<usize> {

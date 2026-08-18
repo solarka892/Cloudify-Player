@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useNitStore } from "@/stores/useNitStore";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { toast } from "@/stores/useToastStore";
@@ -100,10 +101,37 @@ export function useHotkeys(actions: HotkeyActions): void {
           e.preventDefault();
           player.setVolume(Math.max(0, player.volume - VOLUME_STEP));
           break;
+        // M marks, and mute moves up onto Shift.
+        //
+        // A collision worth being explicit about: `m` was mute, which is the web
+        // convention, and marks are the one feature in this app that has to be
+        // reachable without looking away from what you are doing. Mute is one
+        // modifier away and the volume keys are still ↑↓; a mark on `b` would be
+        // a shortcut nobody ever finds. Shown as it is in the help sheet.
         case "m":
         case "ь":
-          player.toggleMute();
+          if (e.shiftKey) {
+            player.toggleMute();
+            break;
+          }
+          void markHere();
           break;
+        // Jump to the nth mark on this track. Nothing happens when there is no
+        // nth mark, rather than jumping to the last one — a silent no-op is
+        // better than a seek you did not ask for.
+        case "1":
+        case "2":
+        case "3":
+        case "4":
+        case "5":
+        case "6":
+        case "7":
+        case "8":
+        case "9": {
+          const mark = useNitStore.getState().marks[Number(e.key) - 1];
+          if (mark) player.seek(mark.position_ms / 1000);
+          break;
+        }
         case "s":
         case "ы":
           player.toggleShuffle();
@@ -131,6 +159,32 @@ export function useHotkeys(actions: HotkeyActions): void {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [actions]);
+}
+
+/**
+ * Mark the moment that is playing.
+ *
+ * Exported because two things call it: the `m` key here, and the global
+ * shortcut, which fires when this window does not have focus at all — which is
+ * the entire point of marks ("ставятся не отрываясь от дела").
+ */
+export async function markHere(): Promise<void> {
+  const player = usePlayerStore.getState();
+  const track = player.current;
+  if (!track) return;
+  const positionMs = player.position * 1000;
+  const mark = await useNitStore.getState().addMark(track.id, positionMs);
+  if (!mark) {
+    toast(t.marks.failed, "error");
+    return;
+  }
+  toast(t.marks.added.replace("{time}", clock(positionMs)), "success");
+}
+
+/** m:ss, for a message about a position rather than a duration. */
+export function clock(ms: number): string {
+  const total = Math.max(0, Math.round(ms / 1000));
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
 }
 
 /** The Konami payoff: a hidden palette, plus a few seconds of nonsense. */

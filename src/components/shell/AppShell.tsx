@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSettingsStore } from "@/stores/useSettingsStore";
+import { resolveLayout } from "@/theme/layout";
 import { useNavStore } from "@/stores/useNavStore";
 import { setViewScroller, scrollViewToTop } from "@/lib/scroll";
 import { useWheelStep } from "@/hooks/useWheelStep";
@@ -33,7 +34,12 @@ export function AppShell({
   children: React.ReactNode;
   player?: React.ReactNode;
 }) {
-  const layout = useSettingsStore((s) => s.layout);
+  // What the user chose, and what the current look can draw. Resolved here
+  // rather than written back to the setting: a skin must not silently rewrite a
+  // preference it happens to disagree with. See `theme/layout`.
+  const chosen = useSettingsStore((s) => s.layout);
+  const skin = useSettingsStore((s) => s.theme.skin);
+  const layout = resolveLayout(chosen, skin);
   // A phone-width window has no room for a rail or a sidebar, whichever the
   // setting asks for, so it gets tabs along the bottom instead. The setting is
   // left untouched — widening the window restores it.

@@ -22,8 +22,10 @@ import {
   AppleChevronDown,
   AppleDownload,
   AppleEllipsis,
+  AppleHeart,
   AppleList,
   AppleQuote,
+  AppleRepost,
   AppleShare,
   AppleSpeakerHigh,
   AppleSpeakerLow,
@@ -75,8 +77,13 @@ const RATES = [0.75, 1, 1.25, 1.5, 2];
  *     this view fixes its own palette instead of following the theme's. Deriving
  *     the text colour per-cover is what Apple does; a scrim is what makes one
  *     colour correct for every cover.
- *   - Title and artist are **left-aligned**, with the like and share actions on
- *     the same line. Centring them is the tell of every third-party player.
+ *   - Title and artist have the line to themselves, centred on the same axis as
+ *     everything below them.
+ *   - The column is five blocks, not six floors: the transport keeps the volume
+ *     under it as one group, and the track's own actions sit in the bottom row
+ *     with the view's. Everything below the cover used to be a row of its own
+ *     holding two or three controls, and the height that cost came straight off
+ *     the cover, which is the thing the view is for.
  *   - The scrubber counts *down* on the right. iOS shows time remaining, not
  *     total; a total belongs on a progress bar, not a transport.
  *   - Lyrics open *beside* the cover, filling the width to its left, because the
@@ -226,65 +233,118 @@ export function AppleNowPlaying({ onClose }: { onClose: () => void }) {
           </div>
         )}
 
-      <div className="flex min-h-0 w-full max-w-[34rem] shrink-0 flex-col justify-center gap-6">
+      {/* `--np-cover` is how wide the artwork came out, published so the things
+          under it can line up with it instead of guessing. It is not a constant:
+          the cover is capped against the window's *height*, so on a short window
+          it is the height that decides, and anything hard-coded to 30rem would
+          hang off the sides exactly when the cover shrank. */}
+      <div
+        className="flex min-h-0 w-full max-w-[34rem] shrink-0 flex-col justify-center gap-6"
+        style={{ "--np-cover": "min(30rem, 44vh)" } as React.CSSProperties}
+      >
         {/* The cover — or the queue, on a window with nowhere to float it. */}
         {queueInPlace ? (
           <Glass chrome className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <QueuePanel onClose={() => setPanel("none")} />
           </Glass>
         ) : (
-          <div className="mx-auto w-full max-w-[min(30rem,44vh)]">
+          <div className="mx-auto w-full max-w-[var(--np-cover)]">
             <Cover art={art} playing={isPlaying} />
           </div>
         )}
 
-        {/* Title, left-aligned, with the two actions that belong to the track. */}
-        <div className="flex items-start gap-3">
-          <div className="min-w-0 flex-1">
-            <h2
-              className="truncate text-[1.375rem] font-bold leading-tight tracking-[-0.02em]"
-              style={{ fontFamily: "var(--font-display)" }}
-            >
-              {current.title}
-            </h2>
-            {current.artist && (
-              <p className="truncate text-[1.0625rem] leading-snug text-[var(--ios-label-2)]">
-                {current.artist}
-              </p>
-            )}
+        {/* Title and artist, centred, across the full width.
+
+            They were left-aligned while the track's actions sat beside them —
+            a line with something at each end has to start at an edge. With the
+            actions moved down to the bottom row there is nothing left to align
+            *to*, and everything else in the column below is centred on the same
+            axis: the transport, the chips, the volume's own symmetry. A single
+            left-aligned line among them read as the one thing that had not been
+            told where the middle was. */}
+        <div className="min-w-0 text-center">
+          <h2
+            className="type-title truncate"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            {current.title}
+          </h2>
+          {current.artist && (
+            <p className="type-body truncate text-[var(--ios-label-2)]">
+              {current.artist}
+            </p>
+          )}
+        </div>
+
+        {/*
+          The controls, as one block: scrub, transport, volume.
+
+          Half the column's gap between the three of them. They are one thing —
+          where the track is, what it is doing, how loud — and at the column's
+          full 24px they stood apart like three unrelated rows, with the widest
+          hole of the lot between the elapsed time and the buttons. The gap there
+          is also the one that measures smallest and *looks* largest: a line of
+          11px numerals leaves its own leading below it and a 44px button carries
+          another dozen pixels of padding inside its edge, so the daylight
+          between what you actually see is roughly double what the rule says.
+
+          Shuffle and repeat pushed out to the column's edges read as two
+          unrelated controls that happen to share a row; next to the skips they
+          read as part of the transport, which is what they are.
+
+          The volume is not here at all any more, and the reason is worth
+          keeping. Beside the buttons it filled the right half of the line and
+          left the left half empty — a centred cluster with weight on one side
+          is the one arrangement spacing cannot save. Under them, full width, it
+          was symmetrical and still wrong: a long thin capsule with a fill, four
+          centimetres below another long thin capsule with a fill. Two progress
+          bars, one of which does not measure progress. It lives on a chip in
+          the row below now; see `VolumeChip`.
+        */}
+        <div className="flex flex-col gap-3">
+          {/* Only as wide as the cover. The column is 34rem and the artwork is
+              usually a good deal less than that, so a full-width scrubber ran
+              out past the picture on both sides — a bar wider than the thing it
+              belongs to, which is the one proportion in this view the eye
+              actually notices.
+
+              The title above is left alone deliberately: it is text, not a bar,
+              and capping it would only truncate longer names sooner. */}
+          <div className="mx-auto w-full max-w-[var(--np-cover)]">
+            <Scrubber />
           </div>
-          <div className="flex shrink-0 items-center gap-1.5 pt-0.5">
-            <LikeButton track={current} className="lg-chip h-9 w-9" />
-            <RepostButton track={current} className="lg-chip h-9 w-9" />
-            <ShareButton
-              url={current.permalink_url}
-              className="lg-chip h-9 w-9"
-              Icon={AppleShare}
-            />
+
+          <div className="flex items-center justify-center gap-5">
+            <ShuffleButton />
+            <NudgeGap />
+            <PrevButton size="lg" />
+            <PlayPauseButton size="lg" />
+            <NextButton size="lg" />
+            <NudgeGap />
+            <RepeatButton />
           </div>
         </div>
 
-        <Scrubber />
+        {/*
+          Everything that is not the transport, in one evenly spaced row: what
+          this track can have done to it, then what this view can show.
 
-        {/* Transport, as one cluster. Shuffle and repeat pushed out to the
-            column's edges read as two unrelated controls that happen to share a
-            row; next to the skips they read as part of the transport, which is
-            what they are. */}
-        <div className="flex items-center justify-center gap-5">
-          <ShuffleButton />
-          <NudgeGap />
-          <PrevButton size="lg" />
-          <PlayPauseButton size="lg" />
-          <NextButton size="lg" />
-          <NudgeGap />
-          <RepeatButton />
-        </div>
-
-        <Volume />
-
-        {/* Lyrics, queue, and everything else behind an ellipsis — which is
-            where iOS puts the long tail. */}
-        <div className="relative flex items-center justify-center gap-6">
+          These were briefly two groups with a wider gap between them. It read as
+          a hole where a seventh button had failed to render, and that is the
+          trap with grouping by space alone — the gap has to be large enough to
+          mean something, and at that size it stops being a row. Six identical
+          chips at one pitch are a toolbar, which is what this is; the ordering
+          already puts like next to repost and lyrics next to the queue, and it
+          carries the grouping on its own without spending anything on it.
+        */}
+        <div className="relative flex items-center justify-center gap-4">
+          <LikeButton track={current} className="lg-action h-10 w-10" Icon={AppleHeart} />
+          <RepostButton track={current} className="lg-action h-10 w-10" Icon={AppleRepost} />
+          <ShareButton
+            url={current.permalink_url}
+            className="lg-action h-10 w-10"
+            Icon={AppleShare}
+          />
           <Chip
             on={panel === "lyrics"}
             label={t.player.lyrics}
@@ -307,11 +367,37 @@ export function AppleNowPlaying({ onClose }: { onClose: () => void }) {
             <AppleEllipsis className="h-[18px] w-[18px]" />
           </Chip>
 
+          <VolumeChip />
+
           {showMore && (
-            <Glass
-              chrome
-              className="pop-in absolute bottom-full left-1/2 z-30 mb-3 w-[19.5rem] -translate-x-1/2 p-2"
-            >
+            <>
+              {/*
+                The way out, and nothing else.
+
+                It used to dim the screen as well, and that dimming was doing a
+                real job at the time: the menu was a 62% pane laid across the
+                title and the scrubber, and without something between them you
+                read half a title through it and could not tell which layer you
+                were meant to be looking at. The menu is now a near-opaque sheet
+                (see `.lg.pop-in` in `apple.css`), so it hides what is under it
+                by itself, and a scrim on top of that is a second answer to a
+                question already answered — it only darkens the artwork, which
+                is the thing this whole view is built to show.
+
+                The layer stays, invisible, because dismissal is the other half
+                of what it was for. Without it the only way out is a second
+                press on the ellipsis, which is the one place nobody looks.
+              */}
+              <button
+                type="button"
+                aria-label={t.player.close}
+                onClick={() => setShowMore(false)}
+                className="fixed inset-0 z-20 cursor-default"
+              />
+              <Glass
+                chrome
+                className="pop-in absolute bottom-full left-1/2 z-30 mb-3 w-[19.5rem] -translate-x-1/2 p-1.5"
+              >
               <MenuRow
                 label={t.player.radio}
                 disabled={radioLoading}
@@ -341,64 +427,69 @@ export function AppleNowPlaying({ onClose }: { onClose: () => void }) {
                 <AppleDownload className="h-[18px] w-[18px]" />
               </MenuRow>
 
-              <div className="my-1 h-[0.5px] bg-[var(--ios-separator)]" />
+              <Rule />
 
-              {/* Speed, as a segmented row rather than a submenu. */}
-              <div className="px-2 pb-1 pt-0.5 text-[0.8125rem] text-[var(--ios-label-2)]">
-                {t.player.speed}
-              </div>
-              <div
-                data-segmented
-                className="mx-1 mb-1 flex gap-1 rounded-[var(--radius-control)] border border-border p-1"
-              >
-                {RATES.map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => setRate(r)}
-                    className={cn(
-                      "flex-1 rounded-[var(--radius-control)] py-1 text-center text-[0.75rem] tabular-nums",
-                      rate === r
-                        ? "bg-secondary text-secondary-foreground"
-                        : "text-[var(--ios-label-2)]",
-                    )}
-                  >
-                    {r}×
-                  </button>
-                ))}
-              </div>
+              {/* Speed, as a segmented row rather than a submenu: five values,
+                  one of them current, is what a segmented control is for, and a
+                  submenu would hide the answer to "how fast is it now". */}
+              <Section label={t.player.speed}>
+                <div data-segmented className="flex">
+                  {RATES.map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => setRate(r)}
+                      className={cn(
+                        "type-label flex-1 py-1 text-center tabular-nums",
+                        rate === r
+                          ? "bg-secondary text-secondary-foreground"
+                          : "text-[var(--ios-label-2)]",
+                      )}
+                    >
+                      {r}×
+                    </button>
+                  ))}
+                </div>
+              </Section>
 
-              <div className="my-1 h-[0.5px] bg-[var(--ios-separator)]" />
+              {/* Sleep is five *actions*, not five states, so it deliberately
+                  does not wear the segmented track above: nothing here is
+                  "currently selected", and a knob sliding between them would
+                  claim otherwise. Equal columns rather than `flex-1`, so five
+                  labels of different widths still make an even row. */}
+              <Section label={t.player.sleep}>
+                <div className="grid grid-cols-5 gap-1">
+                  {SLEEP_OPTIONS.map((min) => (
+                    <button
+                      key={min}
+                      onClick={() => {
+                        setSleep(min);
+                        setShowMore(false);
+                      }}
+                      className="rounded-[0.4375rem] bg-[var(--ios-fill-3)] type-label py-1.5 tabular-nums transition-colors duration-[var(--motion-fast)] hover:bg-[var(--ios-fill-1)]"
+                    >
+                      {min}
+                    </button>
+                  ))}
+                </div>
+              </Section>
 
-              <div className="px-2 pb-1 text-[0.8125rem] text-[var(--ios-label-2)]">
-                {t.player.sleep}
-              </div>
-              <div className="flex flex-wrap gap-1 px-1 pb-1">
-                {SLEEP_OPTIONS.map((min) => (
-                  <button
-                    key={min}
+              {sleepAt && (
+                <>
+                  <Rule />
+                  <MenuRow
+                    label={t.player.sleepCancel}
+                    destructive
                     onClick={() => {
-                      setSleep(min);
+                      setSleep(null);
                       setShowMore(false);
                     }}
-                    className="lg-chip h-8 flex-1 px-2 text-[0.8125rem] tabular-nums"
                   >
-                    {min}
-                  </button>
-                ))}
-              </div>
-              {sleepAt && (
-                <MenuRow
-                  label={t.player.sleepCancel}
-                  destructive
-                  onClick={() => {
-                    setSleep(null);
-                    setShowMore(false);
-                  }}
-                >
-                  <Moon className="h-[18px] w-[18px]" />
-                </MenuRow>
+                    <Moon className="h-[18px] w-[18px]" />
+                  </MenuRow>
+                </>
               )}
-            </Glass>
+              </Glass>
+            </>
           )}
         </div>
       </div>
@@ -448,7 +539,7 @@ function Scrubber() {
             [&::-webkit-slider-thumb]:bg-[var(--foreground)] [&::-webkit-slider-thumb]:opacity-0"
         />
       </div>
-      <div className="mt-1 flex justify-between text-[0.6875rem] tabular-nums text-[var(--ios-label-2)]">
+      <div className="readout type-micro mt-1 flex justify-between text-[var(--ios-label-2)]">
         <span>{formatTime(done)}</span>
         <span>-{formatTime(Math.max(0, total - done))}</span>
       </div>
@@ -456,25 +547,118 @@ function Scrubber() {
   );
 }
 
-/** Volume, between a quiet speaker and a loud one. */
+/**
+ * Volume, between a quiet speaker and a loud one.
+ *
+ * Built like `Scrubber` rather than left as a native range: a thin capsule with
+ * a fill and no visible thumb. The default control paints a fat white knob that
+ * nothing else in the view has, and two bars a few pixels apart in two different
+ * idioms is the kind of mismatch that reads as unfinished long before anyone
+ * works out which one is wrong.
+ *
+ * The two glyphs are what keep it from being read as a second progress bar. They
+ * are drawn at the same size, not at the sizes their marks suggest: the quiet
+ * speaker fills less than half its box, so matched by height it comes out a
+ * third the weight of the loud one and looks like a stray arrowhead.
+ */
+/** How much one notch of the wheel moves the volume. */
+const WHEEL_STEP = 0.05;
+
+/**
+ * Volume, folded into a chip.
+ *
+ * It was a full-width slider under the transport, and the trouble was never
+ * where it sat — it was what it looked like. A long thin capsule with a fill,
+ * a few centimetres under the scrubber, which is also a long thin capsule with
+ * a fill. The eye reads two progress bars and has to work out which of them is
+ * time. Making them *less* alike would have been the other way out, but a
+ * volume slider is not something you look at; it is something you reach for
+ * about once an hour, and a control that is only occasionally wanted should not
+ * be the second-largest object on the screen.
+ *
+ * So it is a chip like its neighbours, and the slider comes out on a click. The
+ * wheel works on the chip itself, which is how most people set volume on a
+ * desktop anyway — that is the path with no clicks at all, and the popover is
+ * there for the pointer.
+ */
+function VolumeChip() {
+  const [open, setOpen] = useState(false);
+  const volume = usePlayerStore((s) => s.volume);
+  const muted = usePlayerStore((s) => s.muted);
+  const setVolume = usePlayerStore((s) => s.setVolume);
+
+  const level = muted ? 0 : volume;
+  const Glyph = level === 0 ? AppleSpeakerLow : AppleSpeakerHigh;
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        onWheel={(e) => {
+          const next = level + (e.deltaY < 0 ? WHEEL_STEP : -WHEEL_STEP);
+          setVolume(Math.min(1, Math.max(0, next)));
+        }}
+        aria-label={t.player.volume}
+        title={t.player.volume}
+        data-on={open ? "true" : undefined}
+        className="lg-action h-10 w-10"
+      >
+        <Glyph className="h-[18px] w-[18px]" />
+      </button>
+
+      {open && (
+        <>
+          {/* Invisible, and the way out — the same arrangement the ellipsis
+              menu uses. */}
+          <button
+            type="button"
+            aria-label={t.player.close}
+            onClick={() => setOpen(false)}
+            className="fixed inset-0 z-20 cursor-default"
+          />
+          <Glass
+            chrome
+            className="pop-in absolute bottom-full left-1/2 z-30 mb-3 w-56 -translate-x-1/2 px-3 py-2.5"
+          >
+            <Volume />
+          </Glass>
+        </>
+      )}
+    </div>
+  );
+}
+
 function Volume() {
   const volume = usePlayerStore((s) => s.volume);
   const muted = usePlayerStore((s) => s.muted);
   const setVolume = usePlayerStore((s) => s.setVolume);
 
+  const level = muted ? 0 : volume;
+
   return (
     <div className="flex items-center gap-3 px-1">
-      <AppleSpeakerLow className="h-3.5 w-3.5 shrink-0 text-[var(--ios-label-2)]" />
-      <input
-        type="range"
-        min={0}
-        max={1}
-        step={0.01}
-        value={muted ? 0 : volume}
-        onChange={(e) => setVolume(Number(e.currentTarget.value))}
-        aria-label={t.player.volume}
-        className="h-1 flex-1 cursor-pointer accent-[var(--foreground)]"
-      />
+      <AppleSpeakerLow className="h-[18px] w-[18px] shrink-0 text-[var(--ios-label-2)]" />
+      <div className="relative flex-1">
+        <div className="pointer-events-none absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 overflow-hidden rounded-[var(--radius-round)] bg-[var(--ios-fill-3)]">
+          <div
+            className="h-full rounded-[var(--radius-round)] bg-[var(--foreground)]"
+            style={{ width: `${level * 100}%` }}
+          />
+        </div>
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.01}
+          value={level}
+          onChange={(e) => setVolume(Number(e.currentTarget.value))}
+          aria-label={t.player.volume}
+          className="relative h-5 w-full cursor-pointer appearance-none bg-transparent
+            [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3
+            [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-[var(--radius-round)]
+            [&::-webkit-slider-thumb]:bg-[var(--foreground)] [&::-webkit-slider-thumb]:opacity-0"
+        />
+      </div>
       <AppleSpeakerHigh className="h-[18px] w-[18px] shrink-0 text-[var(--ios-label-2)]" />
     </div>
   );
@@ -526,10 +710,53 @@ function Chip({
       onClick={onClick}
       aria-label={label}
       title={label}
-      className={cn("lg-chip h-10 w-10", on && "text-brand")}
+      // The state goes out as an attribute, not as a colour class: `.lg-action`
+      // colours "on" itself, and an unlayered rule beats a utility. A
+      // `text-brand` here would look right until someone read the stylesheet
+      // and wondered which of the two was in charge — and it would have been
+      // silently losing.
+      data-on={on ? "true" : undefined}
+      className="lg-action h-10 w-10"
     >
       {children}
     </button>
+  );
+}
+
+/**
+ * The line between two parts of a menu.
+ *
+ * Inset to where the labels start, not run wall to wall. A full-width rule
+ * chops the menu into slabs; one that begins under the text reads as a pause in
+ * a list, which is what it is. iOS insets every separator in a grouped list for
+ * the same reason.
+ */
+function Rule() {
+  return <div className="mx-2.5 my-1.5 h-[0.5px] bg-[var(--ios-separator)]" />;
+}
+
+/**
+ * A captioned group inside the menu.
+ *
+ * Exists to hold the alignment. The caption, the rows above it and the control
+ * under it were each carrying their own horizontal padding — 2, 2.5 and 1 — so
+ * nothing in the menu lined up with anything else. One box owns the inset now
+ * and its contents inherit it.
+ */
+function Section({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="px-2.5 pb-1 pt-0.5">
+      <div className="type-caption pb-1.5 text-[var(--ios-label-2)]">
+        {label}
+      </div>
+      {children}
+    </div>
   );
 }
 
@@ -552,7 +779,7 @@ function MenuRow({
       disabled={disabled}
       className={cn(
         // An iOS menu row: label left, glyph right, full-width target.
-        "flex w-full items-center justify-between gap-3 rounded-[var(--radius-control)] px-2.5 py-2 text-left text-[0.9375rem] disabled:opacity-40",
+        "flex w-full items-center justify-between gap-3 rounded-[var(--radius-control)] type-body px-2.5 py-2 text-left disabled:opacity-40",
         destructive && "text-[var(--ios-red)]",
       )}
     >

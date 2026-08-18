@@ -51,6 +51,20 @@ struct RawActivity {
     origin: Option<serde_json::Value>,
 }
 
+/// Pull a nested object out of `origin` and read it as a track.
+fn nested_track(value: &serde_json::Value, key: &str) -> Option<Track> {
+    serde_json::from_value::<RawTrack>(value.get(key)?.clone())
+        .ok()
+        .map(Track::from)
+}
+
+/// Pull a nested object out of `origin` and read it as a playlist.
+fn nested_playlist(value: &serde_json::Value, key: &str) -> Option<Playlist> {
+    serde_json::from_value::<RawPlaylist>(value.get(key)?.clone())
+        .ok()
+        .map(Playlist::from)
+}
+
 /// Interpret an `origin` blob according to the `kind` SoundCloud stamps on it.
 fn split_origin(
     origin: Option<serde_json::Value>,
@@ -79,11 +93,7 @@ fn split_origin(
         Some("comment") => {
             // A comment activity carries the track it was left on inside it,
             // which is the only way the row can link anywhere useful.
-            let track = value
-                .get("track")
-                .cloned()
-                .and_then(|t| serde_json::from_value::<RawTrack>(t).ok())
-                .map(Track::from);
+            let track = nested_track(&value, "track");
             let body = value
                 .get("body")
                 .and_then(|b| b.as_str())
@@ -91,8 +101,18 @@ fn split_origin(
             let at = value.get("timestamp").and_then(serde_json::Value::as_u64);
             (track, None, body, at)
         }
-        // A follow's origin is the user, which `user` already covers.
-        _ => (None, None, None, None),
+        // Everything else — `like`, `favoriting`, `affiliation`, whatever comes
+        // next — is asked whether it *wraps* a track or a set rather than being
+        // one. A like's origin is not the track: it is a like object with the
+        // track inside it, which is why every "X liked" row used to end there,
+        // with no title and nothing to click. A follow's origin holds only a
+        // user, which the top-level `user` already covers, so it stays empty.
+        _ => (
+            nested_track(&value, "track"),
+            nested_playlist(&value, "playlist"),
+            None,
+            None,
+        ),
     }
 }
 
@@ -113,11 +133,17 @@ pub async fn list(token: &str, max: u32) -> Result<Vec<Activity>, ScApiError> {
     Ok(raw
         .into_iter()
         .map(|a| {
+            // Who did it is usually a sibling of `origin`, but on some types it
+            // is only inside it — a row with no name at all is worse than one
+            // read out of the nested object.
+            let actor = a.user.or_else(|| {
+                serde_json::from_value::<RawUser>(a.origin.as_ref()?.get("user")?.clone()).ok()
+            });
             let (track, playlist, comment, comment_timestamp) = split_origin(a.origin);
             Activity {
                 kind: a.kind,
                 created_at: a.created_at,
-                user: a.user.map(User::from),
+                user: actor.map(User::from),
                 track,
                 playlist,
                 comment,

@@ -22,6 +22,8 @@ export function Toaster() {
           <button
             key={item.id}
             onClick={() => dismiss(item.id)}
+            data-toast
+            data-kind={item.tone}
             className="panel panel-raised pointer-events-auto flex max-w-sm items-center gap-2 px-3 py-2 text-left text-sm"
             style={{ animation: "toast-in var(--motion-slow) ease" }}
           >

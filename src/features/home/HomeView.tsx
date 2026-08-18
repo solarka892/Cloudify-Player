@@ -5,10 +5,14 @@ import { PlaylistTile, SectionHeader, TileGrid, TrackTile } from "@/components/A
 import { useLibraryStore } from "@/stores/useLibraryStore";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { t } from "@/i18n";
-import { artwork } from "@/lib/utils";
+import { ArtFallback } from "@/components/ArtFallback";
+import { artwork, cn } from "@/lib/utils";
 
 /** How many items each home row shows before you go to the library. */
 const ROW = 10;
+
+/** Wide cards in the first shelf. Six fills two or three columns evenly. */
+const QUICK = 6;
 
 /** Greeting keyed to the wall clock — small touch, sets the tone. */
 function greeting(): string {
@@ -81,49 +85,73 @@ export function HomeView({
 
   return (
     <div className="stack-lg">
-      {/* Hero */}
-      <section className="panel panel-raised relative overflow-hidden rounded-[var(--radius-hero)] p-6">
-        {hero?.artwork_url && (
-          <img
-            src={artwork(hero.artwork_url, "t500x500") ?? undefined}
-            alt=""
-            aria-hidden
-            // `will-change` promotes this to its own layer, so the blur is
-            // computed once instead of on every scrolled frame.
-            className="artwork pointer-events-none absolute -right-10 -top-10 h-56 w-56 rotate-12 rounded-[var(--radius-hero)] opacity-20 blur-[2px] will-change-transform"
-          />
-        )}
-        <div className="relative">
-          <h1
-            className="text-3xl font-bold tracking-tight"
-            style={{ fontFamily: "var(--font-display)" }}
-          >
-            {greeting()}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {tracks.length > 0
-              ? `${t.home.inLikes}: ${tracks.length}`
-              : t.home.emptyHint}
-          </p>
+      {/*
+        The hero.
 
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button
-              onClick={() => playAll(false)}
-              disabled={tracks.length === 0}
-              className="brand-gradient flex items-center gap-2 rounded-[var(--radius-control)] px-4 py-2 text-sm font-semibold text-brand-foreground transition-opacity duration-[var(--motion-fast)] hover:opacity-90 disabled:opacity-40"
-            >
-              <Play className="h-4 w-4 translate-x-[1px]" />
-              {t.home.playLikes}
-            </button>
-            <button
-              onClick={() => playAll(true)}
-              disabled={tracks.length === 0}
-              className="flex items-center gap-2 rounded-[var(--radius-control)] border border-border bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent disabled:opacity-40"
-            >
-              <Shuffle className="h-4 w-4" />
-              {t.home.shuffle}
-            </button>
-          </div>
+        It was a bordered panel with a greeting, two buttons and a 224px cover
+        tilted into the corner at 20% — the largest object on the first screen,
+        saying almost nothing. This is the same information given the room it
+        was already taking: the cover becomes the panel rather than sitting in
+        it, blurred and enlarged into a field of the record's own colour, and
+        the greeting is set at display size on top of it.
+
+        Blurred on purpose, and not to be pretty: a square cover stretched
+        across a 3:1 banner is either cropped to a detail nobody recognises or
+        squashed. Out of focus it stops being a picture and becomes what it is
+        actually here for — the colour of what you were last listening to.
+
+        The scrim runs left to right rather than top to bottom. The text is on
+        the left, so that is the only side that has to be dark enough to read
+        on; darkening the whole thing evenly would take the colour back out
+        again, which is the entire point of the panel.
+      */}
+      <section className="relative isolate flex min-h-[15rem] flex-col justify-end overflow-hidden rounded-[var(--radius-hero)] p-7">
+        {hero?.artwork_url && (
+          <>
+            <img
+              src={artwork(hero.artwork_url, "t500x500") ?? undefined}
+              alt=""
+              aria-hidden
+              // `scale-125` hides the pale edge a blur pulls in from outside the
+              // element; `will-change` keeps the whole pair on one layer so the
+              // blur is computed once rather than on every scrolled frame.
+              className="pointer-events-none absolute inset-0 -z-10 h-full w-full scale-125 object-cover blur-[64px] saturate-[1.4] will-change-transform"
+            />
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-background via-background/80 to-background/25"
+            />
+          </>
+        )}
+        {/* No cover to borrow a colour from — a flat panel, as before. */}
+        {!hero?.artwork_url && (
+          <span aria-hidden className="panel absolute inset-0 -z-10 rounded-[var(--radius-hero)]" />
+        )}
+
+        <h1 className="type-display">{greeting()}</h1>
+        <p className="type-label mt-1.5 tabular-nums text-muted-foreground">
+          {tracks.length > 0
+            ? `${t.home.inLikes}: ${tracks.length}`
+            : t.home.emptyHint}
+        </p>
+
+        <div className="mt-5 flex flex-wrap gap-2">
+          <button
+            onClick={() => playAll(false)}
+            disabled={tracks.length === 0}
+            className="type-label flex items-center gap-2 rounded-[var(--radius-round)] bg-brand px-5 py-2.5 font-semibold text-brand-foreground transition-opacity duration-[var(--motion-fast)] hover:opacity-90 disabled:opacity-40"
+          >
+            <Play className="h-4 w-4 translate-x-[1px]" />
+            {t.home.playLikes}
+          </button>
+          <button
+            onClick={() => playAll(true)}
+            disabled={tracks.length === 0}
+            className="type-label flex items-center gap-2 rounded-[var(--radius-round)] bg-secondary px-5 py-2.5 font-medium text-secondary-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent disabled:opacity-40"
+          >
+            <Shuffle className="h-4 w-4" />
+            {t.home.shuffle}
+          </button>
         </div>
       </section>
 
@@ -131,13 +159,33 @@ export function HomeView({
         <p className="text-sm text-muted-foreground">{t.library.loading}</p>
       )}
 
+      {/*
+        What you were just listening to, as wide cards rather than another row
+        of squares.
+
+        The home screen was five identical shelves of five identical covers —
+        twenty-five squares, all the same size, all with the same two lines
+        under them. Everything on it had the same weight, so nothing on it had
+        any, and the eye had no reason to start anywhere in particular.
+
+        This shelf gets a different shape on purpose. A wide card is a *known*
+        record, read by its name; a square is a record you are being shown, read
+        by its picture. Those are two different jobs and they should not look
+        the same. Two of these across also means the eight most recent fit in
+        the height one shelf of five used to take.
+      */}
       {history.items.length > 0 && (
-        <Row
-          title={t.home.recent}
-          onSeeAll={() => onNavigate("library")}
-          tracks={history.items.slice(0, ROW)}
-          queue={history.items}
-        />
+        <section className="stack">
+          <SectionHeader
+            title={t.home.recent}
+            action={{ label: t.home.seeAll, onClick: () => onNavigate("library") }}
+          />
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+            {history.items.slice(0, QUICK).map((track) => (
+              <QuickCard key={track.id} track={track} queue={history.items} />
+            ))}
+          </div>
+        </section>
       )}
 
       {feed.length > 0 && (
@@ -183,6 +231,49 @@ export function HomeView({
         </section>
       ))}
     </div>
+  );
+}
+
+/**
+ * One wide card: the cover, the name, the artist, and the whole thing is the
+ * button.
+ *
+ * No hover-revealed play glyph. On a square tile the picture is the subject and
+ * a play button has to be introduced over it; here the row *is* the control,
+ * the way a track in a list is, and adding an affordance to a thing that is
+ * already entirely clickable only tells the user they were wrong about it.
+ */
+function QuickCard({ track, queue }: { track: Track; queue: Track[] }) {
+  const playTrack = usePlayerStore((s) => s.playTrack);
+  const active = usePlayerStore((s) => s.current?.id === track.id);
+  const art = artwork(track.artwork_url, "t120x120");
+
+  return (
+    <button
+      onClick={() => void playTrack(track, queue)}
+      className={cn(
+        "group/quick flex items-center gap-3 overflow-hidden rounded-[var(--radius)] pr-3 text-left transition-colors duration-[var(--motion-fast)]",
+        active ? "bg-accent" : "bg-secondary/60 hover:bg-accent",
+      )}
+    >
+      {art ? (
+        <span className="art-frame block h-14 w-14 shrink-0">
+          <img src={art} alt="" loading="lazy" className="artwork h-full w-full object-cover" />
+        </span>
+      ) : (
+        <ArtFallback seed={track.id} className="h-14 w-14 shrink-0" glyphClassName="h-5 w-5" />
+      )}
+      <span className="min-w-0 py-2">
+        <span className={cn("type-label block truncate font-medium", active && "text-brand")}>
+          {track.title}
+        </span>
+        {track.artist && (
+          <span className="type-caption block truncate text-muted-foreground">
+            {track.artist}
+          </span>
+        )}
+      </span>
+    </button>
   );
 }
 

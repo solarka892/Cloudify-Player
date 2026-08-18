@@ -49,7 +49,7 @@ function Shell({
    * Opens the track menu at the given viewport point. Omitted for tiles with
    * nothing to act on, like a playlist.
    */
-  onMenu?: (x: number, y: number) => void;
+  onMenu?: (x: number, y: number, align?: MenuTarget["align"]) => void;
 }) {
   return (
     // The wrapper exists so the overflow button can be a sibling of the tile
@@ -89,17 +89,24 @@ function Shell({
       >
       <div className="relative aspect-square w-full">
         {art ? (
-          <img
-            src={art}
-            alt=""
-            loading="lazy"
-            className={cn("artwork", 
-              "h-full w-full object-cover shadow-[var(--shadow-1)]",
+          /* The frame is the duotone's box: an `<img>` is a replaced element and
+             cannot carry the ink layer itself. It holds the picture and nothing
+             else — the hover play button is a sibling above it. */
+          <span
+            className={cn(
+              "art-frame block h-full w-full shadow-[var(--shadow-1)]",
               rounded === "circle"
                 ? "rounded-[var(--radius-round)]"
                 : "rounded-[var(--radius-control)]",
             )}
-          />
+          >
+            <img
+              src={art}
+              alt=""
+              loading="lazy"
+              className="artwork h-full w-full object-cover"
+            />
+          </span>
         ) : (
           <ArtFallback
             seed={seed}
@@ -130,15 +137,12 @@ function Shell({
 
         <div className="min-w-0 px-0.5">
           <div
-            className={cn(
-              "truncate text-sm font-medium",
-              active && "text-brand",
-            )}
+            className={cn("type-label truncate", active && "text-brand")}
           >
             {title}
           </div>
           {subtitle && (
-            <div className="truncate text-xs text-muted-foreground">
+            <div className="type-caption truncate text-muted-foreground">
               {subtitle}
             </div>
           )}
@@ -156,7 +160,8 @@ function Shell({
           onClick={(e) => {
             e.stopPropagation();
             const box = e.currentTarget.getBoundingClientRect();
-            onMenu(box.right, box.bottom);
+            // Beside the button, tops level — see `MenuTarget.align`.
+            onMenu(box.right, box.top, "beside");
           }}
           aria-label={t.track.more}
           className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-[var(--radius-round)] bg-background/70 text-foreground backdrop-blur-sm transition-[opacity,background-color] duration-[var(--motion-fast)] hover:bg-background md:opacity-0 md:focus-visible:opacity-100 md:group-hover/tile:opacity-100"
@@ -197,7 +202,7 @@ export function TrackTile({
         Fallback={Music}
         index={index}
         onClick={() => void playTrack(track, queue)}
-        onMenu={(x, y) => setMenu({ track, x, y })}
+        onMenu={(x, y, align) => setMenu({ track, x, y, align })}
       />
 
       {menu && (
@@ -240,10 +245,18 @@ export function PlaylistTile({
   );
 }
 
-/** Responsive grid the tiles live in. */
+/**
+ * Responsive grid the tiles live in.
+ *
+ * Fewer, larger. Five covers across meant each one was about 150px on a normal
+ * window — small enough that the picture stops being a picture and becomes a
+ * swatch, which is the opposite of what a wall of album art is for. Four at the
+ * top end, and the gap grows with them so the grid does not close up into a
+ * contact sheet.
+ */
 export function TileGrid({ children }: { children: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-2 gap-[calc(0.5rem*var(--density))] sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
+    <div className="grid grid-cols-2 gap-[calc(0.875rem*var(--density))] sm:grid-cols-3 xl:grid-cols-4">
       {children}
     </div>
   );
@@ -259,16 +272,14 @@ export function SectionHeader({
 }) {
   return (
     <div className="flex items-baseline justify-between gap-4">
-      <h2
-        className="label text-xl font-bold tracking-tight"
-        style={{ fontFamily: "var(--font-display)" }}
-      >
-        {title}
-      </h2>
+      {/* A step below the page's own title, deliberately. At 20px bold it was
+          level with it, so a screen read as two headings of equal rank with the
+          content as an afterthought. */}
+      <h2 className="label type-heading">{title}</h2>
       {action && (
         <button
           onClick={action.onClick}
-          className="label shrink-0 text-xs font-semibold text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:text-foreground"
+          className="label type-caption shrink-0 text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:text-foreground"
         >
           {action.label}
         </button>

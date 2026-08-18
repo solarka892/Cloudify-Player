@@ -17,6 +17,7 @@ import { usePlayerStore } from "@/stores/usePlayerStore";
 import { formatTime } from "@/features/player/time";
 import { artwork, cn } from "@/lib/utils";
 import { t } from "@/i18n";
+import { ViewHead } from "@/components/ViewHead";
 
 /**
  * What happened to your things: likes, comments, follows, reposts.
@@ -44,12 +45,24 @@ import { t } from "@/i18n";
 function describe(activity: Activity): {
   Icon: LucideIcon;
   verb: string | null;
+  /**
+   * What the sentence ends with when the feed gave no track or playlist to
+   * name. A verb on its own is not a sentence: "templ liked" — liked *what*?
+   * SoundCloud does drop the target on some rows, so the wording has to stand
+   * without one instead of trailing off.
+   */
+  noTarget: string | null;
 } {
   const kind = activity.kind.toLowerCase();
   const has = (needle: string) => kind.includes(needle);
+  const unknown = t.notifications.targetUnknown;
 
   if (has("comment")) {
-    return { Icon: MessageSquare, verb: t.notifications.commented };
+    return {
+      Icon: MessageSquare,
+      verb: t.notifications.commented,
+      noTarget: unknown,
+    };
   }
   if (has("repost")) {
     return {
@@ -57,18 +70,24 @@ function describe(activity: Activity): {
       verb: activity.playlist
         ? t.notifications.repostedPlaylist
         : t.notifications.repostedTrack,
+      noTarget: unknown,
     };
   }
   if (has("like") || has("favorit")) {
-    return { Icon: Heart, verb: t.notifications.liked };
+    return { Icon: Heart, verb: t.notifications.liked, noTarget: unknown };
   }
+  // Nothing follows "started following you", so it needs no ending.
   if (has("follow") || has("affiliation")) {
-    return { Icon: UserPlus, verb: t.notifications.followed };
+    return { Icon: UserPlus, verb: t.notifications.followed, noTarget: null };
   }
   if (has("track") || has("playlist") || has("upload") || has("post")) {
-    return { Icon: Music, verb: t.notifications.uploaded };
+    return {
+      Icon: Music,
+      verb: t.notifications.uploaded,
+      noTarget: t.notifications.targetUnknownUpload,
+    };
   }
-  return { Icon: Bell, verb: null };
+  return { Icon: Bell, verb: null, noTarget: null };
 }
 
 export function NotificationsView() {
@@ -94,8 +113,9 @@ export function NotificationsView() {
 
   return (
     <section className="flex w-full max-w-2xl flex-col gap-3">
+      <ViewHead title={t.nav.notifications} sub={t.notifications.title} />
       <div className="flex items-center gap-2">
-        <h2 className="mr-auto text-sm font-semibold">{t.notifications.title}</h2>
+        <span className="mr-auto" />
         <button
           onClick={() => void load(true)}
           disabled={status === "loading"}
@@ -123,7 +143,7 @@ export function NotificationsView() {
 
       <ul className="flex flex-col divide-y divide-border">
         {items.map((activity, index) => {
-          const { Icon, verb } = describe(activity);
+          const { Icon, verb, noTarget } = describe(activity);
           const avatar = artwork(activity.user?.avatar_url ?? null, "t50x50");
           const target = activity.track ?? activity.playlist;
           const cover = artwork(
@@ -144,12 +164,14 @@ export function NotificationsView() {
                   aria-label={activity.user?.username ?? ""}
                 >
                   {avatar ? (
-                    <img
-                      src={avatar}
-                      alt=""
-                      loading="lazy"
-                      className="artwork h-9 w-9 rounded-[var(--radius-round)] object-cover"
-                    />
+                    <span className="art-frame block h-9 w-9 rounded-[var(--radius-round)]">
+                      <img
+                        src={avatar}
+                        alt=""
+                        loading="lazy"
+                        className="artwork h-9 w-9 object-cover"
+                      />
+                    </span>
                   ) : (
                     <span className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-round)] bg-secondary">
                       <UserIcon className="h-4 w-4 text-muted-foreground" />
@@ -188,6 +210,9 @@ export function NotificationsView() {
                       {activity.playlist.title}
                     </button>
                   )}
+                  {verb && noTarget && !target && (
+                    <span className="text-muted-foreground">{noTarget}</span>
+                  )}
                 </p>
 
                 {activity.comment && (
@@ -214,12 +239,14 @@ export function NotificationsView() {
                   className="shrink-0"
                   aria-label={t.player.play}
                 >
-                  <img
-                    src={cover}
-                    alt=""
-                    loading="lazy"
-                    className="artwork h-9 w-9 rounded-[var(--radius-control)] object-cover"
-                  />
+                  <span className="art-frame block h-9 w-9 rounded-[var(--radius-control)]">
+                    <img
+                      src={cover}
+                      alt=""
+                      loading="lazy"
+                      className="artwork h-9 w-9 object-cover"
+                    />
+                  </span>
                 </button>
               )}
             </li>

@@ -41,6 +41,48 @@ async fn toggle(token: &str, path: String, on: bool, verb: On) -> Result<(), ScA
     }
 }
 
+/// The verb, as the wire spells it.
+fn method(on: bool, verb: On) -> &'static str {
+    match (on, verb) {
+        (true, On::Put) => "PUT",
+        (true, On::Post) => "POST",
+        (false, _) => "DELETE",
+    }
+}
+
+/// A write, from a window that is on soundcloud.com.
+///
+/// Not from here. DataDome fingerprints the TLS handshake and ours is not a
+/// browser's, so a request built in this process is refused before SoundCloud
+/// ever sees it — measured, and written up in `docs/sc-api.md`. The one browser
+/// we are sure of is the one drawing this app, so the request goes out from a
+/// window of it. See `sc_api::writer`.
+///
+/// Reads stay on the direct path. They are not behind the filter, they are the
+/// overwhelming majority of what the app does, and routing a list of tracks
+/// through a page would be slower and more fragile for no gain at all.
+#[cfg(desktop)]
+async fn send(
+    token: &str,
+    path: &str,
+    on: bool,
+    verb: On,
+    fresh_client_id: bool,
+) -> Result<(), ScApiError> {
+    let cid = client_id::get(fresh_client_id).await?;
+    let url = format!("{API_V2}{path}?client_id={cid}");
+    // A bodyless PUT on these routes comes back `415`.
+    let answer = super::writer::send(token, method(on, verb), &url, "{}").await?;
+    verdict(answer, fresh_client_id)
+}
+
+/// The same write on a platform with no window to send it from.
+///
+/// Android keeps the direct path. It is very probably refused there too, but
+/// nobody has been able to run the app on a phone yet (see `docs/android.md`),
+/// and swapping a known-shape request for an untested one on a target that
+/// cannot be tested is how a second bug gets buried under the first.
+#[cfg(not(desktop))]
 async fn send(
     token: &str,
     path: &str,
@@ -61,11 +103,6 @@ async fn send(
     let resp = request
         .query(&[("client_id", cid.as_str())])
         .header("Authorization", format!("OAuth {token}"))
-        // The write routes sit behind a bot filter that the read routes do not,
-        // and a request with no `Origin`/`Referer` is the easiest thing in the
-        // world for one to single out. soundcloud.com's own app sends both on
-        // every one of these; sending them costs nothing and removes the most
-        // obvious reason for a write to be refused while a read succeeds.
         .header("Origin", "https://soundcloud.com")
         .header("Referer", "https://soundcloud.com/")
         // SoundCloud rejects a bodyless PUT on these routes with a 415.
@@ -73,11 +110,113 @@ async fn send(
         .send()
         .await?;
 
-    if let Some(reason) = super::classify(resp.status()) {
-        return Err(reason);
+    refusal(resp, fresh_client_id).await
+}
+
+/// What the window's answer means.
+///
+/// A `fetch` cannot read response headers it was not given permission to, so the
+/// `x-datadome` tell the direct path keys on is not available here. It does not
+/// need to be: these routes answer `403` for one reason, and the window is the
+/// thing that can do something about it — it has already shown the challenge and
+/// waited by the time this sees a `403`, so reaching here means nobody answered.
+///
+/// A redirect is a failure however sunny the status looks. `fetch` follows them,
+/// so a write bounced somewhere else comes back `200` from a page that did
+/// nothing, and the heart in the UI — which flipped optimistically and only
+/// rolls back on a reported failure — would be left telling a lie. That is
+/// exactly what "the likes seem to be visual only" would look like from the
+/// outside, and it is worth refusing on principle rather than waiting to find
+/// out whether SoundCloud ever does it.
+#[cfg(desktop)]
+fn verdict(answer: super::writer::Outcome, retried: bool) -> Result<(), ScApiError> {
+    if answer.redirected {
+        return Err(ScApiError::Refused {
+            status: answer.status,
+            detail: ": the write was redirected and did not land".into(),
+        });
     }
-    resp.error_for_status()?;
-    Ok(())
+    match answer.status {
+        200..=299 => Ok(()),
+        429 => Err(ScApiError::RateLimited),
+        // One retry with a freshly extracted key first: it is in the URL, and it
+        // does rotate.
+        401 | 403 if !retried => Err(ScApiError::StaleClientId),
+        401 => Err(ScApiError::SessionExpired),
+        403 => Err(ScApiError::BotFiltered),
+        other => Err(ScApiError::Refused {
+            status: other,
+            detail: if answer.body.is_empty() {
+                String::new()
+            } else {
+                format!(": {}", answer.body)
+            },
+        }),
+    }
+}
+
+/// How many characters of SoundCloud's own reply are worth carrying.
+///
+/// Enough for `{"error":"..."}` and a little more. These bodies are occasionally
+/// a whole HTML error page, and a toast is not the place for one.
+#[cfg(not(desktop))]
+const DETAIL_LIMIT: usize = 220;
+
+/// What a refused *write* means — which is not what a refused read means.
+///
+/// `super::classify` reads every 401 and 403 as a rotated `client_id`, and for
+/// the read routes that is right: they authenticate with the key and nothing
+/// else, so it is the only thing that can have gone stale. A write also carries
+/// an OAuth token, and once the key has been re-fetched and refused a second
+/// time, the token is the remaining suspect. Saying "client_id likely stale" at
+/// that point sends the user to fix something that is not broken.
+///
+/// Anything else is reported **with SoundCloud's own status and body**. Every
+/// route in this file is marked unverified at the top of it, and when one of
+/// them is refused that reply is the only evidence there is; swallowing it in
+/// favour of a tidy sentence is how a bug report arrives with nothing in it.
+/// Nothing here can leak the token — it goes out in a header and never comes
+/// back in a body.
+#[cfg(not(desktop))]
+async fn refusal(resp: reqwest::Response, retried: bool) -> Result<(), ScApiError> {
+    let status = resp.status();
+    if status.is_success() {
+        return Ok(());
+    }
+    if status.as_u16() == 429 {
+        return Err(ScApiError::RateLimited);
+    }
+    // Before anything about credentials: the bot filter says so in a header, and
+    // it is not a credentials problem. Retrying the key against it is a wasted
+    // round trip and telling the user their session expired sends them to sign
+    // in again for nothing.
+    if resp.headers().contains_key("x-datadome") {
+        return Err(ScApiError::BotFiltered);
+    }
+    // First 401/403: worth one retry with a freshly extracted key, which is
+    // what `toggle` does when it sees this.
+    if matches!(status.as_u16(), 401 | 403) && !retried {
+        return Err(ScApiError::StaleClientId);
+    }
+    if status.as_u16() == 401 {
+        return Err(ScApiError::SessionExpired);
+    }
+
+    let body = resp.text().await.unwrap_or_default();
+    let body = body.trim();
+    let detail = if body.is_empty() {
+        String::new()
+    } else {
+        let mut cut = body.chars().take(DETAIL_LIMIT).collect::<String>();
+        if body.chars().count() > DETAIL_LIMIT {
+            cut.push('…');
+        }
+        format!(": {cut}")
+    };
+    Err(ScApiError::Refused {
+        status: status.as_u16(),
+        detail,
+    })
 }
 
 /// The signed-in user's id, remembered after the first lookup.

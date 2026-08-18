@@ -14,10 +14,17 @@ export function LikeButton({
   track,
   size = "sm",
   className,
+  Icon = Heart,
 }: {
   track: Track;
   size?: "sm" | "md";
   className?: string;
+  /**
+   * The glyph, for a look that draws its own. Must be a closed outline: the
+   * liked state is this same shape with `fill-current` on it, not a second
+   * drawing.
+   */
+  Icon?: React.ComponentType<{ className?: string }>;
 }) {
   const liked = useLibraryStore((s) => s.likedIds.has(track.id));
   const toggleLike = useLibraryStore((s) => s.toggleLike);
@@ -49,6 +56,10 @@ export function LikeButton({
       }}
       aria-label={liked ? t.track.unlike : t.track.like}
       title={liked ? t.track.unlike : t.track.like}
+      // State, published for a skin to style. The colour below is this
+      // component's own answer; a look that marks "on" some other way — Apple
+      // mode puts a disc behind it — needs a hook that is not a colour class.
+      data-on={liked ? "true" : undefined}
       className={cn(
         // Tight to the glyph. Every other icon button in a track row can afford
         // a generous target; this one cannot, because it is the only one whose
@@ -60,7 +71,7 @@ export function LikeButton({
         className,
       )}
     >
-      <Heart className={cn(icon, liked && "fill-current", popping && "heart-pop")} />
+      <Icon className={cn(icon, liked && "fill-current", popping && "heart-pop")} />
     </button>
   );
 }

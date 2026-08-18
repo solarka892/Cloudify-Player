@@ -4,6 +4,13 @@
  *
  *   element ─▶ preamp ─▶ [10 biquads] ─▶ compressor ─▶ panner ─▶ analyser ─▶ out
  *
+ * ## Three ways to play, in order of preference
+ *
+ *   - `plain`  — the element on its own. No effects, works everywhere.
+ *   - `graph`  — the element routed into the chain above. Streams, cheap.
+ *   - `buffer` — the file fetched, decoded and played from memory into the same
+ *                chain (`audio/buffered.ts`), with no element involved.
+ *
  * ## Why the element is disposable
  *
  * `createMediaElementSource(a)` routes `a` through the graph *permanently* —
@@ -19,10 +26,22 @@
  * So a graph built once for the visualiser would silence every later track from
  * a host that does not do CORS — including every downloaded file, which the
  * asset protocol serves from another origin. Instead the element is treated as
- * disposable: each load picks the routing mode it needs, and switching from
- * routed back to plain tears the graph down and starts from a fresh element.
- * Sound always wins over effects.
+ * disposable: each load picks the routing mode it needs, and switching modes
+ * tears the graph down and starts from a fresh element. Sound always wins over
+ * effects.
+ *
+ * ## Why `buffer` exists at all
+ *
+ * On WebKitGTK the element bridge is not merely restricted, it is broken: the
+ * graph receives silence from a perfectly healthy element and nothing anywhere
+ * reports a fault. That was measured (`graphIsAudible`) and answered by turning
+ * the effects off, which left every Linux build with an equaliser and a
+ * visualiser that did nothing. `buffer` needs no bridge, so it works there — at
+ * the price of downloading and decoding the whole track before it starts, which
+ * is why it is the fallback and not the default.
  */
+
+import { BufferedAudio } from "@/audio/buffered";
 
 /** ISO centre frequencies, low to high. */
 export const EQ_BANDS = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
@@ -44,6 +63,27 @@ export interface AudioConfig {
   balance: number;
   /** Collapse to mono; useful on a single speaker. */
   mono: boolean;
+  /**
+   * Even out the level between tracks.
+   *
+   * SoundCloud masters vary wildly — a bedroom lo-fi upload and a mastered
+   * release differ by 10 dB or more, and the next track after a quiet one takes
+   * your head off. The engine measures what it plays (`audio/loudness.ts`),
+   * remembers it per track, and trims the *next* play of that track with the
+   * preamp. Nothing is guessed for a track never heard: the first play is
+   * untouched, which is why this is honest rather than clever.
+   */
+  levelling: boolean;
+  /**
+   * Night mode: the same compressor, set gently, plus a small trim.
+   *
+   * Not a second compressor and not a preset in `presets.ts` — those are EQ
+   * curves. This is one switch meaning "keep the quiet parts audible without the
+   * loud parts waking anyone", which is a different intent from `compressor`
+   * (which exists to tame a single wild master) even though it reaches the same
+   * node.
+   */
+  night: boolean;
 }
 
 export const DEFAULT_AUDIO: AudioConfig = {
@@ -54,10 +94,13 @@ export const DEFAULT_AUDIO: AudioConfig = {
   compressor: false,
   balance: 0,
   mono: false,
+  levelling: false,
+  night: false,
 };
 
 interface Graph {
   ctx: AudioContext;
+  /** The head of the chain: whatever plays connects here. */
   preamp: GainNode;
   filters: BiquadFilterNode[];
   compressor: DynamicsCompressorNode;
@@ -68,10 +111,11 @@ interface Graph {
   analyser: AnalyserNode;
 }
 
-/** How the current element is wired. */
-type Routing = "plain" | "graph";
+/** How the audio currently reaches the speakers. */
+type Routing = "plain" | "graph" | "buffer";
 
 let element: HTMLAudioElement | null = null;
+let buffered: BufferedAudio | null = null;
 let routing: Routing = "plain";
 /** How the current source reaches the element. Set by `prepareForSource`. */
 let sourceKind: "file" | "hls" = "file";
@@ -79,18 +123,60 @@ let graph: Graph | null = null;
 /** Set once a graph attempt has failed, so we stop retrying every track. */
 let graphUnavailable = false;
 /**
+ * Where the verdict on the media-element bridge is kept between sessions.
+ *
+ * It is a fact about the machine, not a preference, and re-learning it costs the
+ * user three seconds of silence and a restarted track on the first effects-on
+ * play of every session. Written once, read at startup.
+ */
+const SILENT_KEY = "cloudify.audio.elementGraphSilent";
+
+/**
  * Set once a graph has been *built* and observed to output silence.
  *
  * Unlike `graphUnavailable` this survives a teardown, because it is a fact
  * about the platform rather than about one attempt: where the media-element
  * bridge does not work, it will not work on the next element either.
  */
-let graphSilent = false;
+let graphSilent = ((): boolean => {
+  try {
+    return localStorage.getItem(SILENT_KEY) === "1";
+  } catch {
+    return false;
+  }
+})();
 
-/** The current audio element. Created on first use. */
+/** Set once buffered playback has failed, so it is not tried again either. */
+let bufferUnavailable = false;
+
+/**
+ * Reload the current track. Registered by the player store.
+ *
+ * Buffered playback can only discover it cannot fetch or decode a source after
+ * the track is already "playing", and the engine has no way to start one over
+ * on its own.
+ */
+let reloadCurrent: (() => void) | null = null;
+
+export function setEngineReloader(fn: () => void): void {
+  reloadCurrent = fn;
+}
+
+/**
+ * The thing playing audio right now.
+ *
+ * In `buffer` routing this is not an element at all — see `audio/buffered.ts`,
+ * which presents the same surface on purpose so nothing above here has to care.
+ */
 export function el(): HTMLAudioElement {
+  if (buffered) return buffered as unknown as HTMLAudioElement;
   if (!element) element = create();
   return element;
+}
+
+/** Which of the three paths is in use, for the parts that must know. */
+export function routingMode(): Routing {
+  return routing;
 }
 
 /**
@@ -214,8 +300,14 @@ export function needsGraph(config: AudioConfig): boolean {
     config.eqEnabled ||
     config.visualizer ||
     config.compressor ||
+    config.night ||
     config.mono ||
     config.balance !== 0
+    // `levelling` is deliberately absent: measuring needs the analyser, but the
+    // trim it produces is applied to `<audio>.volume`, which works on the plain
+    // path too. A track already measured is levelled with no graph at all — so
+    // switching it on never costs a reload and never risks the silent-bridge
+    // failure the graph can hit.
   );
 }
 
@@ -407,8 +499,26 @@ export function applyAudio(config: AudioConfig): void {
     );
   });
 
-  g.compressorWet.gain.setTargetAtTime(config.compressor ? 1 : 0, now, ramp);
-  g.compressorBypass.gain.setTargetAtTime(config.compressor ? 0 : 1, now, ramp);
+  // Night mode reaches the same node with gentler numbers: it starts squeezing
+  // much earlier and much more softly, so nothing ever jumps, at the cost of a
+  // flatter record. With both on, night's settings win — someone who asked for
+  // quiet asked for quiet.
+  const squashing = config.compressor || config.night;
+  if (config.night) {
+    g.compressor.threshold.value = -34;
+    g.compressor.knee.value = 30;
+    g.compressor.ratio.value = 6;
+    g.compressor.attack.value = 0.01;
+    g.compressor.release.value = 0.4;
+  } else {
+    g.compressor.threshold.value = -18;
+    g.compressor.knee.value = 24;
+    g.compressor.ratio.value = 3;
+    g.compressor.attack.value = 0.005;
+    g.compressor.release.value = 0.25;
+  }
+  g.compressorWet.gain.setTargetAtTime(squashing ? 1 : 0, now, ramp);
+  g.compressorBypass.gain.setTargetAtTime(squashing ? 0 : 1, now, ramp);
 
   g.panner.pan.setTargetAtTime(config.balance, now, ramp);
 

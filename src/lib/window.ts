@@ -1,19 +1,19 @@
 import { isAndroid } from "./platform";
 
 /**
- * The window itself: decorations, dragging, the three buttons, the resize edges.
+ * The window itself: dragging it, and resizing it from its own edges.
  *
  * A thin layer over `@tauri-apps/api/window` for one reason — none of it exists
  * on Android, and half of it does not exist in a browser tab (`vitest`, `vite
  * preview`). Everything here resolves to a no-op rather than throwing, so the
- * title bar can call these unconditionally and no caller needs to ask which
- * platform it is on.
+ * frame can call these unconditionally and no caller needs to ask which platform
+ * it is on.
  *
  * Each function imports the API lazily. A static import would pull the window
  * plugin into the Android bundle for code that can never run there.
  */
 
-/** Whether this build draws its own title bar at all. */
+/** Whether this build frames its own window at all. */
 export const hasWindowChrome = !isAndroid;
 
 type Win = Awaited<
@@ -35,22 +35,6 @@ async function win(): Promise<Win | null> {
   } catch {
     return null;
   }
-}
-
-export async function minimizeWindow(): Promise<void> {
-  await (await win())?.minimize();
-}
-
-export async function toggleMaximizeWindow(): Promise<void> {
-  await (await win())?.toggleMaximize();
-}
-
-export async function closeWindow(): Promise<void> {
-  await (await win())?.close();
-}
-
-export async function isWindowMaximized(): Promise<boolean> {
-  return (await (await win())?.isMaximized()) ?? false;
 }
 
 /**
@@ -87,36 +71,4 @@ export type ResizeEdge =
  */
 export async function startWindowResize(edge: ResizeEdge): Promise<void> {
   await (await win())?.startResizeDragging(edge);
-}
-
-/**
- * Turn the system title bar and frame on or off, live.
- *
- * The window launches undecorated (`tauri.conf.json`), so this is only ever
- * called to put the frame *back* — the escape hatch for a compositor where the
- * app's own chrome does not work. See `nativeFrame` in `useSettingsStore`.
- */
-export async function setNativeDecorations(on: boolean): Promise<void> {
-  await (await win())?.setDecorations(on);
-}
-
-/**
- * Run `fn` whenever the window is resized, and once immediately.
- *
- * Used for one thing: the maximise button's glyph, which has to become a
- * "restore" glyph when the window is maximised — including when it was maximised
- * by a double-click on the bar, by Win+Up, or by dragging to the top of the
- * screen, none of which go through our button.
- */
-export async function onWindowResized(
-  fn: () => void,
-): Promise<() => void> {
-  const w = await win();
-  if (!w) return () => {};
-  fn();
-  try {
-    return await w.onResized(fn);
-  } catch {
-    return () => {};
-  }
 }

@@ -54,6 +54,12 @@ pub fn run() {
                     }
                 }
             }
+            // The write window needs a handle to build itself from, and it is
+            // built lazily on the first like rather than at startup — nobody
+            // should pay for a second browser they may never write with.
+            #[cfg(desktop)]
+            sc_api::writer::attach(app.handle().clone());
+
             let _ = app;
             Ok(())
         })
@@ -128,7 +134,42 @@ pub fn run() {
             commands::sc_repost_playlist,
             commands::sc_edit_playlist,
             commands::sc_delete_playlist,
-            commands::sc_set_playlist_tracks
+            commands::sc_set_playlist_tracks,
+            // The local store. Nothing below this line talks to SoundCloud.
+            commands::cache_sync_tracks,
+            commands::cache_mark_missing,
+            commands::cache_gone_tracks,
+            commands::cache_track,
+            commands::cache_search,
+            commands::cache_row_facts,
+            commands::marks_list,
+            commands::marks_all,
+            commands::marks_add,
+            commands::marks_update,
+            commands::marks_delete,
+            commands::marks_export,
+            commands::later_list,
+            commands::later_add,
+            commands::later_remove,
+            commands::later_keep,
+            commands::diary_start,
+            commands::diary_finish,
+            commands::diary_list,
+            commands::diary_prune,
+            commands::diary_clear,
+            commands::loudness_get,
+            commands::loudness_set,
+            commands::thread_waveform,
+            commands::link_declined,
+            commands::decline_link,
+            commands::kv_get,
+            commands::kv_set,
+            commands::dupes_find,
+            commands::dupes_hide,
+            commands::dupes_undo,
+            commands::dupes_hidden,
+            commands::storage_report,
+            commands::storage_erase
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

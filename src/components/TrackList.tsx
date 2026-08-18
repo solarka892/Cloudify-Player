@@ -1,6 +1,7 @@
 import { memo, useState } from "react";
 import { Download, ListPlus, MoreVertical, Pause, Play } from "lucide-react";
 import type { Track } from "@/lib/tauri";
+import { useNitStore } from "@/stores/useNitStore";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
 import { toast } from "@/stores/useToastStore";
@@ -28,9 +29,9 @@ import { ArtFallback } from "./ArtFallback";
  * `.stack` gaps alone were invisible.
  */
 const ROW_HEIGHT: Record<Density, number> = {
-  compact: 46,
-  cozy: 56,
-  spacious: 68,
+  compact: 52,
+  cozy: 64,
+  spacious: 76,
 };
 
 /** Format milliseconds as m:ss. */
@@ -72,6 +73,7 @@ export function TrackList({ tracks }: { tracks: Track[] }) {
             key={track.id}
             track={track}
             queue={tracks}
+            index={start + index + 1}
             compact={compact}
             top={(start + index) * rowHeight}
             height={rowHeight}
@@ -79,7 +81,7 @@ export function TrackList({ tracks }: { tracks: Track[] }) {
               e.preventDefault();
               setMenu({ track, x: e.clientX, y: e.clientY });
             }}
-            onMenu={(x, y) => setMenu({ track, x, y })}
+            onMenu={(x, y, align) => setMenu({ track, x, y, align })}
           />
         ))}
       </div>
@@ -102,6 +104,7 @@ export function TrackList({ tracks }: { tracks: Track[] }) {
 const TrackRow = memo(function TrackRow({
   track,
   queue,
+  index,
   compact,
   top,
   height,
@@ -110,12 +113,14 @@ const TrackRow = memo(function TrackRow({
 }: {
   track: Track;
   queue: Track[];
+  /** 1-based position in the list. Only one skin shows it; see `.row-index`. */
+  index: number;
   /** Touch-sized layout: no hover, so the row's actions need a real button. */
   compact: boolean;
   top: number;
   height: number;
   onContextMenu: (e: React.MouseEvent) => void;
-  onMenu: (x: number, y: number) => void;
+  onMenu: (x: number, y: number, align?: MenuTarget["align"]) => void;
 }) {
   const art = useArtwork(track);
   const playTrack = usePlayerStore((s) => s.playTrack);
@@ -124,6 +129,11 @@ const TrackRow = memo(function TrackRow({
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const isDownloaded = useDownloadsStore((s) => s.ids.has(track.id));
   const reposted = useRepostStore((s) => s.trackIds.has(track.id));
+  // What this app knows about the row that SoundCloud does not: how many marks
+  // are on it, and whether the upload is gone. One subscription per row into a
+  // map the store already holds, so no request and no per-row effect.
+  const marks = useNitStore((s) => s.rowMarks[track.id] ?? 0);
+  const goneAt = useNitStore((s) => s.rowGone[track.id]);
 
   return (
     <div
@@ -142,25 +152,42 @@ const TrackRow = memo(function TrackRow({
           // sets a background *colour*, so it wins over the row fill without
           // taking the class — and the class is what a stylesheet has to grab
           // hold of to restyle rows as a set.
-          "group bg-row flex h-full w-full items-center gap-3 border-b border-border px-3 text-left transition-[background-color] duration-[var(--motion-fast)] hover:bg-accent",
+          // No rule under each row. Forty hairlines down a list draw a grid
+          // nobody asked for and make the covers look like cells in a table;
+          // the covers are already forty rectangles, and that is enough
+          // structure. What separates rows now is the space between them and
+          // the fill that appears under the pointer.
+          "group bg-row flex h-[calc(100%-0.25rem)] w-full items-center gap-3 rounded-[var(--radius-control)] px-2.5 text-left transition-colors duration-[var(--motion-fast)] hover:bg-accent",
           isCurrent && "bg-accent",
+          goneAt && "row-gone",
         )}
       >
-        <div className="relative h-10 w-10 shrink-0">
+        {/* The row's number. Hidden in every skin but the one that wants a
+            column of readings down the left of the list. */}
+        <span className="row-index readout shrink-0">
+          {String(index).padStart(2, "0")}
+        </span>
+
+        <div className="relative h-12 w-12 shrink-0">
           {art ? (
-            <img
-              src={art}
-              alt=""
-              loading="lazy"
-              decoding="async"
-              width={40}
-              height={40}
-              className="artwork h-10 w-10 rounded-[var(--radius-control)] object-cover"
-            />
+            /* The frame is the duotone's box, and it holds the picture and
+               nothing else — the play button below is a sibling above it, or
+               the ink would recolour the glyph as well. */
+            <span className="art-frame block h-12 w-12 rounded-[var(--radius-control)]">
+              <img
+                src={art}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                width={48}
+                height={48}
+                className="artwork h-12 w-12 object-cover"
+              />
+            </span>
           ) : (
             <ArtFallback
               seed={track.id}
-              className="h-10 w-10 rounded-[var(--radius-control)]"
+              className="h-12 w-12 rounded-[var(--radius-control)]"
             />
           )}
           <span className="absolute inset-0 flex items-center justify-center rounded-[var(--radius-control)] art-overlay opacity-0 transition-opacity duration-[var(--motion-fast)] group-hover:opacity-100">
@@ -175,20 +202,38 @@ const TrackRow = memo(function TrackRow({
         <div className="flex min-w-0 flex-col">
           <span
             className={cn(
-              "truncate text-sm font-medium",
+              "row-title type-body truncate",
               isCurrent && "text-brand",
             )}
           >
             {track.title}
           </span>
           {track.artist && (
-            <span className="truncate text-xs text-muted-foreground">
+            <span className="type-label truncate text-muted-foreground">
               {track.artist}
             </span>
           )}
         </div>
 
-        <div className="ml-auto flex shrink-0 items-center gap-1">
+        {/* What is true about this row beyond its title. Outlines, never fills:
+            a filled tag would compete with the play button for the interface's
+            one accent. */}
+        {(goneAt || marks > 0) && (
+          <div className="ml-auto flex shrink-0 items-center gap-1.5">
+            {goneAt && (
+              <span className="row-tag" data-tone="gone">
+                {t.gone.badge}
+              </span>
+            )}
+            {marks > 0 && (
+              <span className="row-tag" data-tone="mark">
+                {t.marks.count.replace("{n}", String(marks))}
+              </span>
+            )}
+          </div>
+        )}
+
+        <div className={cn("flex shrink-0 items-center gap-1", !(goneAt || marks > 0) && "ml-auto")}>
           {isDownloaded && (
             <Download
               className="h-3.5 w-3.5 text-brand"
@@ -211,7 +256,8 @@ const TrackRow = memo(function TrackRow({
               onClick={(e) => {
                 e.stopPropagation();
                 const box = e.currentTarget.getBoundingClientRect();
-                onMenu(box.right, box.bottom);
+                // Beside the button, tops level.
+                onMenu(box.right, box.top, "beside");
               }}
               aria-label={t.track.more}
               className="rounded-[var(--radius-control)] p-1.5 text-muted-foreground"
@@ -247,7 +293,7 @@ const TrackRow = memo(function TrackRow({
               />
             </>
           )}
-          <span className="font-mono text-xs tabular-nums text-muted-foreground">
+          <span className="readout type-caption tabular-nums text-muted-foreground">
             {formatDuration(track.duration)}
           </span>
         </div>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   HardDriveDownload,
   Radio,
@@ -21,8 +21,14 @@ import { DownloadAllButton } from "@/components/DownloadAllButton";
 import { useLibraryStore, type Section } from "@/stores/useLibraryStore";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
 import { usePlayerStore } from "@/stores/usePlayerStore";
-import { toast } from "@/stores/useToastStore";
 import { t } from "@/i18n";
+import { ViewHead } from "@/components/ViewHead";
+import { Strip, StripAction } from "@/components/Strip";
+import { matchedByFolding, matches } from "@/lib/fold";
+import { dupesHide } from "@/lib/store";
+import { useNavStore } from "@/stores/useNavStore";
+import { useNitStore } from "@/stores/useNitStore";
+import { toast } from "@/stores/useToastStore";
 import { scrollViewToTop } from "@/lib/scroll";
 import { artwork, cn } from "@/lib/utils";
 import { ArtFallback } from "@/components/ArtFallback";
@@ -181,35 +187,132 @@ function LikesSection({ userId }: { userId: number }) {
   const likes = useLibraryStore((s) => s.likes);
   const load = useLibraryStore((s) => s.loadLikes);
   const refresh = useLibraryStore((s) => s.refreshLikes);
+  const rowGone = useNitStore((s) => s.rowGone);
+  const dupes = useNitStore((s) => s.dupes);
+  const loadDupes = useNitStore((s) => s.loadDupes);
+  const openNit = useNavStore((s) => s.openNit);
+  const [hidden, setHidden] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     void load(userId);
   }, [userId, load]);
 
-  const { query, setQuery, filtered } = useFilter(likes.items, (t) =>
-    `${t.title} ${t.artist ?? ""}`,
+  const [query, setQuery] = useState("");
+  // Transliterated, and over the list already on screen: `vyazki` finds «Вязки»
+  // with the network off, before the mirror has caught up, and without a round
+  // trip per keystroke. Same folding the store's index uses — see `lib/fold`.
+  const filtered = useMemo(() => {
+    const shown = likes.items.filter((track) => !hidden.has(track.id));
+    if (!query.trim()) return shown;
+    return shown.filter((track) =>
+      matches(query, `${track.title} ${track.artist ?? ""}`),
+    );
+  }, [likes.items, query, hidden]);
+
+  // Worth saying out loud: this is the one moment the transliteration is
+  // visible, and an interface that does it silently teaches nobody it can.
+  const transliterated = useMemo(
+    () =>
+      query.trim()
+        ? filtered
+            .filter((track) =>
+              matchedByFolding(query, `${track.title} ${track.artist ?? ""}`),
+            )
+            .slice(0, 3)
+        : [],
+    [filtered, query],
   );
 
+  const gone = filtered.filter((track) => rowGone[track.id]).length;
+  const duplicates = dupes.reduce((sum, group) => sum + group.others.length, 0);
+  const totalMs = likes.items.reduce((sum, track) => sum + track.duration, 0);
+
   return (
-    <Shell
-      section={likes}
-      count={filtered.length}
-      onRefresh={() => void refresh(userId)}
-      emptyLabel={t.library.empty}
-      tools={
-        <>
+    <div className="stack">
+      <ViewHead
+        title={t.library.likes}
+        sub={
+          <>
+            {t.library.likesCount
+              .replace("{n}", String(likes.items.length))
+              .replace("{hours}", String(Math.round(totalMs / 3_600_000)))}
+          </>
+        }
+        actions={
           <FilterBox
             value={query}
             onChange={setQuery}
-            placeholder={t.library.searchLikes}
+            placeholder={t.library.searchOffline}
           />
-          <ShufflePlayButton tracks={filtered} />
-          <DownloadAllButton tracks={filtered} />
-        </>
-      }
-    >
-      <TrackList tracks={filtered} />
-    </Shell>
+        }
+      />
+
+      {transliterated.length > 0 && (
+        <Strip tone="mark">
+          {t.search.byTranslit.replace("{q}", query)} —{" "}
+          {transliterated.map((track) => track.title).join(", ")}
+        </Strip>
+      )}
+
+      {duplicates > 0 && (
+        <Strip
+          actions={
+            <>
+              {/* Look before you leap. The other button hides tracks and cannot
+                  be undone from here, and until now the strip offered that
+                  without ever saying *which* tracks — the one thing anyone
+                  would want to know first. Nit's duplicates tab already lists
+                  every group with its keeper, so this points at it rather than
+                  building a second view of the same thing. */}
+              <StripAction onClick={() => openNit("dupes")}>
+                {t.dupes.review}
+              </StripAction>
+              <StripAction
+                primary
+                onClick={() => {
+                  const ids = dupes.flatMap((g) => g.others.map((o) => o.id));
+                  void dupesHide(ids).then(() => {
+                    setHidden(new Set(ids));
+                    toast(
+                      t.dupes.hidden.replace("{n}", String(ids.length)),
+                      "success",
+                    );
+                    void loadDupes();
+                  });
+                }}
+              >
+                {t.dupes.keepOldest}
+              </StripAction>
+            </>
+          }
+        >
+          <b>{t.dupes.found.replace("{n}", String(duplicates))}</b>{" "}
+          <span className="text-muted-foreground">{t.dupes.hiddenHint}</span>
+        </Strip>
+      )}
+
+      {gone > 0 && (
+        <Strip tone="mark">
+          <b>{t.gone.count.replace("{n}", String(gone))}</b>{" "}
+          <span className="text-muted-foreground">{t.gone.hint}</span>
+        </Strip>
+      )}
+
+      <Shell
+        section={likes}
+        count={filtered.length}
+        onRefresh={() => void refresh(userId)}
+        emptyLabel={t.library.empty}
+        tools={
+          <>
+            <ShufflePlayButton tracks={filtered} />
+            <DownloadAllButton tracks={filtered} />
+          </>
+        }
+      >
+        <TrackList tracks={filtered} />
+      </Shell>
+    </div>
   );
 }
 
@@ -528,14 +631,14 @@ function StationCard({
       className="flex items-center gap-3 rounded-[var(--radius)] border border-border bg-card p-2 text-left transition-transform duration-[var(--motion-fast)] hover:-translate-y-0.5 disabled:opacity-60"
     >
       {art ? (
-        <img
-          src={art}
-          alt=""
-          className={cn("artwork", 
-            "h-11 w-11 shrink-0 object-cover",
+        <span
+          className={cn(
+            "art-frame block h-11 w-11 shrink-0",
             round ? "rounded-[var(--radius-round)]" : "rounded-[var(--radius-control)]",
           )}
-        />
+        >
+          <img src={art} alt="" className="artwork h-11 w-11 object-cover" />
+        </span>
       ) : (
         <ArtFallback
           seed={title}

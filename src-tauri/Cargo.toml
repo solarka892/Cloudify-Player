@@ -13,6 +13,20 @@ edition = "2021"
 name = "cloudify_player_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+# Size matters most on Android, where the whole app ships as one APK the user
+# downloads over mobile data; on the desktop it is just a smaller installer.
+# The Rust library is by far the largest thing in the package, and on the
+# defaults it was 20 MB of which a third was symbols nothing on the device
+# reads. `panic = "abort"` is safe here because nothing catches unwinds — see
+# the absence of `catch_unwind` in `src/`. The cost is release build time:
+# `lto`/`codegen-units = 1` give up parallelism in the final link.
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 

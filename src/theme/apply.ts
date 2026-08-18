@@ -43,11 +43,25 @@ export interface ThemeInput {
    * Whether cover art is reduced to one tone.
    *
    * A setting rather than part of the skin because it is the one piece of
-   * Obsidian people reasonably disagree with — the covers are the only place
-   * their library's own colour appears. Off simply blanks `--art-filter`; nothing
-   * else in the interface changes, the wallpaper included.
+   * Obsidian — and of Nit, where it is a two-ink duotone rather than greyscale —
+   * that people reasonably disagree with: the covers are the only place their
+   * library's own colour appears. Off simply blanks `--art-filter`; nothing else
+   * in the interface changes, the wallpaper included.
+   *
+   * One switch for both treatments rather than one each. What it means depends
+   * on the skin, because the skin is what says how art is treated; a second
+   * "duotone" switch beside it would be a second list that can disagree with the
+   * first about whether the covers are coloured.
    */
   monoArtwork: boolean;
+  /**
+   * Whether screen headings print twice, the second impression out of register.
+   *
+   * Same shape as `monoArtwork` and for the same reason: the skin decides how far
+   * (`--print-offset`), the setting decides whether. Inert under every skin that
+   * asks for no offset.
+   */
+  printShift: boolean;
   /** Per-property overrides authored by the user; applied last. */
   overrides: ThemeVars;
 }
@@ -69,8 +83,8 @@ export function resolveDark(mode: ThemeMode): boolean {
 /** Build the full property map for a theme, without touching the DOM. */
 export function buildVars(input: ThemeInput): ThemeVars {
   const dark = resolveDark(input.mode);
-  const palette = PALETTES[input.palette] ?? PALETTES.midnight;
-  const skin = SKINS[input.skin] ?? SKINS.aurora;
+  const palette = PALETTES[input.palette] ?? PALETTES.signal;
+  const skin = SKINS[input.skin] ?? SKINS.nit;
 
   // Apple mode owns *form*, not colour. Its own palette is an ordinary entry in
   // `PALETTES` that the mode selects on the way in, so the picker keeps working
@@ -107,7 +121,16 @@ export function buildVars(input: ThemeInput): ThemeVars {
   // Only ever *removes* a filter: a skin that does not ask for one has nothing
   // here to turn off, so the switch is inert everywhere but Obsidian. A hand
   // override of `--art-filter` still wins, like every other override.
-  if (!input.monoArtwork) vars["--art-filter"] = "none";
+  if (!input.monoArtwork) {
+    vars["--art-filter"] = "none";
+    // The ink layer as well, or a cover would come back in colour with a
+    // duotone ramp still blended over it — which is neither treatment.
+    vars["--art-duotone-from"] = "transparent";
+    vars["--art-duotone-to"] = "transparent";
+  }
+  // Same shape, same inertness: a skin that never offsets its headings has
+  // nothing here to switch off.
+  if (!input.printShift) vars["--print-offset"] = "0px";
 
   // An accent preset overrides only the two brand colours, so it composes with
   // any palette instead of replacing it — Apple mode included. iOS ships one

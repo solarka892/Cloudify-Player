@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { cacheSyncTracks } from "@/lib/store";
 import { persist } from "zustand/middleware";
 import {
   scAddToPlaylist,
@@ -161,6 +162,15 @@ export const useLibraryStore = create<LibraryState>()(
   const loadLikesFor = (userId: number) =>
     fetchInto(userId, ["likes"], async () => {
       const items = await scGetLikes(userId);
+      // Write the likes into the local mirror as they arrive.
+      //
+      // This is what makes offline search, duplicate detection and tombstones
+      // possible at all — none of them can work from a list that only exists
+      // for the length of a session. Fire and forget, and deliberately not
+      // awaited: the library must appear at the speed of the API, not at the
+      // speed of a few thousand SQLite upserts, and a mirror that is one
+      // refresh behind is not a problem for anything that reads it.
+      void cacheSyncTracks(items).catch(() => {});
       return {
         likes: { items, status: "ok" as const, error: null },
         likedIds: new Set(items.map((t) => t.id)),

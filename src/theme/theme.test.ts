@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildVars, type ThemeInput } from "./apply";
 import { PALETTES, type PaletteId } from "./palettes";
 import { SKINS, SKIN_IDS, type SkinId } from "./skins";
+import { LAYOUT_IDS, layoutAllowed, resolveLayout } from "./layout";
 import { desaturate } from "./artwork";
 
 /**
@@ -18,17 +19,105 @@ function input(patch: Partial<ThemeInput> = {}): ThemeInput {
   return {
     mode: "dark",
     palette: "midnight",
-    skin: "aurora",
+    skin: "editorial",
     accent: null,
     density: "cozy",
     uiScale: 100,
     glass: false,
     apple: false,
     monoArtwork: true,
+    printShift: true,
     overrides: {},
     ...patch,
   };
 }
+
+describe("the nit skin", () => {
+  it("prints cover art with the palette's two inks", () => {
+    const vars = buildVars(input({ skin: "nit" }));
+    // The filter drains the photograph; the ink goes on over it in CSS.
+    expect(vars["--art-filter"]).toContain("grayscale(1)");
+    // Written as roles rather than as values, so the palette still owns colour.
+    expect(vars["--art-duotone-from"]).toBe("var(--brand-2)");
+    expect(vars["--art-duotone-to"]).toBe("var(--brand)");
+  });
+
+  it("takes the ink off with the greyscale, not one without the other", () => {
+    const vars = buildVars(input({ skin: "nit", monoArtwork: false }));
+    expect(vars["--art-filter"]).toBe("none");
+    expect(vars["--art-duotone-from"]).toBe("transparent");
+    expect(vars["--art-duotone-to"]).toBe("transparent");
+  });
+
+  it("contrasts a square card against a round control", () => {
+    const vars = buildVars(input({ skin: "nit" }));
+    expect(vars["--radius"]).toBe("2px");
+    expect(vars["--radius-control"]).toBe("999px");
+    expect(vars["--shadow-1"]).toBe("none");
+    expect(vars["--shadow-2"]).toBe("none");
+  });
+
+  it("offsets a heading's second impression, until told not to", () => {
+    expect(buildVars(input({ skin: "nit" }))["--print-offset"]).toBe("2px");
+    expect(
+      buildVars(input({ skin: "nit", printShift: false }))["--print-offset"],
+    ).toBe("0px");
+  });
+
+  it("leaves every other skin's artwork untouched", () => {
+    // The point of the token being in `SIGNATURE_OFF`: a skin that says nothing
+    // about the duotone must not inherit whatever was on the document before it.
+    for (const id of SKIN_IDS.filter((s) => s !== "nit")) {
+      const vars = buildVars(input({ skin: id }));
+      expect(vars["--art-filter"]).not.toContain("nit-duotone");
+      expect(vars["--art-duotone-from"]).toBe("transparent");
+      expect(vars["--art-duotone-to"]).toBe("transparent");
+      expect(vars["--print-offset"]).toBe("0px");
+    }
+  });
+});
+
+describe("what a skin is drawn for", () => {
+  it("keeps Nit out of the sidebar, and falls back rather than rewriting", () => {
+    // The nav here is an 88px icon column; the sidebar is a 240px panel with a
+    // playlist index in it, which the look has no drawing for.
+    expect(layoutAllowed("sidebar", "nit")).toBe(false);
+    expect(layoutAllowed("rail", "nit")).toBe(true);
+    expect(layoutAllowed("top", "nit")).toBe(true);
+    // The stored preference is answered around, never overwritten: switching
+    // away from Nit has to give the sidebar back.
+    expect(resolveLayout("sidebar", "nit")).toBe("rail");
+    expect(resolveLayout("sidebar", "editorial")).toBe("sidebar");
+  });
+
+  it("lets every other skin draw all three", () => {
+    for (const skin of SKIN_IDS.filter((id) => id !== "nit")) {
+      for (const layout of LAYOUT_IDS) {
+        expect(layoutAllowed(layout, skin), `${skin}/${layout}`).toBe(true);
+      }
+    }
+  });
+
+  it("gives the thread to exactly the skin that gives up its seek bar", () => {
+    // Both halves matter. A skin with the thread *and* a seek bar is the app
+    // disagreeing with itself about where time lives; a skin with neither has
+    // no progress at all.
+    expect(SKINS.nit.thread).toBe(true);
+    for (const skin of SKIN_IDS.filter((id) => id !== "nit")) {
+      expect(SKINS[skin].thread, skin).toBeFalsy();
+    }
+  });
+});
+
+describe("every skin", () => {
+  it("answers for the instrument face", () => {
+    // Three roles, and the third is the one a new skin forgets. A missing
+    // `--font-mono` is not a blank readout — it is the previous skin's.
+    for (const id of SKIN_IDS) {
+      expect(buildVars(input({ skin: id }))["--font-mono"]).toBeTruthy();
+    }
+  });
+});
 
 describe("the obsidian skin", () => {
   it("has a radius of zero everywhere, including the round token", () => {
@@ -94,11 +183,18 @@ describe("the glass switch", () => {
 });
 
 describe("--art-filter", () => {
-  it("greyscales artwork under obsidian and nowhere else", () => {
+  it("is only touched by the two skins that treat artwork", () => {
+    // Two skins have an opinion about cover art and they are different
+    // opinions: Obsidian drains it, Nit prints it in two inks. Every other skin
+    // has to leave it alone — the token is shared, so a skin that forgets to
+    // say `none` inherits whichever of the two was on before it.
     expect(buildVars(input({ skin: "obsidian" }))["--art-filter"]).toContain(
       "grayscale(1)",
     );
-    for (const skin of SKIN_IDS.filter((id) => id !== "obsidian")) {
+    expect(buildVars(input({ skin: "nit" }))["--art-filter"]).toContain(
+      "grayscale(1)",
+    );
+    for (const skin of SKIN_IDS.filter((id) => id !== "obsidian" && id !== "nit")) {
       expect(buildVars(input({ skin }))["--art-filter"], skin).toBe("none");
     }
   });
@@ -182,8 +278,8 @@ describe("unknown ids from an imported theme file", () => {
         palette: "not-a-palette" as PaletteId,
       }),
     );
-    expect(vars["--radius"]).toBe(SKINS.aurora.vars["--radius"]);
-    expect(vars["--background"]).toBe(PALETTES.midnight.dark.bg);
+    expect(vars["--radius"]).toBe(SKINS.nit.vars["--radius"]);
+    expect(vars["--background"]).toBe(PALETTES.signal.dark.bg);
   });
 });
 

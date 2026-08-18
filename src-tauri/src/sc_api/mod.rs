@@ -28,6 +28,12 @@ pub mod stream;
 pub mod tracks;
 pub mod users;
 
+/// Writes go out through a browser window; see the module for why. Desktop
+/// only — Android's WebView is not ours to drive this way, and its writes stay
+/// on the direct path until someone can test the alternative on a phone.
+#[cfg(desktop)]
+pub mod writer;
+
 mod paging;
 
 #[cfg(test)]
@@ -76,6 +82,45 @@ mod error {
         /// immediately makes it worse — the caller has to back off.
         #[error("soundcloud is rate-limiting us — wait a minute and retry")]
         RateLimited,
+
+        /// The OAuth token is no longer good. Only ever raised by the write
+        /// routes: a read carries no token, so a 401 there means the key.
+        ///
+        /// Nothing the app can do about it by itself — the token comes out of a
+        /// browser session, and if that session has been signed out or the
+        /// token revoked, the only fix is to fetch a new one. So the message is
+        /// an instruction rather than a diagnosis.
+        #[error("your SoundCloud session is no longer valid — sign in again")]
+        SessionExpired,
+
+        /// A write stopped by SoundCloud's bot filter rather than by
+        /// SoundCloud.
+        ///
+        /// DataDome sits in front of the write routes and not the read ones,
+        /// which is why a session that browses perfectly cannot like a track.
+        /// It answers a request it does not recognise with a `403` and an
+        /// `x-datadome: protected` header, and no amount of re-fetching the
+        /// `client_id` or the token will change its mind — what it wants is the
+        /// `datadome` cookie a real browser carries. Worth its own variant
+        /// precisely because it is the one failure here that is not about
+        /// credentials at all.
+        /// The message is an instruction because there is one, and it is the
+        /// only one: loading soundcloud.com in the browser is what earns a fresh
+        /// `datadome` cookie, and the next write borrows whatever is there.
+        #[error("SoundCloud's bot filter blocked this — open soundcloud.com in your browser, then try again")]
+        BotFiltered,
+
+        /// A write SoundCloud refused for a reason that is not one of the
+        /// above, carrying what it actually said.
+        ///
+        /// The write routes are the unverified half of this module (see the
+        /// file header in `actions.rs`), so when one of them is refused the
+        /// status and the body are the only evidence there is. Both are put in
+        /// front of the user rather than swallowed: an ugly message that names
+        /// the fault beats a tidy one that guesses at it, and this is how the
+        /// next report arrives with something in it.
+        #[error("soundcloud refused the write ({status}){detail}")]
+        Refused { status: u16, detail: String },
 
         /// A pasted link that does not point at SoundCloud. Refused before the
         /// request rather than after: the URL comes from the clipboard.

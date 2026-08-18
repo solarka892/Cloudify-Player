@@ -353,20 +353,18 @@ export const ApplePlayCircle: Glyph = ({ className, strokeWidth = 1.8 }) => (
   </svg>
 );
 
-/** `bookmark.fill` — saved themes. A paintbrush said "painting", not "saved". */
-export const AppleBookmark: Glyph = ({ className }) => (
-  <svg
-    viewBox="0 0 24 24"
-    className={className}
-    fill="currentColor"
-    stroke="currentColor"
-    strokeWidth={1.5}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden
-  >
+/**
+ * `bookmark` — saved themes. A paintbrush said "painting", not "saved".
+ *
+ * Outline, not `bookmark.fill`. Apple fills a tab's glyph to mark the one you
+ * are on and leaves the rest hollow; here the selection is drawn by the row
+ * behind the glyph instead, so nothing is ever filled — and a single solid
+ * bookmark in a column of eight outlines reads as permanently selected.
+ */
+export const AppleBookmark: Glyph = (props) => (
+  <Outline {...props}>
     <path d="M6.6 3.6h10.8a1 1 0 0 1 1 1v15.2l-6.4-4.4-6.4 4.4V4.6a1 1 0 0 1 1-1Z" />
-  </svg>
+  </Outline>
 );
 
 /* ── Appearance ──────────────────────────────────────────────────────────── */
@@ -448,5 +446,39 @@ export const AppleList: Glyph = (props) => (
   <Outline {...props}>
     <path d="M8.4 6.8h11.4M8.4 12h11.4M8.4 17.2h11.4" />
     <path d="M4.4 6.8h.02M4.4 12h.02M4.4 17.2h.02" />
+  </Outline>
+);
+
+/**
+ * `heart` — and `heart.fill`, which is the same outline with the counter closed.
+ *
+ * One closed path rather than two glyphs, so `fill-current` on the `<svg>` is
+ * the whole difference between the two states — which is how `LikeButton`
+ * already drives lucide's, so nothing above here has to change.
+ *
+ * SF's heart is rounder and fuller than lucide's: the lobes are near-circular
+ * and meet in a shallow notch, where lucide's are flatter and come to a deeper
+ * V. Beside six redrawn glyphs that difference is what makes the row look like
+ * two sets of icons rather than one.
+ */
+export const AppleHeart: Glyph = (props) => (
+  <Outline {...props}>
+    <path d="M12 20.3c-.42 0-.82-.16-1.13-.44C6.34 15.9 3.4 13.2 3.4 9.86 3.4 7.1 5.55 5 8.28 5c1.55 0 2.94.72 3.72 1.86A4.53 4.53 0 0 1 15.72 5c2.73 0 4.88 2.1 4.88 4.86 0 3.34-2.94 6.04-7.47 10-.31.28-.71.44-1.13.44Z" />
+  </Outline>
+);
+
+/**
+ * `arrow.2.squarepath` — repost.
+ *
+ * Two arrows chasing each other round a rounded rectangle. lucide's `Repeat2`
+ * is the same idea drawn with straight corners and open ends, which next to the
+ * arcs in the rest of this file reads as a different hand.
+ */
+export const AppleRepost: Glyph = (props) => (
+  <Outline {...props}>
+    <path d="M6.6 9V7.9A2.5 2.5 0 0 1 9.1 5.4h8.3" />
+    <path d="m15.1 3.1 2.3 2.3-2.3 2.3" />
+    <path d="M17.4 15v1.1a2.5 2.5 0 0 1-2.5 2.5H6.6" />
+    <path d="m8.9 20.9-2.3-2.3 2.3-2.3" />
   </Outline>
 );

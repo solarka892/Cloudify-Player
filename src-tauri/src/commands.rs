@@ -6,7 +6,8 @@
 #[cfg(not(target_os = "android"))]
 use std::time::{Duration, Instant};
 
-use crate::{auth, sc_api};
+use crate::sc_api::models::Track;
+use crate::{auth, cache, sc_api};
 
 /// How long to wait for the user to finish logging in in their browser.
 #[cfg(not(target_os = "android"))]
@@ -905,4 +906,250 @@ pub async fn sc_set_playlist_tracks(playlist_id: u64, track_ids: Vec<u64>) -> Re
     sc_api::actions::set_playlist_tracks(&token, playlist_id, &track_ids)
         .await
         .map_err(|e| e.to_string())
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// The local store.
+//
+// Everything below reads and writes `{app_data}/library.db` and never touches
+// SoundCloud — with one marked exception, `thread_waveform`, which is at this
+// boundary precisely so that `cache` itself stays offline. They are grouped
+// here rather than in `cache` for the same reason every other command is: this
+// file is the whole of the Rust↔JS bridge, and a second place commands can live
+// is a second place to look for them.
+// ══════════════════════════════════════════════════════════════════════════
+
+/// Mirror a page of the user's library locally. Returns how many rows were new.
+#[tauri::command]
+pub fn cache_sync_tracks(app: tauri::AppHandle, tracks: Vec<Track>) -> Result<usize, String> {
+    cache::sync_tracks(&app, &tracks).map_err(|e| e.to_string())
+}
+
+/// Report that these tracks were asked for and not returned. Returns the ones
+/// that crossed into being tombstoned — three separate misses, never one.
+#[tauri::command]
+pub fn cache_mark_missing(app: tauri::AppHandle, ids: Vec<u64>) -> Result<Vec<String>, String> {
+    cache::mark_missing(&app, &ids).map_err(|e| e.to_string())
+}
+
+/// Everything the store believes has been removed from SoundCloud.
+#[tauri::command]
+pub fn cache_gone_tracks(app: tauri::AppHandle) -> Result<Vec<cache::StoredTrack>, String> {
+    cache::gone_tracks(&app).map_err(|e| e.to_string())
+}
+
+/// The local snapshot of one track, tombstone or not.
+#[tauri::command]
+pub fn cache_track(
+    app: tauri::AppHandle,
+    track_id: u64,
+) -> Result<Option<cache::StoredTrack>, String> {
+    cache::stored_track(&app, track_id).map_err(|e| e.to_string())
+}
+
+/// Search the mirror. Offline, transliterated, and it includes mark notes.
+#[tauri::command]
+pub fn cache_search(
+    app: tauri::AppHandle,
+    query: String,
+    limit: Option<u32>,
+) -> Result<Vec<cache::SearchHit>, String> {
+    cache::search(&app, &query, limit.unwrap_or(50)).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn marks_list(app: tauri::AppHandle, track_id: u64) -> Result<Vec<cache::Mark>, String> {
+    cache::marks_list(&app, track_id).map_err(|e| e.to_string())
+}
+
+/// Every mark there is, with whatever the store knows about its track.
+#[tauri::command]
+pub fn marks_all(
+    app: tauri::AppHandle,
+    limit: Option<u32>,
+) -> Result<Vec<(cache::Mark, Option<cache::StoredTrack>)>, String> {
+    cache::marks_all(&app, limit.unwrap_or(500)).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn marks_add(
+    app: tauri::AppHandle,
+    track_id: u64,
+    position_ms: i64,
+    note: Option<String>,
+) -> Result<cache::Mark, String> {
+    cache::marks_add(&app, track_id, position_ms, note).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn marks_update(
+    app: tauri::AppHandle,
+    id: i64,
+    note: Option<String>,
+    position_ms: Option<i64>,
+) -> Result<(), String> {
+    cache::marks_update(&app, id, note, position_ms).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn marks_delete(app: tauri::AppHandle, id: i64) -> Result<(), String> {
+    cache::marks_delete(&app, id).map_err(|e| e.to_string())
+}
+
+/// Every mark as readable text, for the file the user asked for.
+#[tauri::command]
+pub fn marks_export(app: tauri::AppHandle) -> Result<String, String> {
+    cache::marks_export(&app).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn later_list(app: tauri::AppHandle) -> Result<Vec<cache::LaterItem>, String> {
+    cache::later_list(&app).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn later_add(app: tauri::AppHandle, track: Track, source: String) -> Result<(), String> {
+    cache::later_add(&app, &track, &source).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn later_remove(app: tauri::AppHandle, track_id: u64) -> Result<(), String> {
+    cache::later_remove(&app, track_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn later_keep(app: tauri::AppHandle, track_id: u64) -> Result<(), String> {
+    cache::later_keep(&app, track_id).map_err(|e| e.to_string())
+}
+
+/// Open a diary entry. The id comes back so the player can close it with what
+/// actually happened.
+#[tauri::command]
+pub fn diary_start(app: tauri::AppHandle, track: Track) -> Result<i64, String> {
+    cache::diary_start(&app, &track).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn diary_finish(
+    app: tauri::AppHandle,
+    id: i64,
+    outcome: String,
+    position_ms: i64,
+) -> Result<(), String> {
+    cache::diary_finish(&app, id, &outcome, position_ms).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn diary_list(
+    app: tauri::AppHandle,
+    limit: Option<u32>,
+) -> Result<Vec<cache::DiaryEntry>, String> {
+    cache::diary_list(&app, limit.unwrap_or(500)).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn diary_prune(app: tauri::AppHandle, keep_days: i64) -> Result<usize, String> {
+    cache::diary_prune(&app, keep_days).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn diary_clear(app: tauri::AppHandle) -> Result<(), String> {
+    cache::diary_clear(&app).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn loudness_get(app: tauri::AppHandle, track_id: u64) -> Result<Option<f64>, String> {
+    cache::loudness_get(&app, track_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn loudness_set(app: tauri::AppHandle, track_id: u64, level_db: f64) -> Result<(), String> {
+    cache::loudness_set(&app, track_id, level_db).map_err(|e| e.to_string())
+}
+
+/// The waveform for the thread: the local copy if there is one, SoundCloud's
+/// CDN if there is not, cached either way.
+///
+/// A missing waveform is not a fault the interface can act on — the thread draws
+/// its own shape and seeking works regardless — so a failure comes back as
+/// "nothing", not as an error.
+#[tauri::command]
+pub async fn thread_waveform(
+    app: tauri::AppHandle,
+    track_id: u64,
+    waveform_url: Option<String>,
+) -> Result<Option<cache::CachedWaveform>, String> {
+    if let Some(cached) = cache::waveform_get(&app, track_id).map_err(|e| e.to_string())? {
+        return Ok(Some(cached));
+    }
+    let Some(url) = waveform_url else {
+        return Ok(None);
+    };
+    let Ok(wave) = sc_api::tracks::waveform(&url).await else {
+        return Ok(None);
+    };
+    cache::waveform_put(&app, track_id, &wave.samples, wave.height).map_err(|e| e.to_string())?;
+    Ok(Some(cache::CachedWaveform {
+        samples: wave.samples,
+        height: wave.height,
+    }))
+}
+
+/// Has the user already said no to this link? Only a hash of it is stored.
+#[tauri::command]
+pub fn link_declined(app: tauri::AppHandle, url: String) -> Result<bool, String> {
+    cache::link_declined(&app, &url).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn decline_link(app: tauri::AppHandle, url: String) -> Result<(), String> {
+    cache::decline_link(&app, &url).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn kv_get(app: tauri::AppHandle, key: String) -> Result<Option<String>, String> {
+    cache::kv_get(&app, &key).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn kv_set(app: tauri::AppHandle, key: String, value: String) -> Result<(), String> {
+    cache::kv_set(&app, &key, &value).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn dupes_find(app: tauri::AppHandle) -> Result<Vec<cache::DuplicateGroup>, String> {
+    cache::duplicates(&app).map_err(|e| e.to_string())
+}
+
+/// Hide duplicates locally. Nothing is unliked or deleted on SoundCloud.
+#[tauri::command]
+pub fn dupes_hide(app: tauri::AppHandle, ids: Vec<u64>) -> Result<(), String> {
+    cache::hide_tracks(&app, &ids).map_err(|e| e.to_string())
+}
+
+/// The undo the interface promises: everything hidden comes back.
+#[tauri::command]
+pub fn dupes_undo(app: tauri::AppHandle) -> Result<usize, String> {
+    cache::unhide_all(&app).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn dupes_hidden(app: tauri::AppHandle) -> Result<Vec<u64>, String> {
+    cache::hidden_ids(&app).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn storage_report(app: tauri::AppHandle) -> Result<cache::StorageReport, String> {
+    cache::storage_report(&app).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn storage_erase(app: tauri::AppHandle, id: String) -> Result<(), String> {
+    cache::storage_erase(&app, &id).map_err(|e| e.to_string())
+}
+
+/// Marks-per-track and tombstones, for a list that is about to render.
+#[tauri::command]
+pub fn cache_row_facts(app: tauri::AppHandle) -> Result<cache::RowFacts, String> {
+    cache::row_facts(&app).map_err(|e| e.to_string())
 }

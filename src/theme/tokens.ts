@@ -89,6 +89,17 @@ export interface SkinVars {
   "--shadow-2": string;
   "--font-ui": string;
   "--font-display": string;
+  /**
+   * The instrument face: durations, counters, bitrates, mark times, micro
+   * captions. Anything that is a *reading* rather than a word.
+   *
+   * A third role rather than a variant of `--font-ui`, because what it buys is
+   * not a texture but tabular figures — a running clock set in a proportional
+   * face reflows on every tick, and a column of durations set in one does not
+   * line up. Every skin answers with something; the system mono stack is a
+   * perfectly good answer.
+   */
+  "--font-mono": string;
   /** Section labels: `none` or `uppercase`. */
   "--label-transform": string;
   "--label-spacing": string;
@@ -112,10 +123,31 @@ export interface SkinVars {
    * everywhere else: this is opt-in, not a correction.
    */
   "--art-filter": string;
-  /** Height of the app's own title bar. `0px` disables the row entirely. */
-  "--chrome-height": string;
-  /** Title-bar surface opacity as a percentage of white over the page. */
-  "--chrome-alpha": string;
+  /**
+   * The two inks a duotone cover is printed with, shadows first.
+   *
+   * Consumed by `.art-frame::after` in `globals.css`, the ink layer over every
+   * cover in the app: `--art-filter` takes the photograph's colour out and this
+   * pair puts two back, as a diagonal ramp in `color` blend mode.
+   *
+   * A skin controls form and never colour, and these are the exception that
+   * proves it: both are written as `var(--brand-2)` / `var(--brand)` rather than
+   * as colours, so the skin says *which two roles* print the cover and the
+   * palette underneath still decides what those are. Change the accent and the
+   * covers follow, which is the behaviour you want and the one you get for free.
+   * `transparent` in every skin that does not print.
+   */
+  "--art-duotone-from": string;
+  "--art-duotone-to": string;
+  /**
+   * How far the second impression of a screen heading is out of register.
+   *
+   * A `text-shadow` offset, not a layer: the coloured copy sits behind the type
+   * at `--print-offset` on the x axis, which is exactly what a misaligned plate
+   * looks like and costs nothing to draw. `0px` reads as "off" — the shadow is
+   * still declared, it just lands under the letters it copies.
+   */
+  "--print-offset": string;
   /**
    * The focus indicator, as a `box-shadow` value.
    *
@@ -153,12 +185,13 @@ export interface SkinVars {
 }
 
 /**
- * The Obsidian-specific axes, in their off state.
+ * The signature axes of the two *looks*, in their off state.
  *
- * Every skin has to answer for these, and all but one answers "nothing". Spelling
- * that out beats letting the properties go missing: `applyTheme` only removes a
- * property it is given as an empty string, so a skin silent about `--art-filter`
- * would inherit Obsidian's greyscale from whatever was on `<html>` before it.
+ * Every skin has to answer for these, and the plain ones answer "nothing".
+ * Spelling that out beats letting the properties go missing: `applyTheme` only
+ * removes a property it is given as an empty string, so a skin silent about
+ * `--art-filter` would inherit Obsidian's greyscale — or Nit's duotone — from
+ * whatever was on `<html>` before it.
  *
  * `--focus-ring` is not here — every skin has an opinion about its own.
  */
@@ -167,18 +200,20 @@ export const SIGNATURE_OFF: Pick<
   | "--radius-round"
   | "--label-size"
   | "--art-filter"
-  | "--chrome-height"
-  | "--chrome-alpha"
+  | "--art-duotone-from"
+  | "--art-duotone-to"
+  | "--print-offset"
   | "--grain"
   | "--glow"
   | "--surface-sink"
 > = {
   "--radius-round": "9999px",
   "--label-size": "0.6875rem",
-  // The app's own title bar is a window-level feature, not a skin's, so its
-  // height is the same in all of them; only its finish differs.
-  "--chrome-height": "32px",
-  "--chrome-alpha": "6%",
+  // Both inks transparent rather than absent: the filter is still mounted, and a
+  // skin that does not name it in `--art-filter` never reaches it anyway.
+  "--art-duotone-from": "transparent",
+  "--art-duotone-to": "transparent",
+  "--print-offset": "0px",
   "--art-filter": "none",
   "--grain": "0",
   "--glow": "0",

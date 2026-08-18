@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PlayerReadout } from "./PlayerReadout";
 import { ChevronUp, Download, ListMusic, Mic2 } from "lucide-react";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
@@ -85,7 +86,7 @@ export function PlayerBar() {
           </div>
         )}
 
-        <footer className="panel panel-liquid panel-chrome flex h-20 w-full items-center gap-4 rounded-none border-x-0 border-b-0 px-4">
+        <footer className="player-bar panel panel-liquid panel-chrome flex h-20 w-full items-center gap-4 rounded-none border-x-0 border-b-0 px-4">
           {/* Track.
               Wider than it looks like it needs to be, and wider still on a big
               window: the four action buttons live in here, and at 16rem they
@@ -99,11 +100,13 @@ export function PlayerBar() {
               className="group/art relative h-12 w-12 shrink-0"
             >
               {art ? (
-                <img
-                  src={art}
-                  alt=""
-                  className="artwork h-12 w-12 rounded-[var(--radius-control)] object-cover"
-                />
+                <span className="art-frame block h-12 w-12 rounded-[var(--radius-control)]">
+                  <img
+                    src={art}
+                    alt=""
+                    className="artwork h-12 w-12 object-cover"
+                  />
+                </span>
               ) : (
                 <ArtFallback
                   seed={current.id}
@@ -171,9 +174,14 @@ export function PlayerBar() {
             <RepeatButton />
           </div>
 
-          <div className="min-w-0 flex-1">
+          {/* The one skin with a thread along the top edge of the window hides
+              this: two progress bars disagreeing about where time lives is
+              worse than either alone. What takes its place is `PlayerReadout`,
+              which is a reading rather than a control. */}
+          <div data-seekbar className="min-w-0 flex-1">
             <SeekBar />
           </div>
+          <PlayerReadout />
 
           <div className="flex shrink-0 items-center gap-1">
             <PanelToggle
@@ -232,11 +240,13 @@ function CompactBar({ track, onExpand }: { track: Track; onExpand: () => void })
           className="flex min-h-12 min-w-0 flex-1 items-center gap-3 rounded-[var(--radius-control)] px-1 text-left"
         >
           {art ? (
-            <img
-              src={art}
-              alt=""
-              className="artwork h-11 w-11 shrink-0 rounded-[var(--radius-control)] object-cover"
-            />
+            <span className="art-frame block h-11 w-11 shrink-0 rounded-[var(--radius-control)]">
+              <img
+                src={art}
+                alt=""
+                className="artwork h-11 w-11 object-cover"
+              />
+            </span>
           ) : (
             <ArtFallback
               seed={track.id}

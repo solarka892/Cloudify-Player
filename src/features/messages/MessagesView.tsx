@@ -20,6 +20,7 @@ import { confirmAction } from "@/stores/useConfirmStore";
 import { toast } from "@/stores/useToastStore";
 import { artwork, cn } from "@/lib/utils";
 import { t } from "@/i18n";
+import { ViewHead } from "@/components/ViewHead";
 
 /**
  * Direct messages.
@@ -77,11 +78,13 @@ export function MessagesView() {
   const showThread = !compact || !!selected;
 
   return (
-    // A fixed height rather than `h-full`: the shells put views inside a
-    // scrolling `main` whose inner wrapper is `height: auto`, so `h-full`
-    // resolves to nothing and both panes collapse. Sizing against the viewport
-    // gives the inbox and the thread their own scrollers in every layout.
-    <div className="flex h-[calc(100dvh-20rem)] min-h-72 w-full gap-4 md:h-[calc(100dvh-13rem)]">
+    <div className="flex w-full flex-col gap-3">
+      <ViewHead title={t.nav.messages} />
+    {/* A fixed height rather than `h-full`: the shells put views inside a
+        scrolling `main` whose inner wrapper is `height: auto`, so `h-full`
+        resolves to nothing and both panes collapse. Sizing against the viewport
+        gives the inbox and the thread their own scrollers in every layout. */}
+    <div className="flex h-[calc(100dvh-22rem)] min-h-72 w-full gap-4 md:h-[calc(100dvh-15rem)]">
       {showList && (
         <div
           className={cn(
@@ -240,18 +243,21 @@ export function MessagesView() {
         />
       )}
     </div>
+    </div>
   );
 }
 
 function Avatar({ url, size = "md" }: { url: string | null; size?: "sm" | "md" }) {
   const box = size === "sm" ? "h-7 w-7" : "h-9 w-9";
   return url ? (
-    <img
-      src={url}
-      alt=""
-      loading="lazy"
-      className={cn("artwork", box, "shrink-0 rounded-[var(--radius-round)] object-cover")}
-    />
+    <span className={cn("art-frame block shrink-0 rounded-[var(--radius-round)]", box)}>
+      <img
+        src={url}
+        alt=""
+        loading="lazy"
+        className={cn("artwork object-cover", box)}
+      />
+    </span>
   ) : (
     <span
       className={cn(
@@ -405,11 +411,13 @@ function Bubble({
             className="flex items-center gap-2 rounded-[var(--radius-control)] bg-secondary p-1.5 text-left"
           >
             {artwork(track.artwork_url, "t50x50") ? (
-              <img
-                src={artwork(track.artwork_url, "t50x50") ?? undefined}
-                alt=""
-                className="artwork h-8 w-8 shrink-0 rounded-[var(--radius-control)] object-cover"
-              />
+              <span className="art-frame block h-8 w-8 shrink-0 rounded-[var(--radius-control)]">
+                <img
+                  src={artwork(track.artwork_url, "t50x50") ?? undefined}
+                  alt=""
+                  className="artwork h-8 w-8 object-cover"
+                />
+              </span>
             ) : null}
             <span className="min-w-0">
               <span className="block truncate text-xs font-medium">

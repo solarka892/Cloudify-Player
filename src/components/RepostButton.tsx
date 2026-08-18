@@ -16,11 +16,14 @@ export function RepostButton({
   playlist,
   size = "sm",
   className,
+  Icon = Repeat2,
 }: {
   track?: Track;
   playlist?: Playlist;
   size?: "sm" | "md";
   className?: string;
+  /** The glyph, for a look that draws its own — see `LikeButton`. */
+  Icon?: React.ComponentType<{ className?: string }>;
 }) {
   const trackIds = useRepostStore((s) => s.trackIds);
   const playlistIds = useRepostStore((s) => s.playlistIds);
@@ -44,13 +47,15 @@ export function RepostButton({
       }}
       aria-label={on ? t.track.unrepost : t.track.repost}
       title={on ? t.track.unrepost : t.track.repost}
+      // State, published for a skin to style — see `LikeButton`.
+      data-on={on ? "true" : undefined}
       className={cn(
         "shrink-0 rounded-[var(--radius-round)] p-1.5 transition-[color,transform] duration-[var(--motion-fast)] hover:scale-110 active:scale-90",
         on ? "text-brand" : "text-muted-foreground hover:text-foreground",
         className,
       )}
     >
-      <Repeat2 className={icon} />
+      <Icon className={icon} />
     </button>
   );
 }

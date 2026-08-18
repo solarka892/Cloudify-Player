@@ -1,3 +1,5 @@
+import { cn } from "@/lib/utils";
+
 /**
  * The wordmark: a cloud whose underside is a waveform.
  *
@@ -76,6 +78,25 @@ export function LogoMark({ className }: { className?: string }) {
   );
 }
 
+/**
+ * The word beside the mark.
+ *
+ * Its own export because a rail needs it apart from the glyph: the glyph is
+ * always there and the word arrives with the width, on the same fade the item
+ * labels use. Everything about how it is set lives here, so the rails carry a
+ * name rather than a copy of the type.
+ */
+export function LogoWord({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn("brand-text text-lg font-bold tracking-tight", className)}
+      style={{ fontFamily: "var(--font-display)" }}
+    >
+      cloudify
+    </span>
+  );
+}
+
 /** Mark plus wordmark, for the wide navigation layouts. */
 export function Logo({ compact = false }: { compact?: boolean }) {
   return (
@@ -86,14 +107,7 @@ export function Logo({ compact = false }: { compact?: boolean }) {
       <LogoMark
         className={compact ? "h-[18px] w-[30px] shrink-0" : "h-5 w-[33px] shrink-0"}
       />
-      {!compact && (
-        <span
-          className="brand-text text-lg font-bold tracking-tight"
-          style={{ fontFamily: "var(--font-display)" }}
-        >
-          cloudify
-        </span>
-      )}
+      {!compact && <LogoWord />}
     </span>
   );
 }

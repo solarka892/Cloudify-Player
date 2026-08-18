@@ -349,7 +349,12 @@ export function VolumeControl() {
   const Icon = muted || volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
 
   return (
-    <div className="flex w-36 shrink-0 items-center gap-2 pr-2">
+    // The right padding is twice the bar's own, and deliberately so: the slider
+    // is a thin horizontal line aimed at the window's edge, and a line reads as
+    // reaching further than a solid thing sitting at the same distance. Matched
+    // to the artwork's 16px on the left it looked like it was running out of the
+    // panel. This is an optical correction, not a measured one.
+    <div className="flex w-36 shrink-0 items-center gap-2 pr-4">
       <button
         onClick={toggleMute}
         aria-label={t.player.mute}

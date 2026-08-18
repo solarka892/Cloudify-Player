@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { GripVertical, Trash2, X } from "lucide-react";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { t } from "@/i18n";
@@ -22,6 +22,35 @@ export function QueuePanel({ onClose }: { onClose?: () => void }) {
 
   const [dragFrom, setDragFrom] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
+
+  const listRef = useRef<HTMLUListElement>(null);
+  const currentRef = useRef<HTMLLIElement>(null);
+
+  /*
+   * Open on the track that is playing.
+   *
+   * The list started at the top, which for a queue of 1250 tracks playing the
+   * 1231st meant opening onto two hundred greyed-out rows that had already been
+   * played and no sign of the one that had not. What you came to see is where
+   * you are and what is next.
+   *
+   * On mount only. Following `pos` afterwards would yank the list out from
+   * under anyone reading further down it every time a track ended.
+   *
+   * Scrolls the list itself rather than calling `scrollIntoView`, which walks
+   * up and scrolls every scrollable ancestor it finds — this panel is a sheet
+   * over a view that has its own scroller, and the last thing opening a queue
+   * should do is move the page behind it.
+   */
+  useEffect(() => {
+    const list = listRef.current;
+    const row = currentRef.current;
+    if (!list || !row) return;
+    // Both share an `offsetParent`, so the difference is the row's position
+    // inside the list whether or not either of them is positioned.
+    const top = row.offsetTop - list.offsetTop;
+    list.scrollTop = top - list.clientHeight / 2 + row.clientHeight / 2;
+  }, []);
 
   return (
     // `data-queue` is a styling hook: Apple mode sizes these rows for a
@@ -55,7 +84,7 @@ export function QueuePanel({ onClose }: { onClose?: () => void }) {
         )}
       </div>
 
-      <ul className="flex min-h-0 flex-1 flex-col overflow-y-auto p-1">
+      <ul ref={listRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto p-1">
         {order.map((queueIndex, orderPos) => {
           const track = queue[queueIndex];
           if (!track) return null;
@@ -65,6 +94,7 @@ export function QueuePanel({ onClose }: { onClose?: () => void }) {
           return (
             <li
               key={`${queueIndex}-${orderPos}`}
+              ref={isCurrent ? currentRef : undefined}
               draggable
               onDragStart={(e) => {
                 setDragFrom(orderPos);
@@ -105,11 +135,13 @@ export function QueuePanel({ onClose }: { onClose?: () => void }) {
                 className="flex min-w-0 flex-1 items-center gap-2 text-left"
               >
                 {art ? (
-                  <img
-                    src={art}
-                    alt=""
-                    className="artwork h-8 w-8 shrink-0 rounded-[calc(var(--radius-control)/1.5)] object-cover"
-                  />
+                  <span className="art-frame block h-8 w-8 shrink-0 rounded-[calc(var(--radius-control)/1.5)]">
+                    <img
+                      src={art}
+                      alt=""
+                      className="artwork h-8 w-8 object-cover"
+                    />
+                  </span>
                 ) : (
                   <ArtFallback
                     seed={track.id}

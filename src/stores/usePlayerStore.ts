@@ -47,6 +47,39 @@ let playToken = 0;
 let sleepHandle: ReturnType<typeof setTimeout> | null = null;
 let mediaSessionBound = false;
 
+/**
+ * Multiplier on the user's volume, from levelling. 1 until a track that has been
+ * measured before starts playing.
+ *
+ * A module-level value rather than state because it is not a setting and nothing
+ * renders it: the slider still shows what the user set, and this rides
+ * underneath. Applied in `effectiveVolume`, which is the single place the
+ * element's volume is ever computed.
+ */
+let levellingGain = 1;
+
+/**
+ * Set the levelling trim for whatever is about to play.
+ *
+ * Called by `useNitSession` on every track change — with 1 when the feature is
+ * off or the track has never been measured, so the value can never be left over
+ * from the previous track.
+ */
+export function setLevellingGain(gain: number): void {
+  const next = Number.isFinite(gain) && gain > 0 ? gain : 1;
+  // Nothing to apply, and applying it anyway is not free: this runs on every
+  // track change, and `load` may be a few milliseconds into a cross-fade whose
+  // first frame it would overwrite. Almost every call is `1` → `1`.
+  if (next === levellingGain) return;
+  levellingGain = next;
+  const state = usePlayerStore.getState();
+  if (state.current) el().volume = state.muted ? 0 : clamp01(state.volume * levellingGain);
+}
+
+function clamp01(value: number): number {
+  return Math.max(0, Math.min(1, value));
+}
+
 /** Pressing "previous" past this many seconds restarts the track instead. */
 const RESTART_THRESHOLD_S = 3;
 
@@ -200,6 +233,14 @@ interface PlayerState {
   radioLoading: boolean;
 
   playTrack: (track: Track, queue?: Track[]) => Promise<void>;
+  /**
+   * Load a track, its queue and a position, and leave it stopped.
+   *
+   * What the resume point restores at startup. Sound at launch that nobody
+   * asked for is the rudest thing a media player does, so this is a separate
+   * verb rather than a flag on `playTrack` — the difference is the whole point.
+   */
+  cueTrack: (track: Track, queue: Track[], positionMs: number) => Promise<void>;
   playAt: (orderPos: number) => void;
   next: () => void;
   prev: () => void;
@@ -313,6 +354,30 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
       "playing",
       live(() => set({ isLoading: false, error: null })),
     );
+
+    /*
+     * The other three ways a wait ends.
+     *
+     * `playing` alone is not enough, and the hole is easy to fall into: seek a
+     * track that has only just started and the element emits `waiting` while it
+     * fetches the range, then `seeked` — and *no* `playing`, because as far as
+     * it is concerned it never stopped. The spinner then sat on the play button
+     * over a track that was audibly playing, until the next pause.
+     *
+     * Gated on `HAVE_FUTURE_DATA` rather than taken at face value: `seeked` also
+     * fires when the playhead lands somewhere there is still nothing to play
+     * from, and clearing the spinner there would be a lie in the other
+     * direction. `canplay` implies the same readyState, so the guard costs it
+     * nothing.
+     */
+    for (const event of ["seeked", "canplay", "canplaythrough"]) {
+      a.addEventListener(
+        event,
+        live(() => {
+          if (a.readyState >= 3) set({ isLoading: false });
+        }),
+      );
+    }
 
     a.addEventListener(
       "ended",
@@ -468,7 +533,18 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
   }
 
   /** Load and play `order[orderPos]`. */
-  async function load(orderPos: number): Promise<void> {
+  /**
+   * @param autoplay `false` cues the track and leaves it stopped.
+   *
+   * The only caller that passes `false` is the resume point at startup, and it
+   * needs a real path rather than "play it and pause it straight away": that
+   * produced half a second of audio on every launch, which is a jump scare on a
+   * desktop and, on Android, a play/pause round trip through the media session
+   * and audio focus. Nothing here is added for it — `load` already declines to
+   * start when `wantsPlay` is false, because the user may have pressed pause
+   * while the source was resolving. This just says so up front.
+   */
+  async function load(orderPos: number, autoplay = true): Promise<void> {
     const { queue, order } = get();
     const queueIndex = order[orderPos];
     if (queueIndex == null) return;
@@ -490,7 +566,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
       // The button flips to "pause" on the press that got here, and stays there
       // through however long the resolve takes. That wait is the whole reason
       // this field exists.
-      wantsPlay: true,
+      wantsPlay: autoplay,
       isLoading: true,
       error: null,
       position: 0,
@@ -723,6 +799,12 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
       lastPosition = a.currentTime;
       if (moved) {
         stalledFor = 0;
+        // A playhead that is advancing is not waiting for anything, whatever
+        // the last event claimed. The listeners above are what normally ends a
+        // wait; this is the same statement made from evidence instead, and it
+        // is what stops a single missed event from stranding the spinner for
+        // the rest of the track.
+        if (state.isLoading) set({ isLoading: false });
         return;
       }
 
@@ -761,7 +843,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
 
   function effectiveVolume(): number {
     const { volume, muted } = get();
-    return muted ? 0 : volume;
+    return muted ? 0 : clamp01(volume * levellingGain);
   }
 
   /** Queue exhausted: loop, extend with a station, or stop. */
@@ -841,6 +923,21 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
 
       set({ queue: nextQueue, order });
       await load(order.indexOf(startIndex));
+    },
+
+    async cueTrack(track, queue, positionMs) {
+      const list = queue?.length ? queue : [track];
+      const found = list.findIndex((t) => t.id === track.id);
+      const nextQueue = found >= 0 ? list : [track];
+      const startIndex = found >= 0 ? found : 0;
+      const indices = nextQueue.map((_, i) => i);
+
+      // Never shuffled, whatever the setting says: this is putting back the
+      // queue as it was, and reordering it would make "where you left off"
+      // false the moment the next track started.
+      set({ queue: nextQueue, order: indices });
+      await load(indices.indexOf(startIndex), false);
+      if (positionMs > 0) get().seek(positionMs / 1000);
     },
 
     playAt(orderPos) {

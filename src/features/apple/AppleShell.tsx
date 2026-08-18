@@ -70,7 +70,10 @@ export function AppleShell({
   // floats beside or above it changes — so it is built once.
   const pane = (
     <div className="lg-pane relative min-h-0 flex-1 overflow-hidden">
-      <main ref={scroller} className="h-full overflow-y-auto">
+      {/* `lg-pane-scroll` is a hook for one rule: the pane is a 28px-radius
+          rectangle and this scroller is square, so its scrollbar has to be kept
+          out of the corners. See `apple.css`. */}
+      <main ref={scroller} className="lg-pane-scroll h-full overflow-y-auto">
         <div className="mx-auto w-full max-w-5xl px-7 py-7">{children}</div>
       </main>
     </div>

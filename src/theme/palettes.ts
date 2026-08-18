@@ -11,6 +11,8 @@ import type { Shade } from "./tokens";
  */
 
 export type PaletteId =
+  | "ember"
+  | "signal"
   | "apple"
   | "vapor"
   | "midnight"
@@ -48,6 +50,107 @@ export interface Palette {
 }
 
 export const PALETTES: Record<PaletteId, Palette> = {
+  /**
+   * The app's own colours, and the default. Four inks, and there is no fifth.
+   *
+   *   soot        `#0A0A0C`  the page
+   *   graphite    `#131319`  panels
+   *   bone        `#EFEAE3`  type and rules — warm, deliberately **not** white
+   *   ultramarine `#3A1FFF`  marks, the print shift, the duotone's dark ink
+   *   sulphur     `#FFD23D`  everything live: playing, selected, the play button
+   *
+   * Sulphur is the only solid fill in the interface. More than two or three
+   * patches of it on a screen means something has gone wrong.
+   *
+   * Written in oklch like the rest, from those hexes. Two of the four are not
+   * text colours and are not meant to be: ultramarine is 2.7:1 on soot, which is
+   * why it prints covers and marks the thread rather than labelling anything,
+   * and sulphur is 1.2:1 on paper, which is why it is a fill with
+   * `--brand-foreground` computed over it. The two that *are* text clear the
+   * bar in both appearances — bone 16.5:1 on soot, muted 5.4:1; soot 16.8:1 on
+   * paper, muted 4.6:1.
+   *
+   * The light pair is "paper", and it is not a second palette: same four inks
+   * over a warm sheet, so a screenshot of either is recognisably this app.
+   */
+  /**
+   * Ember — the app's own colour, and the default.
+   *
+   * Two decisions, and the second is the one that matters.
+   *
+   * **Near-black, not black.** `oklch(0.145 …)` with a trace of warmth in it.
+   * Pure black is a hole: artwork sits on it like a slide on a lightbox and the
+   * interface around it disappears rather than recedes. A hair of lightness and
+   * a hair of warmth give the page a surface for the covers to lie *on*.
+   *
+   * **One warm accent, and only one.** Amber, near 70° hue. The choice is made
+   * against the artwork, not in isolation: this app is a wall of other people's
+   * cover art, and a blue or a magenta accent fights half of it — every cool
+   * cover turns the accent into a competing element, every warm one makes it
+   * look like a mistake. Warm amber at this chroma sits *with* almost any cover
+   * and still reads instantly as "this is the control that is on".
+   *
+   * The light shade is the same idea inverted: warm paper rather than white,
+   * because a pure white page under album art has the same problem as pure
+   * black — nothing to sit on.
+   *
+   * If the colour still fights a particular record, the answer is the setting
+   * that was already built for it: **take the accent from the cover** (see
+   * `theme/artwork`). The default has to be right for everything at once; that
+   * option gets to be right for one thing at a time.
+   */
+  ember: {
+    id: "ember",
+    name: "Ember",
+    dark: {
+      bg: "oklch(0.145 0.004 60)",
+      surface: "oklch(0.196 0.005 60)",
+      surface2: "oklch(0.246 0.006 60)",
+      text: "oklch(0.965 0.004 80)",
+      muted: "oklch(0.68 0.008 75)",
+      line: "oklch(0.965 0.004 80 / 10%)",
+      brand: "oklch(0.79 0.148 62)",
+      brand2: "oklch(0.7 0.16 40)",
+    },
+    light: {
+      bg: "oklch(0.977 0.004 85)",
+      surface: "oklch(1 0 0)",
+      surface2: "oklch(0.955 0.005 85)",
+      text: "oklch(0.185 0.005 60)",
+      muted: "oklch(0.48 0.008 70)",
+      line: "oklch(0.185 0.005 60 / 12%)",
+      // The accent does not lighten with the page: an ember is an ember.
+      brand: "oklch(0.66 0.16 55)",
+      brand2: "oklch(0.6 0.17 38)",
+    },
+  },
+
+  signal: {
+    id: "signal",
+    name: "Signal",
+    dark: {
+      bg: "oklch(0.146 0.004 286)",
+      surface: "oklch(0.19 0.012 285)",
+      surface2: "oklch(0.225 0.014 285)",
+      text: "oklch(0.939 0.011 77)",
+      muted: "oklch(0.618 0.015 82)",
+      line: "oklch(0.939 0.011 77 / 11%)",
+      brand: "oklch(0.879 0.163 91)",
+      brand2: "oklch(0.483 0.293 272)",
+    },
+    light: {
+      bg: "oklch(0.945 0.013 82)",
+      surface: "oklch(0.908 0.017 85)",
+      surface2: "oklch(0.872 0.02 85)",
+      text: "oklch(0.146 0.004 286)",
+      muted: "oklch(0.525 0.013 85)",
+      line: "oklch(0.146 0.004 286 / 14%)",
+      // The two inks do not lighten with the sheet. They are the same two jars.
+      brand: "oklch(0.879 0.163 91)",
+      brand2: "oklch(0.483 0.293 272)",
+    },
+  },
+
   /**
    * The iOS system palette, as an ordinary palette.
    *

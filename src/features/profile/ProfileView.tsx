@@ -198,6 +198,24 @@ export function ProfileView({
   const avatar = artwork(profile?.avatar_url ?? null, "t300x300");
   const banner = profile?.banner_url ?? null;
 
+  /**
+   * The tracks the open tab is showing, if it shows tracks at all.
+   *
+   * Every one of these lists is downloadable, and only two of them offered it —
+   * "top tracks" and the track half of "reposts" are the same rows from the same
+   * endpoint family, so there was no reason for the button to be missing there.
+   */
+  const tabTracks: Track[] =
+    tab === "tracks"
+      ? data.tracks
+      : tab === "top"
+        ? data.top
+        : tab === "reposts"
+          ? data.repostTracks
+          : tab === "likes"
+            ? data.likes
+            : [];
+
   const tabs: { id: Tab; label: string; count: number | null | undefined }[] = [
     { id: "tracks", label: t.profile.tracks, count: profile?.track_count },
     { id: "top", label: t.profile.topTracks, count: null },
@@ -215,14 +233,14 @@ export function ProfileView({
         {banner ? (
           <div
             aria-hidden
-            className="artwork absolute inset-x-0 top-0 h-40 bg-cover bg-center"
+            className="artwork art-frame absolute inset-x-0 top-0 h-40 bg-cover bg-center"
             style={{ backgroundImage: `url("${banner}")` }}
           />
         ) : (
           avatar && (
             <div
               aria-hidden
-              className="artwork pointer-events-none absolute inset-0 scale-125 bg-cover bg-center opacity-25 blur-2xl"
+              className="artwork art-frame pointer-events-none absolute inset-0 scale-125 bg-cover bg-center opacity-25 blur-2xl"
               style={{ backgroundImage: `url("${avatar}")` }}
             />
           )
@@ -250,11 +268,13 @@ export function ProfileView({
           )}
         >
           {avatar ? (
-            <img
-              src={avatar}
-              alt=""
-              className="artwork h-20 w-20 shrink-0 rounded-[var(--radius-round)] object-cover shadow-[var(--shadow-2)] sm:h-28 sm:w-28"
-            />
+            <span className="art-frame block h-20 w-20 shrink-0 rounded-[var(--radius-round)] shadow-[var(--shadow-2)] sm:h-28 sm:w-28">
+              <img
+                src={avatar}
+                alt=""
+                className="artwork h-full w-full object-cover"
+              />
+            </span>
           ) : (
             <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-[var(--radius-round)] bg-secondary sm:h-28 sm:w-28">
               <UserIcon className="h-10 w-10 text-muted-foreground" />
@@ -387,39 +407,51 @@ export function ProfileView({
         </div>
       </section>
 
-      <nav className="flex gap-4 overflow-x-auto border-b border-border">
-        {tabs.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setTab(item.id)}
-            className={cn(
-              "-mb-px flex shrink-0 items-center gap-1.5 border-b-2 px-1 pb-2 text-sm font-medium transition-colors duration-[var(--motion-fast)]",
-              tab === item.id
-                ? "border-brand text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <span className="label">{item.label}</span>
-            {item.count != null && item.count > 0 && (
-              <span className="text-xs text-muted-foreground">
-                {formatCount(item.count)}
-              </span>
-            )}
-          </button>
-        ))}
-      </nav>
+      {/*
+        The tab bar carries the tab's own toolbar on its right-hand end.
+
+        "Download all" used to sit on a line of its own between the tabs and the
+        list, right-aligned against nothing — a button floating in the gap. Here
+        it reads as belonging to the tab it acts on, and costs no vertical space.
+        `items-stretch` is what keeps the active tab's underline on the bar's
+        border however tall the button turns out to be.
+      */}
+      <div className="flex items-stretch gap-3 border-b border-border">
+        <nav className="flex min-w-0 flex-1 gap-4 overflow-x-auto">
+          {tabs.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setTab(item.id)}
+              className={cn(
+                "-mb-px flex shrink-0 items-center gap-1.5 border-b-2 px-1 pb-2 text-sm font-medium transition-colors duration-[var(--motion-fast)]",
+                tab === item.id
+                  ? "border-brand text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <span className="label">{item.label}</span>
+              {item.count != null && item.count > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  {formatCount(item.count)}
+                </span>
+              )}
+            </button>
+          ))}
+        </nav>
+
+        {tabTracks.length > 0 && (
+          <div className="flex shrink-0 items-center pb-1">
+            <DownloadAllButton tracks={tabTracks} />
+          </div>
+        )}
+      </div>
 
       {loading === tab && (
         <p className="text-sm text-muted-foreground">{t.library.loading}</p>
       )}
 
       {tab === "tracks" && data.tracks.length > 0 && (
-        <>
-          <div className="flex justify-end">
-            <DownloadAllButton tracks={data.tracks} />
-          </div>
-          <TrackList tracks={data.tracks} />
-        </>
+        <TrackList tracks={data.tracks} />
       )}
       {tab === "tracks" && loading !== tab && data.tracks.length === 0 && (
         <Empty>{t.profile.noTracks}</Empty>
@@ -468,12 +500,7 @@ export function ProfileView({
         ))}
 
       {tab === "likes" && data.likes.length > 0 && (
-        <>
-          <div className="flex justify-end">
-            <DownloadAllButton tracks={data.likes} />
-          </div>
-          <TrackList tracks={data.likes} />
-        </>
+        <TrackList tracks={data.likes} />
       )}
       {tab === "likes" && loading !== tab && data.likes.length === 0 && (
         <Empty>{t.library.empty}</Empty>

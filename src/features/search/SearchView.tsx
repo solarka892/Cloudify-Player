@@ -21,6 +21,7 @@ import { UserList } from "@/components/UserList";
 import { useNavStore } from "@/stores/useNavStore";
 import { toast } from "@/stores/useToastStore";
 import { t } from "@/i18n";
+import { ViewHead } from "@/components/ViewHead";
 import { cn } from "@/lib/utils";
 
 type Kind = "all" | "tracks" | "playlists" | "albums" | "users";
@@ -154,8 +155,21 @@ export function SearchView() {
   const openUser = useNavStore((s) => s.openUser);
   const openPlaylist = useNavStore((s) => s.openPlaylist);
 
+  /**
+   * Set while the code below is putting the caret in the field, so the focus
+   * handler can tell that focus apart from a click.
+   *
+   * The list of past searches belongs to a person who reached for the field,
+   * not to one who opened the screen. This effect also runs on mount — that is
+   * what an effect with a dependency does — so without the flag every visit to
+   * Search opened with the history already in the way, over content nobody had
+   * asked it to cover.
+   */
+  const selfFocus = useRef(false);
+
   // The `/` hotkey bumps a token rather than reaching into this component.
   useEffect(() => {
+    selfFocus.current = true;
     inputRef.current?.focus();
     inputRef.current?.select();
   }, [focusToken]);
@@ -293,6 +307,16 @@ export function SearchView() {
 
   return (
     <section className="flex w-full max-w-2xl flex-col gap-3">
+      {/* The field is the screen, so the head carries the title and the state of
+          the query rather than a second search box beside it. */}
+      <ViewHead
+        title={t.nav.search}
+        sub={
+          state.status === "ok" && query.trim()
+            ? `${state.total ?? ""} ${t.search.found}`
+            : t.search.hint
+        }
+      />
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <input
@@ -302,7 +326,17 @@ export function SearchView() {
             setQuery(e.currentTarget.value);
             setShowSuggestions(true);
           }}
-          onFocus={() => setShowSuggestions(true)}
+          onFocus={() => {
+            // Focus we gave ourselves does not count — see `selfFocus`. The
+            // caret still lands here, so `/` and opening the tab both leave the
+            // field ready to type into; it is only the list that waits to be
+            // asked for. Typing opens it anyway, from `onChange`.
+            if (selfFocus.current) {
+              selfFocus.current = false;
+              return;
+            }
+            setShowSuggestions(true);
+          }}
           // A click on a suggestion has to land before the list closes.
           onBlur={() => setTimeout(() => setShowSuggestions(false), 120)}
           onKeyDown={(e) => {

@@ -1,5 +1,5 @@
 import { Settings } from "lucide-react";
-import { Logo } from "@/components/Logo";
+import { Logo, LogoWord } from "@/components/Logo";
 import { COMPACT_NAV_ITEMS, NAV_ITEMS, type ViewId } from "./nav-items";
 import { useLibraryStore } from "@/stores/useLibraryStore";
 import { useMessagesStore } from "@/stores/useMessagesStore";
@@ -55,8 +55,11 @@ interface NavProps {
 /** Icon-only column. Widens to show labels on hover. */
 export function NavRail({ view, onNavigate }: NavProps) {
   return (
-    <div className="nav-in-x relative h-full w-14 shrink-0">
-      <nav className="group/rail panel absolute inset-y-0 left-0 z-20 flex w-14 flex-col gap-1 overflow-hidden rounded-none border-y-0 border-l-0 p-2 transition-[width] duration-[var(--motion-slow)] hover:w-48">
+    <div data-rail-slot className="nav-in-x relative h-full w-14 shrink-0">
+      <nav
+        data-rail
+        className="group/rail panel absolute inset-y-0 left-0 z-20 flex w-14 flex-col gap-1 overflow-hidden rounded-none border-y-0 border-l-0 p-2 transition-[width] duration-[var(--motion-slow)] hover:w-48"
+      >
         <BrandMark compact />
         {NAV_ITEMS.map((item) => (
           <RailItem
@@ -66,6 +69,13 @@ export function NavRail({ view, onNavigate }: NavProps) {
             onNavigate={onNavigate}
           />
         ))}
+        {/* What this look expects you to know, at the foot of the rail. Hidden
+            in every other skin — it is a statement about how the app is meant
+            to be driven, not a feature of the navigation. */}
+        <div className="rail-hint label text-[0.59375rem] text-muted-foreground">
+          ⌘K
+          <br />M · H
+        </div>
       </nav>
     </div>
   );
@@ -107,9 +117,9 @@ function RailItem({
           <Badge count={badge} className="absolute -right-2 -top-1.5" />
         )}
       </span>
-      {/* Fades in only after the width has finished travelling, so the
-          label is never painted half-clipped. */}
-      <span className="label whitespace-nowrap opacity-0 transition-opacity duration-[var(--motion-fast)] group-hover/rail:opacity-100 group-hover/rail:delay-[var(--motion-slow)]">
+      {/* Uncovered left to right as the rail opens, rather than faded in after
+          it stops — see `rail-wipe`. */}
+      <span className="label whitespace-nowrap rail-wipe group-hover/rail:rail-wipe-open">
         {label}
       </span>
     </button>
@@ -379,6 +389,12 @@ function SidebarItem({
 /**
  * The wordmark. Goes home, the way a logo in the top-left is expected to.
  *
+ * `compact` is the rail's version: the glyph alone while the rail is 56px, with
+ * the word arriving when it widens — on the same delayed fade the item labels
+ * use, for the same reason. The word heads a column of labels, so it starts
+ * where they start rather than where the glyph happens to end; see the gap
+ * below.
+ *
  * Clicking it repeatedly is not entirely without consequence.
  */
 function BrandMark({ compact = false }: { compact?: boolean }) {
@@ -390,19 +406,37 @@ function BrandMark({ compact = false }: { compact?: boolean }) {
         setView("home");
         bump();
       }}
+      data-brand-mark
       className={cn(
-        "flex h-10 shrink-0 items-center gap-2 text-left",
+        "flex h-10 shrink-0 items-center text-left",
         // In the rail the mark is centred on the icons' axis, not aligned to
         // their left edge: it is 30px wide against their 18px, so sharing an
         // edge puts its weight 6px to the right of the column. That axis is
         // 27px from the rail's edge (8px rail padding + 10px button padding +
         // half an 18px icon), so a 30px mark starts 4px in. Fixed padding, not
         // centring, because the rail widens to 192px on hover.
-        compact ? "pl-1" : "px-2.5",
+        //
+        // That arithmetic is this rail's, and a skin that changes the rail has
+        // to answer for it: Nit's is 88px wide with the icons centred in it, so
+        // the mark would sit 25px to the left of the column it is meant to head.
+        // It re-centres the mark in `globals.css` rather than adding a second
+        // number here — see `[data-brand-mark]`.
+        //
+        // The 6px gap continues the same sum. A label starts 48px from the
+        // rail's edge (8 + 10 + an 18px icon + a 12px gap) and the 30px mark
+        // ends at 42, so six pixels put the word on the labels' own left edge.
+        compact ? "gap-1.5 pl-1" : "gap-2 px-2.5",
       )}
       aria-label="cloudify"
     >
       <Logo compact={compact} />
+      {compact && (
+        // Uncovered on the same wipe as an item's label, so the whole column of
+        // text arrives as one motion. Hidden outright under Nit, whose rail
+        // never widens and centres this button's whole content — an unpainted
+        // word there would still push the glyph off the axis.
+        <LogoWord className="whitespace-nowrap rail-wipe group-hover/rail:rail-wipe-open" />
+      )}
     </button>
   );
 }

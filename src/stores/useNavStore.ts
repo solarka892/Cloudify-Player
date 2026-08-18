@@ -73,8 +73,16 @@ interface NavState {
    * by "find more like this" affordances elsewhere in the app.
    */
   pendingQuery: string | null;
+  /**
+   * A tab the Nit view should open on. Set by anything elsewhere in the app
+   * that has said "there is something here" and needs to be able to show it —
+   * the library's duplicates strip is the first.
+   */
+  pendingNitTab: string | null;
 
   setView: (view: ViewId) => void;
+  /** Go to Nit, on a named tab. */
+  openNit: (tab: string) => void;
   openSearch: (query: string) => void;
   openPlaylist: (playlist: Playlist) => void;
   openUser: (user: User) => void;
@@ -82,6 +90,7 @@ interface NavState {
   openThread: (user: User) => void;
   clearPendingThread: () => void;
   clearPendingQuery: () => void;
+  clearPendingNitTab: () => void;
   /**
    * Go back one step. Returns false when there was nowhere to go — which is what
    * tells Android's back gesture it may leave the app.
@@ -138,9 +147,12 @@ export const useNavStore = create<NavState>((set, get) => {
     searchFocusToken: 0,
     pendingThread: null,
     pendingQuery: null,
+    pendingNitTab: null,
 
     // Leaving a tab abandons whatever was drilled into on it.
     setView: (view) => go({ view, detail: null }),
+
+    openNit: (tab) => go({ view: "nit", detail: null, pendingNitTab: tab }),
 
     openSearch: (query) =>
       go({ view: "search", detail: null, pendingQuery: query }),
@@ -182,6 +194,7 @@ export const useNavStore = create<NavState>((set, get) => {
       go({ view: "messages", detail: null, pendingThread: user }),
     clearPendingThread: () => set({ pendingThread: null }),
     clearPendingQuery: () => set({ pendingQuery: null }),
+    clearPendingNitTab: () => set({ pendingNitTab: null }),
 
     back() {
       // The full-screen player is the topmost thing on screen and the one every

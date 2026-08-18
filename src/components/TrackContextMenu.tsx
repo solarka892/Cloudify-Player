@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
   Download,
   ExternalLink,
@@ -27,11 +28,34 @@ export interface MenuTarget {
   track: Track;
   x: number;
   y: number;
+  /**
+   * What `x`/`y` are.
+   *
+   * `"pointer"` — a right-click. The menu's top-left corner goes exactly there,
+   * which is what every desktop does.
+   *
+   * `"beside"` — a button was pressed, and `x`/`y` are its right edge and its
+   * top. The menu opens *next to* it: a hair to the right, tops level. This is
+   * not the same as dropping a corner at the button's bottom-right, which is
+   * what it used to do — that puts the menu diagonally away from what was
+   * pressed, and diagonal reads as far even when it is a few pixels.
+   */
+  align?: "pointer" | "beside";
 }
 
 /** Menu width, used to keep it on screen near the right edge. */
 const WIDTH = 224;
-const ESTIMATED_HEIGHT = 330;
+/** Ten rows, three rules and the padding. Only used to keep it on screen. */
+const ESTIMATED_HEIGHT = 364;
+/** Daylight between the button and the menu it opened.
+ *
+ * The menu's business, not the caller's: a caller hands over the edge of the
+ * thing that was pressed and should not have to know how far a menu likes to
+ * sit from it. A right-click gets none of it — there the corner belongs at the
+ * pointer, exactly. */
+const GAP = 6;
+/** And between the menu and the window's edge. */
+const MARGIN = 8;
 
 /** Right-click menu for a track row or tile. */
 export function TrackContextMenu({
@@ -43,6 +67,7 @@ export function TrackContextMenu({
   onClose: () => void;
   onAddToPlaylist: (track: Track) => void;
 }) {
+  const root = useRef<HTMLDivElement>(null);
   const addNext = usePlayerStore((s) => s.addNext);
   const addLast = usePlayerStore((s) => s.addLast);
   const startRadio = usePlayerStore((s) => s.startRadio);
@@ -58,7 +83,14 @@ export function TrackContextMenu({
   const isDownloaded = downloadedIds.has(track.id);
 
   useEffect(() => {
-    const close = () => onClose();
+    const close = (e: Event) => {
+      // A click inside the menu is a menu click; the items close it themselves
+      // once they have run. Asked of the node rather than stopped on the way
+      // up, because the menu is portalled out of the React tree it belongs to
+      // and `stopPropagation` there no longer reaches this listener.
+      if (e.type === "click" && root.current?.contains(e.target as Node)) return;
+      onClose();
+    };
     window.addEventListener("click", close);
     window.addEventListener("resize", close);
     // Capture phase: a scroll inside any container should dismiss it too.
@@ -70,20 +102,46 @@ export function TrackContextMenu({
     };
   }, [onClose]);
 
-  // Flip near the edges so the menu is always fully visible.
-  const left = Math.min(target.x, window.innerWidth - WIDTH - 8);
-  const top = Math.min(target.y, window.innerHeight - ESTIMATED_HEIGHT);
+  // Anchor first, then keep it on screen. Clamped at both ends, not just the
+  // far one: a right-aligned menu near the left edge would otherwise be placed
+  // at a negative offset and lose its first characters off the side.
+  const beside = target.align === "beside";
+  const left = Math.max(
+    MARGIN,
+    Math.min(beside ? target.x + GAP : target.x, window.innerWidth - WIDTH - MARGIN),
+  );
+  const top = Math.max(
+    MARGIN,
+    Math.min(target.y, window.innerHeight - ESTIMATED_HEIGHT - MARGIN),
+  );
 
   function run(action: () => void) {
     action();
     onClose();
   }
 
-  return (
+  /*
+   * Portalled to `<body>`, and this is not tidiness — it is the whole reason
+   * the menu was landing a hundred pixels from the button that opened it.
+   *
+   * `position: fixed` is measured against the viewport only while no ancestor
+   * has a `transform`, a `filter` or a `backdrop-filter`. Any of the three makes
+   * that ancestor the containing block instead. Apple mode's content pane is
+   * frosted glass, so it has one — and every `fixed` overlay rendered inside it
+   * silently started measuring from the pane's top-left corner, which is exactly
+   * the rail's width plus the gap: 100px across, 13 down. The numbers handed in
+   * here come from `getBoundingClientRect`, which is always the viewport's, so
+   * the two disagreed by precisely that.
+   *
+   * Out on `<body>` there is no such ancestor and the two agree again. It also
+   * takes the menu out of the tile it belongs to, so a hovered tile's transform
+   * cannot drag it about either.
+   */
+  return createPortal(
     <div
+      ref={root}
       className="panel panel-raised pop-in fixed z-[80] flex w-56 flex-col p-1"
       style={{ left, top }}
-      onClick={(e) => e.stopPropagation()}
       role="menu"
     >
       <Item
@@ -159,7 +217,8 @@ export function TrackContextMenu({
           />
         </>
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }
 

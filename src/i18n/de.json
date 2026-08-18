@@ -156,7 +156,7 @@
     "skin": "Stil",
     "skinHint": "Form: Radien, Schatten, Weichzeichnung, Typografie",
     "skinHints": {
-      "aurora": "Glas, Weichzeichnung, sanftes Leuchten",
+      "nit": "Zwei Farben, eckige Karten, runde Bedienelemente",
       "editorial": "Große Typografie, harte Linien, keine Schatten",
       "studio": "Haptische Regler, dezente Tiefe, Wellenform",
       "obsidian": "Schwarzes Glas, Haarlinien, harte Kanten"
@@ -212,9 +212,6 @@
     "glassPerf": "Rechenintensiv — ausschalten, wenn die Oberfläche träge wirkt",
     "monoArtwork": "Cover in Graustufen",
     "monoArtworkHint": "Wirkt nur im Skin Obsidian",
-    "window": "Fenster",
-    "nativeFrame": "Systemfensterrahmen",
-    "nativeFrameHint": "Die Titelleiste zeichnet das System. Einschalten, wenn Ziehen oder Größenänderung nicht funktioniert.",
     "builtin": "Fertige Looks",
     "builtinHint": "Skin, Palette und Hintergrund mit einem Klick. Alle Schalter bleiben danach deine.",
     "resetSection": "Zurücksetzen",
@@ -334,11 +331,5 @@
     "share": "Teilen",
     "shareCopied": "Link kopiert",
     "shareFailed": "Link konnte nicht kopiert werden"
-  },
-  "window": {
-    "minimize": "Minimieren",
-    "maximize": "Maximieren",
-    "restore": "Wiederherstellen",
-    "close": "Schließen"
   }
 }

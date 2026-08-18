@@ -232,18 +232,20 @@ export function TrackView({ trackId, meId }: { trackId: number; meId: number }) 
         {cover && (
           <div
             aria-hidden
-            className="artwork pointer-events-none absolute inset-0 scale-125 bg-cover bg-center opacity-20 blur-2xl"
+            className="artwork art-frame pointer-events-none absolute inset-0 scale-125 bg-cover bg-center opacity-20 blur-2xl"
             style={{ backgroundImage: `url("${cover}")` }}
           />
         )}
 
         <div className="relative flex flex-wrap items-start gap-4">
           {cover ? (
-            <img
-              src={cover}
-              alt=""
-              className="artwork h-36 w-36 shrink-0 rounded-[var(--radius)] object-cover shadow-[var(--shadow-2)]"
-            />
+            <span className="art-frame block h-36 w-36 shrink-0 rounded-[var(--radius)] shadow-[var(--shadow-2)]">
+              <img
+                src={cover}
+                alt=""
+                className="artwork h-full w-full object-cover"
+              />
+            </span>
           ) : (
             <ArtFallback
               seed={track.id}

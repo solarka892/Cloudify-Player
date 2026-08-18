@@ -1,4 +1,3 @@
-import { isApplePlatform } from "@/lib/platform";
 import { SIGNATURE_OFF, type Shade, type SkinVars, type ThemeVars } from "./tokens";
 
 /**
@@ -65,53 +64,24 @@ export const APPLE_LIGHT: Shade = {
 };
 
 /**
- * San Francisco, then the closest thing the machine has.
+ * The app's own pair, self-hosted (`styles/fonts.css`), with the platform's
+ * stacks behind them as the fallback.
  *
- * ⚠️ The order of the first two entries is the whole reason this is a computed
- * string and not a constant, and getting it wrong silently defeats the mode.
- *
- * `-apple-system` is not inert off Apple hardware. *Every* WebKit port honours
- * it, and off a Mac it resolves to the desktop's system font — Noto Sans on a
- * typical Linux box, Cantarell on GNOME. So naming it before the real families
- * short-circuits the stack there: the browser matches it, stops, and every
- * later entry, Inter included, is never consulted. That is exactly what made
- * the mode render in the same face as the skin it replaced even with Inter
- * installed.
- *
- * Off Apple platforms it therefore goes to the *tail*, behind Inter — which is
- * the fallback worth having, drawn as a screen face on SF's proportions, close
- * enough at UI sizes that only the `a` and the `t` give it away. On Apple
- * platforms it goes first, because there it is the genuine article and the
- * system font is deliberately not reachable by family name.
- *
- * The app ships no font files (see CLAUDE.md), so the tail matters: Helvetica
- * and Arial land on Liberation Sans through fontconfig, which is a grotesque
- * like SF rather than the humanist face `system-ui` would give.
+ * Onest is a geometric grotesque with real Cyrillic — which matters here more
+ * than it would elsewhere, since the interface ships in ten languages and half
+ * of them are not written in Latin.
  */
-const APPLE_FIRST = "-apple-system, BlinkMacSystemFont";
-const NAMED_SF = '"SF Pro Text", "SF Pro Display", "SF Pro"';
-const NEAR_SF = '"Inter Variable", "Inter", "Inter Display"';
-const LAST_RESORT =
-  '"Segoe UI Variable Text", "Helvetica Neue", "Helvetica", "Arial", system-ui, sans-serif';
+const OWN_SANS =
+  'Onest, "Inter Variable", Inter, system-ui, -apple-system, "Segoe UI", sans-serif';
+const OWN_MONO =
+  '"JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace';
 
-const SF = isApplePlatform
-  ? `${APPLE_FIRST}, ${NAMED_SF}, ${NEAR_SF}, ${LAST_RESORT}`
-  : `${NAMED_SF}, ${NEAR_SF}, ${APPLE_FIRST}, ${LAST_RESORT}`;
-
-/**
- * The display cut, for headings.
- *
- * SF is two families, not one: Text is spaced for reading at body sizes, Display
- * is tighter and its terminals are cut closer, and Apple switches between them
- * at 20pt. Inter ships the same pair — `Inter` and `Inter Display` — so the
- * distinction survives the substitution, which is most of why a heading in this
- * mode looks set rather than scaled.
- */
-const DISPLAY_FIRST = '"SF Pro Display", "Inter Display"';
-
-const SF_DISPLAY = isApplePlatform
-  ? `${APPLE_FIRST}, ${DISPLAY_FIRST}, ${NEAR_SF}, ${LAST_RESORT}`
-  : `${DISPLAY_FIRST}, ${NEAR_SF}, ${APPLE_FIRST}, ${LAST_RESORT}`;
+/* The San Francisco stacks that used to live here are gone with the
+ * impersonation they served. Their fallback chain had one genuinely
+ * counter-intuitive property worth remembering if anyone rebuilds it:
+ * `-apple-system` is *not* inert off Apple hardware — every WebKit port honours
+ * it and resolves it to the desktop's own font — so naming it first
+ * short-circuits the whole stack on Linux. Ours puts it near the back. */
 
 /**
  * Form: what a skin would normally provide.
@@ -121,12 +91,21 @@ const SF_DISPLAY = isApplePlatform
  * the card's radius less its inset rather than an unrelated smaller number.
  */
 export const APPLE_SKIN: SkinVars = {
-  // The iOS 26 card / grouped-list container radius.
-  "--radius": "1.25rem",
-  // Controls: a chip, a field, a small button. Bigger things go to capsules.
-  "--radius-control": "0.75rem",
-  // Sheets, floating chrome and large artwork.
-  "--radius-hero": "1.75rem",
+  /* The form is `One`'s, not iOS 26's.
+   *
+   * This file used to be a reproduction: the radii, the motion and the faces
+   * were Apple's published numbers, because the goal was to look like their
+   * player. The goal changed — the app has one look of its own now, and this
+   * shell is the one it kept, because it is the one that got built properly.
+   * What stays is the *material* below (the lens, the rim, the specular pair),
+   * which is good work and belongs to nobody. What goes is every number that
+   * only made sense as an imitation.
+   *
+   * Kept in step with `skins.ts`'s `one` by hand, which is a seam worth naming:
+   * the two should be merged once the old skins come out. */
+  "--radius": "0.875rem",
+  "--radius-control": "0.625rem",
+  "--radius-hero": "1.25rem",
   // A hairline is one device pixel, not one CSS pixel.
   "--border-width": "0.5px",
   "--blur": "32px",
@@ -135,14 +114,21 @@ export const APPLE_SKIN: SkinVars = {
   // Apple's shadows are wide, soft and nearly black, with no visible spread.
   "--shadow-1": "0 1px 2px rgb(0 0 0 / 0.08), 0 8px 24px rgb(0 0 0 / 0.10)",
   "--shadow-2": "0 2px 8px rgb(0 0 0 / 0.12), 0 24px 60px rgb(0 0 0 / 0.22)",
-  "--font-ui": SF,
-  "--font-display": SF_DISPLAY,
+  /* The app's own faces, and this is the change that stops the shell being an
+   * impersonation. The old comment here argued the opposite — that shipping
+   * JetBrains Mono into a Music-app timestamp was "the one glyph that would
+   * give it away" — which was exactly right while the goal was to pass for
+   * somebody else's player. It is not any more. Shipping two good faces and
+   * then setting the whole interface in the system's was the odd part. */
+  "--font-ui": OWN_SANS,
+  "--font-display": OWN_SANS,
+  "--font-mono": OWN_MONO,
   // iOS does not shout its section headings.
   "--label-transform": "none",
   // SF tightens as it grows; this is the tracking for body text.
   "--label-spacing": "-0.01em",
-  "--motion-fast": "220ms",
-  "--motion-slow": "420ms",
+  "--motion-fast": "130ms",
+  "--motion-slow": "240ms",
   // iOS focus is a soft halo in the tint colour, not a hard rectangle.
   "--focus-ring": "0 0 0 4px color-mix(in srgb, var(--brand) 30%, transparent)",
   // The mode replaces the skin wholesale, so it has to answer for the axes a
@@ -159,7 +145,10 @@ export const APPLE_SKIN: SkinVars = {
 function extras(dark: boolean): Record<string, string> {
   return {
     /* System colours that aren't the accent. */
-    "--ios-blue": dark ? "rgb(10 132 255)" : "rgb(0 122 255)",
+    /* Was systemBlue. It is the app's accent now: this material stopped being
+       a reproduction of somebody else's system and became the app's own shell,
+       so the one place it still named a foreign colour had to go. */
+    "--ios-blue": "var(--brand)",
     "--ios-green": dark ? "rgb(48 209 88)" : "rgb(52 199 89)",
     "--ios-red": dark ? "rgb(255 69 58)" : "rgb(255 59 48)",
     "--ios-orange": dark ? "rgb(255 159 10)" : "rgb(255 149 0)",
@@ -179,11 +168,26 @@ function extras(dark: boolean): Record<string, string> {
     "--ios-separator-opaque": dark ? "rgb(56 56 58)" : "rgb(198 198 200)",
 
     /* Page and card backgrounds, for surfaces that must stay opaque. */
-    "--ios-bg": dark ? "rgb(0 0 0)" : "rgb(242 242 247)",
-    "--ios-surface": dark ? "rgb(28 28 30)" : "rgb(255 255 255)",
-    "--ios-surface-2": dark ? "rgb(44 44 46)" : "rgb(242 242 247)",
+    /* The opaque surfaces follow the palette now instead of naming Apple's
+       greys. That is what lets the shell wear Ember — and, when the "colour
+       from the cover" setting is on, wear whatever is playing. Fixed
+       `rgb(28 28 30)` under a warm near-black page read faintly blue, which is
+       the sort of thing nobody can name and everybody can see. */
+    "--ios-bg": "var(--background)",
+    "--ios-surface": "var(--card)",
+    "--ios-surface-2": "var(--secondary)",
     /* Elevated variants — what a sheet uses, one step lighter than the page. */
-    "--ios-elevated": dark ? "rgb(28 28 30)" : "rgb(255 255 255)",
+    "--ios-elevated": "var(--popover)",
+    /* The same, with just enough left open for a blur to find colour behind it.
+     *
+     * A menu has to be read, so this is nearly solid — the glass tints sit
+     * around 0.6 and over a wall of album art that leaves the art and the words
+     * competing. What the last tenth buys is not see-through, it is *hue*: the
+     * blur behind it picks up whatever the page is showing, which is usually the
+     * cover, and the menu stops being a grey box borrowed from another app. */
+    "--ios-sheet-base": dark
+      ? "color-mix(in srgb, var(--popover) 88%, transparent)"
+      : "color-mix(in srgb, var(--popover) 90%, transparent)",
 
     /* ── Liquid Glass ────────────────────────────────────────────────────
      *
@@ -281,6 +285,12 @@ function extras(dark: boolean): Record<string, string> {
 
     "--ios-blur-nav": "28px",
     "--ios-blur-panel": "36px",
+    /* A menu is barely translucent to begin with (`--ios-sheet-base`), so a
+       36px blur has almost nothing to work on and spends the effort turning the
+       little that shows through into a smear. Short enough to read as what it
+       actually is — a tint that knows what colour the page under it is, rather
+       than a frosted pane. */
+    "--ios-blur-sheet": "2px",
 
     /* Opaque stand-ins, used when transparency is turned off. */
     "--ios-glass-solid": dark ? "rgb(28 28 30)" : "rgb(249 249 249)",

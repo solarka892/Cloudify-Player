@@ -100,7 +100,7 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
       {art && (
         <div
           aria-hidden
-          className="artwork pointer-events-none absolute inset-0 scale-125 bg-cover bg-center opacity-40 blur-3xl"
+          className="artwork art-frame pointer-events-none absolute inset-0 scale-125 bg-cover bg-center opacity-40 blur-3xl"
           style={{ backgroundImage: `url("${art}")` }}
         />
       )}
@@ -157,11 +157,13 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
         <div className="flex min-h-0 w-full max-w-[34rem] shrink-0 flex-col justify-center gap-6">
           <div className="mx-auto w-full max-w-[min(30rem,44vh)]">
             {art ? (
-              <img
-                src={art}
-                alt=""
-                className="artwork aspect-square w-full rounded-[var(--radius-hero)] object-cover shadow-[var(--shadow-2)]"
-              />
+              <span className="art-frame block aspect-square w-full rounded-[var(--radius-hero)] shadow-[var(--shadow-2)]">
+                <img
+                  src={art}
+                  alt=""
+                  className="artwork h-full w-full object-cover"
+                />
+              </span>
             ) : (
               <ArtFallback
                 seed={current.id}

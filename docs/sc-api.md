@@ -362,6 +362,78 @@ had been sitting here since the actions were written:
 Both failed silently behind an optimistic UI, so a like appeared to work and
 was simply never saved.
 
+**Updated 2026-08-18 — why likes fail: DataDome, not credentials.**
+
+Reported as "the track will not like, and the error says the `client_id` is
+stale". Re-probed unauthenticated, against the very track and account that
+failed:
+
+| method | result |
+| --- | --- |
+| `PUT /users/{me}/track_likes/{id}` | `403` |
+| `POST` same path | `404` |
+| `DELETE` same path | `401` |
+
+So the path and both verbs we ship are right — `404` on `POST` is what a wrong
+method looks like, and the route answers on `PUT` and `DELETE`. Confirmed
+independently against soundcloud.com's own bundle, which declares
+`soundLikesCreate` and `soundLikesDelete` on `users/:userId/track_likes/:id`.
+
+The `403` carries the answer in its headers:
+
+```
+x-datadome: protected
+x-dd-b: 1
+set-cookie: datadome=…; Domain=.soundcloud.com; Max-Age=31536000
+```
+
+The write is being stopped by **DataDome**, in front of SoundCloud, before
+SoundCloud sees it. Nothing about the credentials is wrong, which is exactly why
+reads are fine and every attempt to fix this by re-fetching the `client_id` or
+the token has changed nothing. What DataDome wants is the `datadome` cookie a
+real browser carries; we send no cookies at all.
+
+`classify` read that `403` as a rotated key, so the app said "client_id likely
+stale" — a confident, wrong answer that sent the user to fix something that was
+not broken. Writes now classify for themselves (`actions::refusal`):
+`x-datadome` → `BotFiltered`, a second `401` after the key retry →
+`SessionExpired`, anything else → `Refused { status, detail }` carrying
+SoundCloud's own reply.
+
+**Tried and reverted (2026-08-18): borrowing the browser's cookie.** The obvious
+move — read `datadome` out of the browser's cookie jar the same way `oauth_token`
+already is, and send it on the write routes. Built, then measured against the
+real cookie from a real profile, on the account and track that were failing:
+
+| request | result |
+| --- | --- |
+| `PUT …/track_likes/…`, no cookie | `403` `x-datadome: protected` |
+| same + the browser's real `datadome` cookie | `403` `x-datadome: protected` |
+| same + cookie + a full Firefox header set (UA, `Accept*`, `Sec-Fetch-*`, `DNT`, HTTP/2) | `403` `x-datadome: protected` |
+| `GET /tracks/{id}` from the same client | `200` |
+
+**The cookie is not what is being checked.** What is left, once headers and
+cookies are ruled out, is the TLS handshake: DataDome fingerprints it (JA3/JA4),
+and rustls' ClientHello is not Firefox's. No header or cookie can change that,
+so the code was reverted rather than left reading the user's browser profile for
+nothing.
+
+Routes that might work, none tried:
+
+1. **Impersonate the TLS fingerprint** — `rquest` and friends exist for exactly
+   this. A heavy dependency swap, and an arms race with a company whose whole
+   business is winning it.
+2. **Write from inside a WebView on soundcloud.com's own origin.** WebKitGTK is
+   a real browser stack with a real TLS fingerprint, and the embedded login
+   window already gets *offered a captcha* rather than a flat `403` — which is
+   DataDome engaging rather than refusing. A human solves it once; the WebView
+   keeps the cookie and the handshake, and the writes go from there. CORS is why
+   this cannot be a `fetch` from the app's own frontend: the API answers
+   `access-control-allow-origin: https://soundcloud.com`, and the app's origin
+   is `tauri://localhost`.
+3. **Hand the write to the real browser** — open the track's page. Honest,
+   reliable, and not really an app any more.
+
 ⚠️ Still unverified: the **response** bodies, and whether a `401` here means a
 dead token or a rotated `client_id` (`/me` needs the same one-retry treatment).
 Note likes are keyed on the signed-in user's id, not `/me`, so

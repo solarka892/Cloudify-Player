@@ -1,15 +1,7 @@
 import { Glass } from "./Glass";
-import {
-  AppleBell,
-  AppleEnvelope,
-  AppleGear,
-  AppleHouse,
-  AppleMagnifier,
-  ApplePersonCircle,
-  AppleSquareStack,
-  type Glyph,
-} from "./icons";
-import { Logo } from "@/components/Logo";
+import { AppleGear } from "./icons";
+import { GLYPHS } from "./nav-glyphs";
+import { Logo, LogoWord } from "@/components/Logo";
 import {
   COMPACT_NAV_ITEMS,
   NAV_ITEMS,
@@ -35,22 +27,6 @@ interface NavProps {
   view: ViewId;
   onNavigate: (view: ViewId) => void;
 }
-
-/**
- * The section glyphs, in SF Symbols' idiom rather than lucide's.
- *
- * Keyed off the shared `NAV_ITEMS` rather than replacing it, so the sections,
- * their order and their labels stay in one place — this only swaps the drawing.
- */
-const GLYPHS: Record<ViewId, Glyph> = {
-  home: AppleHouse,
-  search: AppleMagnifier,
-  library: AppleSquareStack,
-  messages: AppleEnvelope,
-  notifications: AppleBell,
-  profile: ApplePersonCircle,
-  settings: AppleGear,
-};
 
 /** The wordmark, which goes home like a logo in the corner should. */
 function HomeMark({
@@ -110,18 +86,23 @@ function AppleBadge({ count, className }: { count: number; className?: string })
  *
  * The icon sits in a box exactly as wide as the collapsed rail's content, so the
  * selected pill is symmetrical around it. Left to the flex row, the label — which
- * is present but transparent when collapsed — pushed the icon off-centre and the
- * highlight ran further to the right of the glyph than to the left of it.
+ * is in the layout even while it is unpainted — pushed the icon off-centre and
+ * the highlight ran further to the right of the glyph than to the left of it.
  *
- * Each label fades in only after the width has finished travelling. Cross-fading
- * it with the growth paints the text half-clipped, which is the thing that makes
- * a widening rail feel cheap.
+ * Each label is uncovered left to right as the rail opens, on the width's own
+ * duration — see `rail-wipe` in `globals.css`.
  */
 export function AppleRail({ view, onNavigate }: NavProps) {
   return (
     <Glass className="group/rail nav-in-x flex w-[4.25rem] shrink-0 flex-col gap-1 overflow-hidden p-2.5 transition-[width] duration-[var(--motion-slow)] hover:w-[13.5rem]">
-      <HomeMark className="mb-2 flex h-10 w-12 shrink-0 items-center justify-center">
-        <Logo compact />
+      {/* Built like a rail item, because it heads one: the glyph in the same
+          48px box the icons sit in, the word where their labels start, on the
+          same wipe. */}
+      <HomeMark className="mb-2 flex h-10 shrink-0 items-center">
+        <span className="flex w-12 shrink-0 items-center justify-center">
+          <Logo compact />
+        </span>
+        <LogoWord className="whitespace-nowrap pr-3 rail-wipe group-hover/rail:rail-wipe-open" />
       </HomeMark>
 
       {NAV_ITEMS.map((item) => (
@@ -153,7 +134,7 @@ function AppleRailItem({
       onClick={() => onNavigate(id)}
       title={label}
       aria-current={active ? "page" : undefined}
-      className="lg-nav-item flex h-11 shrink-0 items-center text-[0.9375rem]"
+      className="lg-nav-item type-body flex h-11 shrink-0 items-center"
     >
       <span className="relative flex w-12 shrink-0 items-center justify-center">
         <Icon className="h-[21px] w-[21px]" />
@@ -161,7 +142,7 @@ function AppleRailItem({
             trailing badge would slide across with it. */}
         <AppleBadge count={badge} className="absolute -right-0.5 -top-1" />
       </span>
-      <span className="whitespace-nowrap pr-3 opacity-0 transition-opacity duration-[var(--motion-fast)] group-hover/rail:opacity-100 group-hover/rail:delay-[var(--motion-slow)]">
+      <span className="whitespace-nowrap pr-3 rail-wipe group-hover/rail:rail-wipe-open">
         {label}
       </span>
     </button>
@@ -224,7 +205,7 @@ function AppleTopItem({
     <button
       onClick={() => onNavigate(id)}
       aria-current={active ? "page" : undefined}
-      className="lg-nav-item flex shrink-0 items-center gap-2 px-3 py-1.5 text-[0.9375rem]"
+      className="lg-nav-item type-body flex shrink-0 items-center gap-2 px-3 py-1.5"
     >
       <Icon className="h-[18px] w-[18px]" />
       <span>{label}</span>
@@ -259,7 +240,7 @@ export function AppleSidebar({ view, onNavigate }: NavProps) {
         <>
           {/* A sidebar heading in iOS is quiet and sits above its group, the
               same inversion the settings page uses. */}
-          <div className="mt-5 px-2.5 pb-1 text-[0.8125rem] text-[var(--ios-label-2)]">
+          <div className="type-caption mt-5 px-2.5 pb-1 text-[var(--ios-label-2)]">
             {t.library.playlists}
           </div>
           <ul className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
@@ -267,7 +248,7 @@ export function AppleSidebar({ view, onNavigate }: NavProps) {
               <li key={playlist.id}>
                 <button
                   onClick={() => openPlaylist(playlist)}
-                  className="lg-nav-item w-full truncate px-2.5 py-1.5 text-left text-[0.9375rem]"
+                  className="lg-nav-item type-body w-full truncate px-2.5 py-1.5 text-left"
                 >
                   {playlist.title}
                 </button>
@@ -296,7 +277,7 @@ function AppleSidebarItem({
     <button
       onClick={() => onNavigate(id)}
       aria-current={active ? "page" : undefined}
-      className="lg-nav-item flex h-9 shrink-0 items-center gap-3 px-2.5 text-[0.9375rem]"
+      className="lg-nav-item type-body flex h-9 shrink-0 items-center gap-3 px-2.5"
     >
       <Icon className="h-[19px] w-[19px] shrink-0" />
       <span className="truncate">{label}</span>

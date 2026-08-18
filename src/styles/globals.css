@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* The app's own faces. Must precede anything that names them. */
+@import "./fonts.css";
 /* Apple mode's stylesheet. Inert until `theme/apply.ts` sets `data-apple` on
    <html>, and deliberately unlayered so it can restyle components that colour
    themselves with utilities — see the header there. */
@@ -64,6 +66,9 @@
     ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
   --font-display: var(--font-ui);
+  /* Readings rather than words: durations, counters, mark times. */
+  --font-mono:
+    ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   --label-transform: none;
   --label-spacing: 0em;
   --label-size: 0.6875rem;
@@ -72,14 +77,22 @@
   --focus-ring: 0 0 0 2px color-mix(in srgb, var(--brand) 65%, transparent);
   /* Cover art passes through this. `none` unless a skin rules colour out. */
   --art-filter: none;
-  /* The app's own title bar. */
-  --chrome-height: 32px;
-  --chrome-alpha: 6%;
+  /* The two inks a duotone cover is printed with; see `.art-frame`. */
+  --art-duotone-from: transparent;
+  --art-duotone-to: transparent;
+  /* How far a screen heading's second impression is out of register. */
+  --print-offset: 0px;
   /* The skin's ambient light and film of grain; both off unless asked for. */
   --glow: 0;
   --grain: 0;
   /* How far an opaque panel sinks toward the page — see tokens.ts. */
   --surface-sink: 0%;
+
+  /* The gutter `AppShell` puts around a view's content. A token because a
+     full-bleed element — a head whose hairline has to run edge to edge — can
+     only cancel a padding it can name. Kept in step with the utilities on the
+     content box there; they are the same two numbers. */
+  --page-pad: 1rem;
 
   /* metrics — user layer */
   --density: 1;
@@ -100,6 +113,12 @@
   --backdrop-blur-scale: 1;
   --backdrop-dim-boost: 0;
   --backdrop-saturate-scale: 1;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --page-pad: 1.5rem;
+  }
 }
 
 /* These multipliers used to raise the blur to 2.5x and the veil by 0.3 on a
@@ -168,6 +187,11 @@
 
   --font-sans: var(--font-ui);
   --font-display: var(--font-display);
+  /* `--font-mono` is deliberately *not* mapped here. Tailwind's `--font-*`
+     namespace would define a theme variable of the same name as the token, and
+     `--font-mono: var(--font-mono)` is a cycle rather than an alias. The
+     instrument face is reached through `.readout` instead, which is better
+     anyway: it carries the tabular figures that are half the reason it exists. */
 }
 
 @layer base {
@@ -223,11 +247,27 @@
   ::-webkit-scrollbar-track {
     background: transparent;
   }
+  /* A 4px bar in a 10px track. The width the pointer has to hit is the track's,
+     which is why the difference is a transparent border rather than a narrower
+     scrollbar: a 4px hit target is a scrollbar you drag on the second attempt. */
   ::-webkit-scrollbar-thumb {
     background: color-mix(in srgb, var(--muted-foreground) 32%, transparent);
     border: 3px solid transparent;
     background-clip: content-box;
     border-radius: 999px;
+  }
+  /* All of that padding goes on the inside edge, so the bar sits against the
+     window rather than floating three pixels off it. Centring it left a gap
+     that read as a gap — the window is undecorated, so the app's own edge is
+     the last thing on screen and anything short of it looks unfinished. The
+     track keeps its full width either way. */
+  ::-webkit-scrollbar-thumb:vertical {
+    border-left-width: 6px;
+    border-right-width: 0;
+  }
+  ::-webkit-scrollbar-thumb:horizontal {
+    border-top-width: 6px;
+    border-bottom-width: 0;
   }
   ::-webkit-scrollbar-thumb:hover {
     background: color-mix(in srgb, var(--muted-foreground) 55%, transparent);
@@ -555,6 +595,102 @@
     top: 1.5rem;
   }
 
+  /* ── The type scale ───────────────────────────────────────────────────────
+   *
+   * Seven steps, and the app had two.
+   *
+   * Counted before writing this: 277 of roughly 290 pieces of text in the app
+   * were either `text-sm` or `text-xs` — 14px and 12px. Two sizes, two pixels
+   * apart, `font-medium` on most of them. That is what "the app feels
+   * unfinished" actually is, and no amount of glass, blur or rounding fixes
+   * it: if every line is the same size, the same weight and the same distance
+   * from the next one, nothing on the screen is more important than anything
+   * else and the eye has nowhere to land.
+   *
+   * Three decisions carry most of the effect:
+   *
+   *   - **Body goes up to 15px and secondary text down to 13.** Four pixels of
+   *     daylight instead of two. Two is close enough to read as an accident;
+   *     four reads as a decision.
+   *   - **Body is regular, not medium.** Medium body text is the commonest tell
+   *     of an interface that has not been typeset: everything is emphasised, so
+   *     nothing is. Weight is spent on headings and on state.
+   *   - **Tracking tightens as size grows.** A face set at one tracking across
+   *     11px and 32px is loose at the top and cramped at the bottom; every
+   *     typeface Apple, Google and Adobe ship does this and it is most of why
+   *     their headings look "set" rather than "scaled".
+   *
+   * Classes rather than tokens because a size is not one number: it is a size,
+   * a line-height, a weight and a tracking that belong together, and handing a
+   * component four separate utilities is how they drift apart again.
+   */
+  .type-display {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.022em;
+  }
+  .type-title {
+    font-family: var(--font-display);
+    font-size: 1.375rem;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+  /* Shelf headings. Raised from 17/600 once the home screen got a hero: with a
+     32px greeting above them and 13px card titles below, 17 sat too close to
+     the cards to lead them. 19/700 is a rank of its own. */
+  .type-heading {
+    font-size: 1.1875rem;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.015em;
+  }
+  .type-body {
+    font-size: 0.9375rem;
+    font-weight: 400;
+    line-height: 1.45;
+  }
+  .type-label {
+    font-size: 0.8125rem;
+    font-weight: 400;
+    line-height: 1.4;
+  }
+  .type-caption {
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.35;
+  }
+  /* Overlines and badges. The only step that tracks *out*: at 11px the counters
+     close up, and a capital sitting on 11px without extra space reads as a
+     smudge rather than as a word. */
+  .type-micro {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: 0.04em;
+  }
+
+  /* ── Readings ─────────────────────────────────────────────────────────────
+   *
+   * Anything that is a number you read off the interface rather than a word you
+   * read in it: elapsed time, remaining time, a mark's position, a track count,
+   * a bitrate, a decibel trim.
+   *
+   * `tabular-nums` is the point. A running clock in a proportional face reflows
+   * every second — the "1" is narrower than the "8" — so the whole row twitches;
+   * a column of durations set the same way never lines up. The typeface is
+   * secondary, and in three of the four skins it is just the system's monospace.
+   */
+  .readout {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    /* Monospaced faces run large next to a grotesque at the same size. */
+    font-size: 0.92em;
+    letter-spacing: -0.01em;
+  }
+
   /* Section headings; uppercase and tracked out in skins that ask for it. */
   .label {
     text-transform: var(--label-transform);
@@ -598,6 +734,133 @@
   .bg-row {
     background: var(--card);
     background: color-mix(in srgb, var(--card) var(--row-alpha), transparent);
+  }
+
+  /* ── The thread ───────────────────────────────────────────────────────────
+   *
+   * The playing track's waveform along the top edge of the window, filling as it
+   * plays, with a rule through it for every mark. A row in the window frame
+   * rather than an overlay on the title bar — see the component for why.
+   *
+   * Not skin-specific: the marks are on it in every skin, and every value here
+   * is a token, so a skin that wants a different weight says so.
+   *
+   * ## Why the bars are drawn twice
+   *
+   * The unplayed shape and the played shape are the same set of bars in two
+   * colours, the second clipped to the playhead. The alternative — recolouring
+   * each bar as the playhead passes it — is two hundred style writes per tick
+   * instead of one, for a result nobody can tell apart.
+   */
+  .thread {
+    --thread-height: 1.375rem;
+    --thread-gap: 1px;
+    position: relative;
+    height: var(--thread-height);
+    flex-shrink: 0;
+    /* The strip is the page, so the bars' contrast is the palette's and not
+       whatever the wallpaper leaves under the title bar. */
+    background: var(--background);
+    border-bottom: var(--border-width) solid var(--border);
+    cursor: pointer;
+    /* Deliberately *not* `overflow: hidden`. Nothing inside can overflow — both
+       bar sets are `inset: 0` and shrink to zero width rather than push — and
+       the popover hangs below the strip, which clipping would eat. */
+    /* A scrub is a horizontal gesture on a 22px-tall strip; on a touchscreen
+       that has to not be read as the start of a page scroll. */
+    touch-action: none;
+  }
+
+  /* On a phone the gaps would be most of the strip — two hundred bars at 0.8px
+     each between 1px gaps is a picket fence, not a waveform. Closed up, the
+     bars merge into a filled shape, which is what a small waveform should be. */
+  @media (max-width: 640px) {
+    .thread {
+      --thread-gap: 0px;
+    }
+  }
+
+  /* Both copies fill the strip and hang from its *ceiling*, so a bar's height
+     reads as amplitude from a common baseline — and that baseline is the top
+     edge of the window.
+   *
+   * Upside down on purpose. A waveform standing on the floor of the strip has
+   * its baseline in the middle of the window frame, with a gap of page colour
+   * above it that belongs to nothing; hung from the top, the baseline *is* the
+   * window's edge, the amplitude grows into the app, and the loudest part of the
+   * track is the part nearest everything else on the screen. */
+  .thread-wave {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-start;
+    gap: var(--thread-gap);
+  }
+  .thread-wave > span {
+    flex: 1 1 0;
+    min-width: 0;
+    background: color-mix(in srgb, var(--foreground) 26%, transparent);
+    transition: background var(--motion-fast) ease;
+  }
+  /* Under the pointer the whole shape lifts a little: the strip is about to be
+     used, and this is cheaper to read than a size change, which would move the
+     window's contents. */
+  .thread:hover .thread-wave > span {
+    background: color-mix(in srgb, var(--foreground) 38%, transparent);
+  }
+  .thread-wave-played > span {
+    background: var(--brand);
+  }
+  .thread:hover .thread-wave-played > span {
+    background: var(--brand);
+  }
+
+  /* The playhead: a full-height rule at the boundary, so "where am I" is a
+     glance rather than a hunt along the edge of a colour. */
+  .thread-head {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    margin-left: -1px;
+    background: var(--foreground);
+    pointer-events: none;
+  }
+
+  /* A mark, straight through the shape. */
+  .thread-notch {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--brand-2);
+    pointer-events: none;
+  }
+  /* The one the pointer is nearest, and whose note the popover is showing. */
+  .thread-notch-near {
+    width: 2px;
+    background: var(--foreground);
+  }
+
+  /* Nothing playing. The strip keeps its height — appearing when music starts
+     would push the whole window down — and says so with a rule. */
+  .thread-empty {
+    position: absolute;
+    /* On the same edge the bars hang from, so silence is the waveform at zero
+       rather than a rule somewhere else. */
+    inset: 0 0 auto 0;
+    height: 1px;
+    background: color-mix(in srgb, var(--foreground) 14%, transparent);
+  }
+
+  /* The popover hangs below the strip, inside the window. */
+  .thread-tip {
+    position: absolute;
+    top: 100%;
+    z-index: 40;
+    width: 12rem;
+    padding: 0.5rem 0.5625rem;
+    pointer-events: none;
   }
 
   /* Progress fills advance in ticks, not continuously, so without this every
@@ -1022,6 +1285,37 @@
   padding-bottom: var(--safe-bottom);
 }
 
+/* ── The rail's text, uncovered rather than faded ───────────────────────────
+ *
+ * A word in a widening rail has two honest ways to arrive: fade in once the
+ * travel is over, or be uncovered by it. This is the second — a clip that opens
+ * left to right over the same duration as the width, so the text reads as
+ * something that was behind the rail's edge all along rather than something
+ * that turned up after it stopped.
+ *
+ * Shut is `inset(0 100% 0 0)`, not `opacity: 0`, and the difference matters:
+ * nothing is painted at rest. The collapsed rail is 56px and its labels start
+ * at 48, so a merely transparent word would leave its first two millimetres
+ * sitting in the closed rail waiting to be noticed.
+ *
+ * Why a clip of its own when the rail already has `overflow: hidden` and would
+ * uncover the text for free: the rail's edge does the uncovering at the *edge's*
+ * speed, and that edge is already past the labels' left margin before the rail
+ * so much as moves. The clip is what makes the reveal start at the first pixel
+ * of the word and last the whole travel.
+ *
+ * The curve is the one the rest of the app decelerates on. Under
+ * `prefers-reduced-motion` the blanket rule near the top of this file takes the
+ * duration to nothing and the text simply appears, which is correct.
+ */
+@utility rail-wipe {
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path var(--motion-slow) cubic-bezier(0.2, 0.8, 0.25, 1);
+}
+@utility rail-wipe-open {
+  clip-path: inset(0 0 0 0);
+}
+
 /*
  * `position: fixed` measures against the viewport, not against `.app-frame`, so
  * the two full-screen players escape the box above and have to carry it
@@ -1050,6 +1344,503 @@
   background: var(--popover);
   backdrop-filter: none;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Nit, screen by screen.
+
+   Deliberately *unlayered*, like the Obsidian block below and for the same
+   reason: Tailwind's utilities beat anything in `@layer components` however
+   specific, and almost every rule here has to override a utility a component
+   already carries. Everything is gated on `[data-skin="nit"]`, so switching
+   away restores the other three skins exactly — and no component in the app
+   knows which skin is on.
+
+   The numbers are the prototype's (`docs/brand-nit.md`), not approximations of
+   them: 88px rail, 30px chrome, 62px player, 3px markers, 2px radius, mono
+   micro-caps at 8–10px. Where a component's markup could not express something,
+   the markup grew a neutral hook — `.row-index`, `.rail-hint`,
+   `.player-readout`, `[data-seekbar]` — which is hidden by default and only
+   this skin displays. Same pattern as `.nav-marker`.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Type ───────────────────────────────────────────────────────────────────
+ *
+ * The print shift: a screen heading printed twice, the second impression in the
+ * other ink and out of register. One `text-shadow` — no duplicated markup, no
+ * `content: attr()`, one paint. Offset on both axes, like a plate that slipped
+ * diagonally rather than one that slid sideways.
+ *
+ * `h1` only, and one per screen. On an `h2` it stops being a press that moved
+ * and becomes a style. Switching it off writes `--print-offset: 0px`, which
+ * lands the copy exactly under the letters it copies.
+ */
+/*
+ * Scoped to a `ViewHead`, and not to every `h1` on the page.
+ *
+ * The screens' own names are ours to shout: "LIKES", "DIARY", "SETTINGS". A
+ * profile's username and a track's title are also `h1`s, and they are somebody
+ * else's words — uppercasing them and printing a second impression through them
+ * is the app putting its voice into someone's name. Our words shout, theirs do
+ * not, which is the same rule the Obsidian block keeps for its playlist index.
+ */
+:root[data-skin="nit"] .view-head h1 {
+  font-family: var(--font-display);
+  font-size: 1.875rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+  text-shadow: calc(-1 * var(--print-offset)) var(--print-offset) 0 var(--brand-2);
+}
+
+/* Micro-caps in the instrument face. Every label in the interface is a reading
+   rather than a word here, which is what makes the ordinary text look like
+   ordinary text. */
+:root[data-skin="nit"] .label,
+:root[data-skin="nit"] .group-title {
+  font-family: var(--font-mono);
+  font-size: var(--label-size);
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+/* The wordmark, and the mark beside it: a 3×11 bar of sulphur. The one place
+   the accent appears without being a control. */
+:root[data-skin="nit"] .brand-text {
+  background-image: none;
+  color: var(--foreground);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 0.2em;
+}
+
+/* ── The window frame ───────────────────────────────────────────────────── */
+:root[data-skin="nit"] [data-tauri-drag-region] {
+  padding-left: 12px;
+}
+/* ── The rail ───────────────────────────────────────────────────────────────
+ *
+ * 88px, fixed. The stock rail is 56px and widens to 192 on hover, with the
+ * labels fading in after the travel; here the label lives under the icon and is
+ * always legible, because a rail whose words appear only when pointed at is a
+ * rail you have to learn. The width never animates, so nothing reflows.
+ */
+:root[data-skin="nit"] [data-rail] {
+  width: 88px;
+  padding: 14px 0;
+  gap: 2px;
+  border-radius: 0;
+  border-right: var(--border-width) solid var(--border);
+  background: transparent;
+  box-shadow: none;
+}
+:root[data-skin="nit"] [data-rail-slot] {
+  width: 88px;
+}
+/* The wordmark heads the icon column, so it has to sit *on* it.
+ *
+ * `BrandMark` places itself with a fixed left padding worked out from the stock
+ * rail — 8px of rail padding plus 10px of button padding plus half an icon puts
+ * that column's axis 27px from the edge. This rail is 88px with the icons
+ * centred, which moves the axis to 44 and leaves the mark hanging 25px to its
+ * left. Centred rather than given a different number, because the number would
+ * be wrong again the next time the width changes.
+ */
+:root[data-skin="nit"] [data-rail] [data-brand-mark] {
+  width: 100%;
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+  margin-bottom: 6px;
+}
+/* And the word beside it goes entirely, rather than sitting there transparent.
+   This rail is a fixed 88px — the width rule above beats the hover utility, so
+   it never widens and the word would never arrive — and the button centres its
+   whole content, so an invisible word would push the glyph off the axis the
+   rule above just put it on. */
+:root[data-skin="nit"] [data-rail] [data-brand-mark] .brand-text {
+  display: none;
+}
+
+:root[data-skin="nit"] [data-nav-item="side"] {
+  flex-direction: column;
+  gap: 6px;
+  height: auto;
+  padding: 11px 4px;
+  border-radius: 0;
+  background: transparent;
+}
+:root[data-skin="nit"] [data-nav-item="side"]:hover {
+  background: color-mix(in srgb, var(--foreground) 5%, transparent);
+}
+:root[data-skin="nit"] [data-nav-item="side"] .label {
+  font-size: 0.5rem;
+  letter-spacing: 0.12em;
+  /* This rail is a fixed 88px and never widens, so the label lives under its
+     icon and is simply always there. Both of the stock rail's states have to be
+     undone for that: `rail-wipe` shuts the label with a clip, and it used to be
+     an opacity — a skin that only knew about one of them would show a label
+     that was there but invisible, or clipped to nothing but fully opaque. */
+  clip-path: none;
+  opacity: 1;
+  transition: none;
+}
+/* The marker, 3px at the edge, instead of a filled pill. A filled pill is the
+   most "app-like" shape there is and the furthest from this. */
+:root[data-skin="nit"] [data-nav-item][aria-current] .nav-marker {
+  display: block;
+  position: absolute;
+  background: var(--brand);
+}
+:root[data-skin="nit"] [data-nav-item="side"][aria-current] .nav-marker {
+  inset: 5px auto 5px 0;
+  width: 3px;
+}
+:root[data-skin="nit"] [data-nav-item="top"][aria-current] .nav-marker {
+  inset: auto 0 0 0;
+  height: 3px;
+}
+/* The phone's tab bar marks its *top* edge: the bottom one is where the gesture
+   bar is, and a bar of accent there reads as part of the system. */
+:root[data-skin="nit"] [data-nav-item="bottom"][aria-current] .nav-marker {
+  inset: 0 0 auto 0;
+  height: 3px;
+}
+/* The keyboard hint at the foot of the rail. Hidden everywhere else — it is a
+   statement about how this look expects to be used, not a feature of the nav. */
+:root[data-skin="nit"] .rail-hint {
+  display: block;
+  margin-top: auto;
+  padding: 10px 6px;
+  text-align: center;
+}
+
+/* ── A view's head ──────────────────────────────────────────────────────────
+ *
+ * Title, one line of numbers under it, and the search field on the same
+ * baseline — separated from the list by a hairline rather than by space.
+ */
+:root[data-skin="nit"] .view-head {
+  /* Out to the edges of the content box and back in by its own padding, so the
+     hairline under the title spans the window the way it does in the reference.
+     A head inset by the page gutter reads as a card, which is the one thing
+     this look does not have. */
+  margin: calc(-1 * var(--page-pad)) calc(-1 * var(--page-pad)) 0;
+  padding: 20px 24px 12px;
+  border-bottom: var(--border-width) solid var(--border);
+}
+:root[data-skin="nit"] .view-head-sub {
+  margin-top: 7px;
+  font-size: 0.71875rem;
+  color: color-mix(in srgb, var(--foreground) 46%, transparent);
+}
+/* The field is a hole in the page: one hairline underneath, which lights up in
+   the accent on focus. No box, no fill, no radius — a bordered input would be
+   the heaviest object on a screen made of hairlines. */
+:root[data-skin="nit"] .search-field {
+  background: transparent;
+  border: 0;
+  border-bottom: var(--border-width) solid var(--border);
+  border-radius: 0;
+}
+:root[data-skin="nit"] .search-field:focus-within,
+:root[data-skin="nit"] .search-field:focus {
+  border-bottom-color: var(--brand);
+}
+
+/* ── Strips ─────────────────────────────────────────────────────────────────
+ *
+ * The app talking to you about the list you are looking at: duplicates found,
+ * a track that has gone, what the transliterated search matched. A 3px edge in
+ * the ink that says which kind it is, and pill buttons on the right.
+ */
+:root[data-skin="nit"] .strip {
+  border-left-width: 3px;
+  border-left-color: var(--brand);
+}
+:root[data-skin="nit"] .strip[data-tone="mark"] {
+  border-left-color: var(--brand-2);
+}
+:root[data-skin="nit"] .strip[data-tone="quiet"] {
+  border-left-color: color-mix(in srgb, var(--foreground) 24%, transparent);
+}
+:root[data-skin="nit"] .strip button {
+  font-family: var(--font-mono);
+  font-size: 0.59375rem;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  padding: 6px 11px;
+}
+:root[data-skin="nit"] .strip button[data-primary] {
+  font-weight: 700;
+}
+
+/* ── Rows ───────────────────────────────────────────────────────────────────
+ *
+ * The list is not a stack of cards. No outline around it, no rule between rows,
+ * no fill on a row at rest: what separates one from the next is the hairline
+ * under it and the hover. The playing row is marked with 3px of accent at its
+ * left edge, an inset shadow rather than a border so the contents do not move.
+ */
+:root[data-skin="nit"] .list-card {
+  border-color: transparent;
+  border-radius: 0;
+}
+:root[data-skin="nit"] .bg-row {
+  background: transparent;
+  border-bottom-color: var(--border);
+}
+:root[data-skin="nit"] .bg-row:hover {
+  background: color-mix(in srgb, var(--foreground) 5%, transparent);
+}
+:root[data-skin="nit"] .bg-row[data-current] {
+  background: color-mix(in srgb, var(--foreground) 7%, transparent);
+  box-shadow: inset 3px 0 0 var(--brand);
+}
+/* The index. Hidden in every other skin: it is rhythm rather than information,
+   and three of the four skins do not want a column of numbers. */
+:root[data-skin="nit"] .row-index {
+  display: block;
+  width: 26px;
+  text-align: right;
+  font-size: 0.65625rem;
+  color: color-mix(in srgb, var(--foreground) 24%, transparent);
+}
+
+/* Tags: what is true about this row that its title does not say. Pills in the
+   instrument face — outline only, never filled, because a filled tag would
+   compete with the play button for the one accent in the interface. */
+.row-tag {
+  font-family: var(--font-mono);
+  font-size: 0.53125rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  padding: 3px 7px;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-round);
+  color: var(--muted-foreground);
+}
+.row-tag[data-tone="mark"] {
+  border-color: var(--brand-2);
+  color: var(--brand-2);
+}
+.row-tag[data-tone="dup"] {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+.row-tag[data-tone="gone"] {
+  border-color: color-mix(in srgb, var(--foreground) 26%, transparent);
+}
+
+/* A track that is no longer on SoundCloud. The row stays, because the row is
+   the only remaining evidence that it ever existed. */
+.row-gone {
+  opacity: 0.62;
+}
+.row-gone .row-title {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(in srgb, var(--foreground) 40%, transparent);
+}
+
+/* ── The player ─────────────────────────────────────────────────────────────
+ *
+ * 62px, three columns, and no seek bar in it: the thread along the top edge is
+ * the progress, and a second one down here would be the app disagreeing with
+ * itself about where time lives. What replaces it is a readout — elapsed over
+ * total, and the levelling trim in dB when there is one.
+ */
+:root[data-skin="nit"] .player-bar {
+  height: 62px;
+  padding: 0 18px;
+  gap: 14px;
+  border-radius: 0;
+  background: transparent;
+  border-top: var(--border-width) solid var(--border);
+  box-shadow: none;
+}
+:root[data-skin="nit"] [data-seekbar] {
+  display: none;
+}
+:root[data-skin="nit"] .player-readout {
+  display: flex;
+}
+/* The play button is the one solid fill in the interface. */
+:root[data-skin="nit"] [data-transport="play"] {
+  width: 40px;
+  height: 40px;
+  background: var(--brand);
+  color: var(--brand-foreground);
+}
+:root[data-skin="nit"] [data-transport="play"]:hover {
+  background: var(--foreground);
+  color: var(--background);
+}
+
+/* Pills in the instrument face: the mark button, the gain readout. Both are
+   readings rather than words, and both are the same shape as everything else
+   you can operate. */
+.pill-readout {
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+  padding: 4px 8px;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-round);
+  color: var(--muted-foreground);
+}
+button.pill-readout:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+/* ── The thread's popover, the palette, toasts ──────────────────────────── */
+:root[data-skin="nit"] .thread-tip {
+  /* The one place the look allows a shadow, and it is not depth: the popover
+     floats over a waveform of the same two colours it is drawn in, and without
+     it the panel's hairline is the only thing separating them. */
+  box-shadow: 0 16px 40px oklch(0 0 0 / 0.6);
+}
+
+/* The strip is where the accent lives most of the time, so it gets the skin's
+   own weights: a hair taller, and unplayed bars quiet enough that the played
+   part is unmistakably the subject. */
+:root[data-skin="nit"] .thread {
+  --thread-height: 1.5rem;
+}
+:root[data-skin="nit"] [data-cmdk-item][aria-selected="true"] {
+  background: color-mix(in srgb, var(--foreground) 8%, transparent);
+  box-shadow: inset 3px 0 0 var(--brand);
+}
+/* A toast is the app speaking; the edge says so in one of the two inks. */
+:root[data-skin="nit"] [data-toast] {
+  border-left: 3px solid var(--brand);
+}
+:root[data-skin="nit"] [data-toast][data-kind="error"] {
+  border-left-color: var(--destructive);
+}
+
+/* ── Artwork ────────────────────────────────────────────────────────────────
+ *
+ * The wallpaper is the playing cover and the covers are printed in two inks a
+ * few centimetres away; left saturated it is a full-window field of someone
+ * else's colour under an interface built on four. The user's own `saturate`
+ * setting is untouched — this is the multiplier over it, and turning the skin
+ * off gives it straight back.
+ */
+:root[data-skin="nit"] {
+  --backdrop-saturate-scale: 0;
+}
+
+/* ── Focus ──────────────────────────────────────────────────────────────────
+ *
+ * A 1px border is the only depth in the interface, so the ring is the accent
+ * itself rather than a halo of it.
+ */
+:root[data-skin="nit"]
+  :is(
+    button,
+    a,
+    input,
+    select,
+    summary,
+    [role="button"],
+    [role="menuitem"],
+    [role="tab"],
+    [role="option"],
+    [tabindex]
+  ):focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* ── Shared hooks, off by default ───────────────────────────────────────────
+ *
+ * Rendered by components in every skin and displayed only by the one that asks,
+ * exactly like `.nav-marker`. A component that wanted to know which skin was on
+ * in order to render these would be the first one in the app to do so.
+ */
+.row-index,
+.rail-hint,
+.player-readout {
+  display: none;
+}
+
+/* ── The duotone press ──────────────────────────────────────────────────────
+ *
+ * A box around a cover, and one ink layer over it. `--art-filter` takes the
+ * colour out of the image; this puts two back — a diagonal ultramarine-to-
+ * sulphur ramp in `color` blend mode, which keeps the photograph's own
+ * luminance and replaces its hue outright. That is what makes a wall of covers
+ * read as one material instead of as forty competing photographs.
+ *
+ * ## Why there is a wrapper at all
+ *
+ * An `<img>` is a replaced element: it cannot have a `::after`, so the ink has
+ * nowhere to live without a box around the picture. The wrapper contains only
+ * the image — never the hover play button, which is a sibling above it — or the
+ * blend would recolour the glyph on top of the artwork too.
+ *
+ * ## Why it is not gated on the skin
+ *
+ * Both stops are palette tokens, and every skin but Nit sets them to
+ * `transparent`; a gradient from transparent to transparent composites to
+ * nothing. So this rule is inert everywhere else without a single selector
+ * asking which skin is on, and switching the treatment off is one token change
+ * rather than a class on twenty components.
+ *
+ * `isolation: isolate` is load-bearing: without it the blend reaches past the
+ * frame and recolours whatever the cover happens to be sitting on.
+ *
+ * ## Why this one is layered when its neighbours are not
+ *
+ * `position: relative` here is only ever meant to give the ink a box to sit in
+ * — it is a default, not an override. Unlayered it beat `@layer utilities`, so
+ * a frame that a component had placed with `absolute` was quietly put back into
+ * the flow. A `<span>` that loses `absolute` also loses `display: block`, and an
+ * inline box takes no width, no height, no rotation and no filter — so the home
+ * screen's corner decoration became a full-size cover across the top of the
+ * page, and three blurred backdrops (track, profile, now playing) collapsed to
+ * nothing. In `components` the utility wins, which is the whole point of writing
+ * one on the element.
+ */
+@layer components {
+  .art-frame {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+}
+.art-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(
+    155deg,
+    var(--art-duotone-from),
+    var(--art-duotone-to)
+  );
+  mix-blend-mode: color;
+  transition: opacity var(--motion-slow) cubic-bezier(0.2, 0.8, 0.25, 1);
+}
+
+/* Press and hold to see what was actually uploaded.
+ *
+ * `:active` rather than a handler: holding the pointer down on the picture is
+ * exactly what that selector means, it needs no state and no component knows
+ * about it. Both layers come off together — the colour goes back in and the ink
+ * comes off — so it reads as one gesture rather than two effects. */
+.art-frame:active .artwork {
+  filter: none;
+}
+.art-frame:active::after {
+  opacity: 0;
+}
+
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Obsidian: the rules a custom property cannot express.
@@ -1177,20 +1968,6 @@
   z-index: 200;
   pointer-events: none;
   border: 1px solid color-mix(in srgb, var(--foreground) 12%, transparent);
-}
-
-/* ── The app's own window frame ─────────────────────────────────────────────
- *
- * Unlayered for the same reason as the block above: these have to beat utilities
- * the components already carry. Not gated on the skin — a title bar belongs to
- * the window rather than to the look, and all four skins get the same one.
- */
-
-/* The window buttons opt out of the app-wide press scale. A full-height square
-   that shrinks under the pointer reads as a bug on a frame, where every desktop's
-   buttons only ever change colour. */
-[data-window-button]:active {
-  transform: none;
 }
 
 /* ── Obsidian, screen by screen ────────────────────────────────────────────

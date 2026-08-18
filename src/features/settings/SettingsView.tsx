@@ -10,6 +10,8 @@ import {
   Palette as PaletteIcon,
   SlidersHorizontal,
   Sun,
+  Flag,
+  HardDrive,
   Trash2,
   Upload,
   Volume2,
@@ -17,12 +19,9 @@ import {
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { AudioSettings } from "./AudioSettings";
-import {
-  BUILTIN_PRESETS,
-  useSettingsStore,
-  type LayoutId,
-  type Preset,
-} from "@/stores/useSettingsStore";
+import { NitSettings } from "./NitSettings";
+import { StorageSettings } from "./StorageSettings";
+
 import {
   PALETTES,
   PALETTE_IDS,
@@ -30,14 +29,9 @@ import {
   ACCENTS,
   ACCENT_IDS,
 } from "@/theme/palettes";
-import {
-  PICKABLE_SKIN_IDS,
-  SKINS,
-  SKIN_IDS,
-  type SkinId,
-} from "@/theme/skins";
+
+import { useSettingsStore } from "@/stores/useSettingsStore";
 import { EFFECT_IDS } from "@/theme/particles";
-import { appleVars } from "@/theme/apple";
 import type { Density, ThemeMode } from "@/theme/apply";
 import {
   LOCALES,
@@ -47,10 +41,12 @@ import {
 } from "@/i18n";
 import {
   AppleAppearance,
+  AppleBookmark,
   AppleCheck,
   AppleChevronDown,
   AppleDisplay,
   AppleDownload,
+  AppleList,
   AppleMoon,
   ApplePhoto,
   ApplePlayCircle,
@@ -61,10 +57,10 @@ import {
   AppleUpload,
   type Glyph,
 } from "@/features/apple/icons";
-import { useCompact } from "@/hooks/useCompact";
 import { scrollViewToTop } from "@/lib/scroll";
-import { hasWindowChrome } from "@/lib/window";
 import { cn } from "@/lib/utils";
+import { ViewHead } from "@/components/ViewHead";
+
 
 /**
  * Everything the user can bend.
@@ -74,30 +70,18 @@ import { cn } from "@/lib/utils";
  * would just hide combinations from the user.
  */
 export function SettingsView() {
-  const compact = useCompact();
-  const layout = useSettingsStore((s) => s.layout);
   const theme = useSettingsStore((s) => s.theme);
   const backdrop = useSettingsStore((s) => s.backdrop);
-  const presets = useSettingsStore((s) => s.presets);
   const unlocked = useSettingsStore((s) => s.unlocked);
-  const nativeFrame = useSettingsStore((s) => s.nativeFrame);
   const autoplayNext = useSettingsStore((s) => s.autoplayNext);
   const offlineOnly = useSettingsStore((s) => s.offlineOnly);
   const setOfflineOnly = useSettingsStore((s) => s.setOfflineOnly);
   const rememberVolume = useSettingsStore((s) => s.rememberVolume);
 
-  const setLayout = useSettingsStore((s) => s.setLayout);
-  const setNativeFrame = useSettingsStore((s) => s.setNativeFrame);
   const setTheme = useSettingsStore((s) => s.setTheme);
   const setBackdrop = useSettingsStore((s) => s.setBackdrop);
   const setBackdropImage = useSettingsStore((s) => s.setBackdropImage);
   const setOverride = useSettingsStore((s) => s.setOverride);
-  const resetTheme = useSettingsStore((s) => s.resetTheme);
-  const savePreset = useSettingsStore((s) => s.savePreset);
-  const applyPreset = useSettingsStore((s) => s.applyPreset);
-  const deletePreset = useSettingsStore((s) => s.deletePreset);
-  const exportTheme = useSettingsStore((s) => s.exportTheme);
-  const importTheme = useSettingsStore((s) => s.importTheme);
   const setAutoplayNext = useSettingsStore((s) => s.setAutoplayNext);
   const locale = useSettingsStore((s) => s.locale);
   const setLocale = useSettingsStore((s) => s.setLocale);
@@ -106,10 +90,8 @@ export function SettingsView() {
   const glyphs = useGlyphs();
 
   const [section, setSection] = useState<SectionId>("appearance");
-  const [presetName, setPresetName] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const imageInput = useRef<HTMLInputElement>(null);
-  const themeInput = useRef<HTMLInputElement>(null);
 
   // The section list is sticky, so a section can be picked from far down a long
   // one. The next section starts at its own top rather than at that offset.
@@ -126,37 +108,20 @@ export function SettingsView() {
     reader.readAsDataURL(file);
   }
 
-  function pickTheme(file: File) {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const error = importTheme(String(reader.result));
-      setNotice(error ? t.settings.importFailed : t.settings.imported);
-    };
-    reader.readAsText(file);
-  }
 
-  function downloadTheme() {
-    const blob = new Blob([exportTheme(presetName || "cloudify theme")], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${(presetName || "cloudify-theme").replace(/\s+/g, "-")}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
 
   return (
     <div className="flex w-full gap-6">
       {/* Section list — settings are browsed, not scrolled through. */}
       <nav className="settings-nav hidden w-48 shrink-0 flex-col gap-0.5 self-start md:flex">
-        <h1
-          className="mb-2 px-2 text-2xl font-bold tracking-tight"
-          style={{ fontFamily: "var(--font-display)" }}
-        >
+        {/* A label, not the screen's heading.
+            The heading belongs in the content column with every other screen's
+            — a 30px uppercase title with a second impression behind it does not
+            fit a 12rem sidebar, and a page with two `h1`s of different sizes has
+            no hierarchy at all. */}
+        <div className="label mb-2 px-2 text-muted-foreground">
           {t.nav.settings}
-        </h1>
+        </div>
         {SECTIONS.map(({ id, label }) => {
           const Icon = glyphs.sections[id];
           return (
@@ -178,6 +143,10 @@ export function SettingsView() {
       </nav>
 
       <div className="stack-lg min-w-0 max-w-2xl flex-1">
+        <ViewHead
+          title={t.nav.settings}
+          sub={SECTIONS.find((entry) => entry.id === section)?.label}
+        />
         {/* Narrow windows get the same list as a scroller. */}
         <nav className="flex gap-1 overflow-x-auto md:hidden">
           {SECTIONS.map(({ id, label }) => (
@@ -209,52 +178,20 @@ export function SettingsView() {
           find four switches before Obsidian looks like Obsidian would hide the
           design behind the architecture. Applying one leaves every switch it
           touched still switchable. */}
-      <Group title={t.settings.builtin} hint={t.settings.builtinHint}>
-        {/* A column, not a wrapping row. Sized to their content, the three cards
-            came out three different widths — Obsidian's description is one line
-            where the others take two — which reads as a broken layout rather
-            than as three equal choices. Stretching them also matches the skin
-            list below, which is the same kind of list. */}
-        <div className="flex flex-col gap-2 px-4 py-3">
-          {BUILTIN_PRESETS.map((preset) => {
-            // Apple mode replaces the skin outright, so a look that is on can
-            // agree with another one's skin id and still not be it — which is
-            // exactly what happens between Standard and Apple, both of which
-            // sit on `aurora`. The flag has to be part of the comparison.
-            const active =
-              theme.apple === preset.theme.apple &&
-              (preset.theme.apple ||
-                (theme.skin === preset.theme.skin &&
-                  theme.palette === preset.theme.palette));
-            return (
-              <button
-                key={preset.id}
-                onClick={() => applyPreset(preset.id)}
-                className={cn(
-                  "flex items-center gap-3 rounded-[var(--radius-control)] border p-2 pr-3.5 text-left transition-colors duration-[var(--motion-fast)]",
-                  active
-                    ? "border-brand bg-accent"
-                    : "border-border hover:bg-accent/60",
-                )}
-              >
-                <PresetSwatch preset={preset} />
-                <span className="min-w-0">
-                  <span className="block text-sm font-medium">{preset.name}</span>
-                  <span className="block text-xs text-muted-foreground">
-                    {/* A preset's own line, not the skin's. Apple mode has no
-                        skin to borrow one from, and the other two are more than
-                        their skin anyway — the wallpaper and the colour are
-                        half of what makes them look like themselves. */}
-                    {t.settings.presetHints[
-                      preset.id as keyof typeof t.settings.presetHints
-                    ] ?? t.settings.skinHints[preset.theme.skin]}
-                  </span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </Group>
+      {/*
+        Four sections used to stand here: the built-in looks, the layout
+        picker, the skin picker and saved presets.
+
+        They are gone with the thing they configured. The app had five
+        appearances and three arrangements, and the drift between them is what
+        made it feel unfinished — so it has one of each now, and a setting that
+        offers a choice the app can no longer make is worse than no setting: it
+        is a promise the screen cannot keep. The user opened this page and saw
+        "Nit / Obsidian / Apple" still listed, which is exactly how a redesign
+        gets read as "nothing changed".
+
+        Colour stayed, below. That is a real choice and always was.
+      */}
 
       {/* ── Language ───────────────────────────────────────────────────── */}
       <Group title={t.settings.language} hint={t.settings.languageHint}>
@@ -285,99 +222,6 @@ export function SettingsView() {
             <glyphs.chevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           </div>
         </Row>
-      </Group>
-
-      {/* ── Layout ─────────────────────────────────────────────────────── */}
-      {/* Not offered on a phone: `AppShell` draws the bottom tab bar whenever
-          the window is compact and never consults `layout` there, so all three
-          choices would look identical and only the widest one is even a shape a
-          360px screen could take. The setting itself is kept — the same install
-          may be a desktop window tomorrow. */}
-      {!compact && (
-      <Group
-        title={t.settings.layout}
-        hint={t.settings.layoutHint}
-        onReset={() => setLayout("rail")}
-      >
-        <div className="grid grid-cols-3 gap-2 p-3">
-          {(
-            [
-              { id: "rail", get label() {
-    return t.settings.layoutRail;
-  }, art: RAIL_ART },
-              { id: "top", get label() {
-    return t.settings.layoutTop;
-  }, art: TOP_ART },
-              { id: "sidebar", get label() {
-    return t.settings.layoutSidebar;
-  }, art: SIDEBAR_ART },
-            ] as { id: LayoutId; label: string; art: string }[]
-          ).map((option) => (
-            <button
-              key={option.id}
-              onClick={() => setLayout(option.id)}
-              className={cn(
-                "flex flex-col items-center gap-2 rounded-[var(--radius-control)] border p-3 transition-colors duration-[var(--motion-fast)]",
-                layout === option.id
-                  ? "border-brand bg-accent"
-                  : "border-border hover:bg-accent/60",
-              )}
-            >
-              <pre className="text-[7px] leading-[1.15] text-muted-foreground">
-                {option.art}
-              </pre>
-              <span className="label text-xs font-medium">{option.label}</span>
-            </button>
-          ))}
-        </div>
-      </Group>
-      )}
-
-      {/* ── Skin ───────────────────────────────────────────────────────── */}
-      <Group
-        title={t.settings.skin}
-        hint={theme.apple ? t.settings.appleOverrides : t.settings.skinHint}
-        muted={theme.apple}
-      >
-        <div className="flex flex-col divide-y divide-border">
-          {/* The skins that are only form, plus whichever one is on — so
-              choosing the Obsidian look does not leave this section showing a
-              list with nothing checked in it. Picking any other skin drops it
-              back out. See `MODE_SKIN_IDS`. */}
-          {SKIN_IDS.filter(
-            (id) => PICKABLE_SKIN_IDS.includes(id) || theme.skin === id,
-          ).map((id) => {
-            const skin = SKINS[id];
-            return (
-              <button
-                key={id}
-                onClick={() => setTheme({ skin: id })}
-                className="flex items-center gap-3 px-4 py-3 text-left transition-colors duration-[var(--motion-fast)] hover:bg-accent/60"
-              >
-                <span
-                  className={cn(
-                    "flex h-5 w-5 shrink-0 items-center justify-center rounded-[var(--radius-round)] border",
-                    theme.skin === id
-                      ? "border-brand bg-brand text-brand-foreground"
-                      : "border-border",
-                  )}
-                >
-                  {theme.skin === id && <glyphs.check className="h-3 w-3" />}
-                </span>
-                {/* Drawn from the skin's own tokens, so it is the skin rather
-                    than a picture of it — a new skin gets a preview for free,
-                    and one that changes its radius changes here too. */}
-                <SkinSwatch id={id} />
-                <span className="min-w-0">
-                  <span className="block text-sm font-medium">{skin.name}</span>
-                  <span className="block text-xs text-muted-foreground">
-                    {t.settings.skinHints[id]}
-                  </span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
       </Group>
 
       {/* ── Colour ─────────────────────────────────────────────────────── */}
@@ -544,16 +388,6 @@ export function SettingsView() {
         </Row>
       </Group>
 
-      {/* ── Window ─────────────────────────────────────────────────────── */}
-      {/* Desktop only, and not because of layout: there is no window to frame on
-          a phone, and `TitleBar` is not rendered there at all. */}
-      {hasWindowChrome && (
-        <Group title={t.settings.window}>
-          <Row label={t.settings.nativeFrame} hint={t.settings.nativeFrameHint}>
-            <Switch checked={nativeFrame} onCheckedChange={setNativeFrame} />
-          </Row>
-        </Group>
-      )}
 
       {/* Locked on under Apple mode rather than hidden. A control that vanishes
           when a look is chosen reads as the app having lost a feature; one that
@@ -612,6 +446,10 @@ export function SettingsView() {
       </Group>
 
       </>)}
+
+      {section === "nit" && <NitSettings />}
+
+      {section === "storage" && <StorageSettings />}
 
       {section === "backdrop" && (<>
       {/* ── Backdrop ───────────────────────────────────────────────────── */}
@@ -787,86 +625,6 @@ export function SettingsView() {
           never a different subject from the look itself. */}
       {section === "appearance" && (<>
       {/* ── Presets ────────────────────────────────────────────────────── */}
-      <Group title={t.settings.presets} hint={t.settings.presetsHint}>
-        <div className="flex flex-wrap items-center gap-2 px-4 py-3">
-          <input
-            value={presetName}
-            onChange={(e) => setPresetName(e.currentTarget.value)}
-            placeholder={t.settings.presetName}
-            className="min-w-40 flex-1 rounded-[var(--radius-control)] border border-border bg-card px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring"
-          />
-          <button
-            onClick={() => {
-              if (!presetName.trim()) return;
-              savePreset(presetName.trim());
-              setPresetName("");
-            }}
-            className="rounded-[var(--radius-control)] border border-border bg-secondary px-3 py-1.5 text-sm transition-colors duration-[var(--motion-fast)] hover:bg-accent"
-          >
-            {t.settings.save}
-          </button>
-          <button
-            onClick={downloadTheme}
-            className="flex items-center gap-1.5 rounded-[var(--radius-control)] border border-border bg-secondary px-3 py-1.5 text-sm transition-colors duration-[var(--motion-fast)] hover:bg-accent"
-          >
-            <glyphs.download className="h-4 w-4" />
-            {t.settings.export}
-          </button>
-          <input
-            ref={themeInput}
-            type="file"
-            accept="application/json,.json"
-            hidden
-            onChange={(e) => {
-              const file = e.currentTarget.files?.[0];
-              if (file) pickTheme(file);
-              e.currentTarget.value = "";
-            }}
-          />
-          <button
-            onClick={() => themeInput.current?.click()}
-            className="flex items-center gap-1.5 rounded-[var(--radius-control)] border border-border bg-secondary px-3 py-1.5 text-sm transition-colors duration-[var(--motion-fast)] hover:bg-accent"
-          >
-            <glyphs.upload className="h-4 w-4" />
-            {t.settings.import}
-          </button>
-        </div>
-
-        {presets.length > 0 && (
-          <ul className="flex flex-col divide-y divide-border border-t border-border">
-            {presets.map((preset) => (
-              <li key={preset.id} className="flex items-center gap-2 px-4 py-2">
-                <button
-                  onClick={() => applyPreset(preset.id)}
-                  className="flex-1 truncate text-left text-sm transition-colors duration-[var(--motion-fast)] hover:text-brand"
-                >
-                  {preset.name}
-                </button>
-                <span className="text-xs text-muted-foreground">
-                  {SKINS[preset.theme.skin]?.name} ·{" "}
-                  {PALETTES[preset.theme.palette]?.name}
-                </span>
-                <button
-                  onClick={() => deletePreset(preset.id)}
-                  aria-label={t.settings.remove}
-                  className="rounded-[var(--radius-control)] p-1.5 text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground"
-                >
-                  <glyphs.trash className="h-4 w-4" />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <div className="border-t border-border px-4 py-3">
-          <button
-            onClick={resetTheme}
-            className="text-sm text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:text-destructive"
-          >
-            {t.settings.reset}
-          </button>
-        </div>
-      </Group>
       </>)}
       </div>
       </div>
@@ -874,146 +632,8 @@ export function SettingsView() {
   );
 }
 
-/**
- * A skin, at 36px.
- *
- * Form only, drawn from the skin's own `vars` — a page, a panel on it, and the
- * ambient light if the skin has one. Colour comes from whatever palette is
- * active, which is not a shortcut: the two axes really are independent, and a
- * swatch that invented its own colours would be advertising a combination the
- * user has not chosen.
- *
- * Shown as the skin *frosts*, using `glass.alpha` rather than the opaque pair in
- * `vars`, because the difference between the four skins is mostly in how they
- * frost and a row of four opaque squares says nothing.
- */
-/**
- * How far a swatch's card is lifted away from its page.
- *
- * **A swatch is a diagram, not a screenshot.** Drawn faithfully it is unreadable:
- * every palette this app ships is near-black, the gap between the page and a
- * panel is about two per cent, and at 36px that is a black square inside a black
- * square — which is exactly what these were, and why all six looked like the
- * same broken tile.
- *
- * So the *separation* is exaggerated until it is legible while the *colours*
- * stay entirely the palette's own — lifted toward the palette's own text colour,
- * so a light palette darkens and a dark one lightens without either being told
- * what colour to be. Nothing here is a literal colour; that rule still holds.
- */
-const SWATCH_LIFT = "16%";
 
-function SkinSwatch({ id }: { id: SkinId }) {
-  const skin = SKINS[id];
-  const glow = Number(skin.vars["--glow"]) || 0;
-  return (
-    <span
-      aria-hidden
-      className="relative block h-9 w-9 shrink-0 overflow-hidden border border-border bg-background"
-      style={{ borderRadius: skin.vars["--radius"] }}
-    >
-      {glow > 0 && <span className="swatch-arc" style={{ opacity: glow }} />}
-      <span
-        className="absolute inset-x-1 bottom-1 top-3.5 border border-border"
-        style={{
-          borderRadius: skin.vars["--radius-control"],
-          // The skin's own frost, over a card lifted far enough to see. What
-          // this tile is for is the *shape* — the radius, the hairline, the
-          // shadow — and none of that is visible on an invisible card.
-          background: `color-mix(in srgb, color-mix(in srgb, var(--card), var(--foreground) ${SWATCH_LIFT}) ${skin.glass.alpha}, transparent)`,
-          boxShadow: skin.vars["--shadow-1"],
-        }}
-      />
-    </span>
-  );
-}
 
-/**
- * A built-in preset, at 44px.
- *
- * Unlike `SkinSwatch` this one *does* name its own colours: a preset is the one
- * thing in Settings that legitimately fixes all three axes at once, so showing it
- * in the palette it selects is showing what the button will actually do.
- */
-function PresetSwatch({ preset }: { preset: Preset }) {
-  const skin = SKINS[preset.theme.skin] ?? SKINS.aurora;
-  const palette = PALETTES[preset.theme.palette] ?? PALETTES.midnight;
-  const dark = preset.theme.mode !== "light";
-  const shade = dark ? palette.dark : palette.light;
-
-  /*
-   * The form this look actually renders in, resolved the way `buildVars` does.
-   *
-   * Apple mode does not use the skin underneath it — it replaces the whole set —
-   * so drawing the tile from `preset.theme.skin` drew *aurora*, which is what
-   * Standard is. Two different looks came out as the same rounded rectangle with
-   * a different dot on it, which is a swatch that lies about what the button
-   * does.
-   */
-  const vars = preset.theme.apple ? appleVars(dark) : skin.vars;
-  const alpha = preset.theme.apple
-    ? (vars["--surface-alpha"] ?? "100%")
-    : preset.theme.glass
-      ? skin.glass.alpha
-      : "100%";
-  const glow = Number(vars["--glow"]) || 0;
-  /** The surface both the pane and the dock are drawn in. */
-  const panel = `color-mix(in srgb, color-mix(in srgb, ${shade.surface}, ${shade.text} ${SWATCH_LIFT}) ${alpha}, transparent)`;
-  return (
-    <span
-      aria-hidden
-      className="relative block h-11 w-11 shrink-0 overflow-hidden"
-      style={{
-        borderRadius: vars["--radius"],
-        // A gradient rather than a flat fill, the same way the palette dots are
-        // drawn — it is what stops a near-black page from reading as a dead
-        // rectangle, and it uses two colours the palette already supplies.
-        backgroundImage: `linear-gradient(140deg, ${shade.bg} 0%, ${shade.surface2} 100%)`,
-        border: `1px solid ${shade.line}`,
-      }}
-    >
-      {glow > 0 && (
-        <span
-          className="swatch-arc"
-          style={{ opacity: glow, borderColor: shade.text }}
-        />
-      )}
-      {/* The accent, as a dot. Three near-black looks are told apart by their
-          one colour far faster than by their radius, and for the palette that
-          rules colour out the dot is white — which is itself the answer. */}
-      <span
-        className="absolute right-1 top-1 h-1.5 w-1.5 rounded-[var(--radius-round)]"
-        style={{ background: shade.brand }}
-      />
-      {/* The content pane. Short in Apple mode, to leave room for the dock. */}
-      <span
-        className={cn(
-          "absolute inset-x-1.5 top-5",
-          preset.theme.apple ? "bottom-3.5" : "bottom-1.5",
-        )}
-        style={{
-          borderRadius: vars["--radius-control"],
-          background: panel,
-          border: `1px solid ${shade.line}`,
-        }}
-      />
-      {/* Apple mode's second object: a dock that floats free of the pane above
-          it and of the window below it. That gap is the mode's loudest tell —
-          every other look welds its chrome to the window's edges — and it is
-          what stops this tile from being Standard's with a different dot. */}
-      {preset.theme.apple && (
-        <span
-          className="absolute inset-x-3 bottom-1 h-1.5"
-          style={{
-            borderRadius: vars["--radius-round"] ?? "999px",
-            background: panel,
-            border: `1px solid ${shade.line}`,
-          }}
-        />
-      )}
-    </span>
-  );
-}
 
 /** The colour tokens worth exposing by hand; the rest derive from these. */
 const COLOUR_SLOTS: { token: string; label: string }[] = [
@@ -1042,9 +662,11 @@ const COLOUR_SLOTS: { token: string; label: string }[] = [
 
 type SectionId =
   | "appearance"
+  | "nit"
   | "backdrop"
   | "audio"
-  | "playback";
+  | "playback"
+  | "storage";
 
 /**
  * Every glyph this page draws, in both idioms.
@@ -1081,9 +703,11 @@ const LUCIDE_GLYPHS: GlyphSet = {
   system: Monitor,
   sections: {
     appearance: PaletteIcon,
+    nit: Flag,
     backdrop: Wallpaper,
     audio: Volume2,
     playback: SlidersHorizontal,
+    storage: HardDrive,
   },
 };
 
@@ -1100,9 +724,11 @@ const APPLE_GLYPHS: GlyphSet = {
   system: AppleDisplay,
   sections: {
     appearance: AppleAppearance,
+    nit: AppleBookmark,
     backdrop: ApplePhoto,
     audio: AppleSpeaker,
     playback: ApplePlayCircle,
+    storage: AppleList,
   },
 };
 
@@ -1117,6 +743,9 @@ const SECTIONS: { id: SectionId; label: string }[] = [
   { id: "appearance", get label() {
     return t.settings.secAppearance;
   } },
+  { id: "nit", get label() {
+    return t.settings.secNit;
+  } },
   { id: "backdrop", get label() {
     return t.settings.backdrop;
   } },
@@ -1125,6 +754,9 @@ const SECTIONS: { id: SectionId; label: string }[] = [
   } },
   { id: "playback", get label() {
     return t.settings.playback;
+  } },
+  { id: "storage", get label() {
+    return t.settings.secStorage;
   } },
 ];
 
@@ -1272,29 +904,5 @@ function Slider({
   );
 }
 
-/* Tiny layout thumbnails — cheaper and sharper than shipping images. */
-const RAIL_ART = `┌─┬──────┐
-│▪│▁▁▁▁▁ │
-│▪│▤▤ ▤▤ │
-│▪│▤▤ ▤▤ │
-├─┴──────┤
-│ ▶ ──○─ │
-└────────┘`;
 
-const TOP_ART = `┌────────┐
-│▪ ▪ ▪  ▪│
-├────────┤
-│ ▁▁▁▁▁▁ │
-│ ▤▤ ▤▤  │
-├────────┤
-│ ▶ ──○─ │
-└────────┘`;
 
-const SIDEBAR_ART = `┌────┬───┐
-│ ▪  │▁▁▁│
-│ ▪  │▤▤ │
-│ ──  │▤▤ │
-│ ▸  │   │
-├────┴───┤
-│ ▶ ──○─ │
-└────────┘`;

@@ -13,7 +13,6 @@ import {
   type ThemeMode,
 } from "@/theme/apply";
 import { accentFromArtwork, desaturate } from "@/theme/artwork";
-import { setNativeDecorations } from "@/lib/window";
 import {
   applyAudio,
   DEFAULT_AUDIO,
@@ -22,6 +21,7 @@ import {
 } from "@/audio/engine";
 import { PALETTES, type PaletteId } from "@/theme/palettes";
 import type { SkinId } from "@/theme/skins";
+import type { LayoutId } from "@/theme/layout";
 import type { EffectId } from "@/theme/particles";
 import type { ThemeVars } from "@/theme/tokens";
 import { fillDefaults } from "@/lib/merge";
@@ -35,7 +35,11 @@ import { fillDefaults } from "@/lib/merge";
  * and a saved preset is just a snapshot of all three plus the backdrop.
  */
 
-export type LayoutId = "rail" | "top" | "sidebar";
+/**
+ * Re-exported, not declared: which arrangements exist is a question the theme
+ * layer answers now, because a skin can decline one. See `theme/layout`.
+ */
+export type { LayoutId };
 
 export interface BackdropState {
   /** `artwork` tracks the playing cover; `image` is a user file. */
@@ -78,10 +82,13 @@ export interface ThemeState {
    */
   apple: boolean;
   /**
-   * Reduce cover art to one tone. Only the Obsidian skin asks for a filter, so
-   * this is inert under the others — see `--art-filter`.
+   * Reduce cover art to the skin's own treatment — Nit's two-ink duotone,
+   * Obsidian's greyscale. Only those two ask for a filter, so this is inert
+   * under the others — see `--art-filter`.
    */
   monoArtwork: boolean;
+  /** Print screen headings twice, out of register. Inert unless the skin offsets. */
+  printShift: boolean;
   /** Hand-edited CSS custom properties; win over everything else. */
   overrides: ThemeVars;
 }
@@ -116,20 +123,39 @@ const MAX_BACKGROUND_BYTES = 4_000_000;
 
 const DEFAULT_THEME: ThemeState = {
   mode: "dark",
-  palette: "midnight",
-  skin: "aurora",
+  // Ember on One: the app's one look. Everything else is on its way out — see
+  // `theme/skins` for why five appearances were the thing making the app feel
+  // unfinished, rather than any one of them being wrong.
+  palette: "ember",
+  skin: "one",
   accent: null,
-  accentFromArtwork: false,
+  // On.
+  //
+  // It shipped off on the argument that a default has to be right for every
+  // cover at once. That argument was wrong about this app: five rounds of
+  // "still feels unfinished" against a restrained one-accent palette, and the
+  // only change that drew a "better" was the one that put a record's own colour
+  // on the screen. An interface for listening to music that does not take any
+  // colour from the music is not restrained, it is empty.
+  //
+  // Still a setting, so a fixed accent is one switch away for anyone who wants
+  // the interface to hold still (`theme/artwork`).
+  accentFromArtwork: true,
   density: "cozy",
   uiScale: 100,
   // Off by default: `backdrop-filter` on every surface is the biggest
   // rendering cost on a software-composited desktop. Opt in, don't opt out.
   glass: false,
-  apple: false,
-  // On by default so the Obsidian preset needs no extra step to look like
-  // itself; inert under every other skin, which is why it costs nothing to
-  // default to on.
+  // On, and no longer a "mode": this is the app's shell now. It kept the name
+  // in the code because renaming a flag across the store, the theme engine and
+  // a stylesheet is churn without a reader — see `theme/apple.ts`, which is
+  // where the impersonation actually ended.
+  apple: true,
+  // On by default so the Nit and Obsidian presets need no extra step to look
+  // like themselves; inert under every other skin, which is why it costs
+  // nothing to default to on.
   monoArtwork: true,
+  printShift: true,
   overrides: {},
 };
 
@@ -163,15 +189,28 @@ const DEFAULT_BACKDROP: BackdropState = {
  */
 export const BUILTIN_PRESETS: Preset[] = [
   {
-    // The app as it ships. Listed as a look of its own rather than assumed,
-    // because the other two replace enough — a palette, a skin, a whole shell —
-    // that "put it back" has to be one tap and not four.
-    id: "builtin:standard",
-    name: "Standard",
+    // The app as it ships, and the look it is named after. Listed as a look of
+    // its own rather than assumed, because the other two replace enough — a
+    // palette, a skin, a whole shell — that "put it back" has to be one tap.
+    //
+    // It replaced "Standard", which was the old default (Aurora Glass over
+    // Midnight). That skin is gone; the palette is not, and is still one choice
+    // among fifteen below.
+    id: "builtin:nit",
+    name: "Nit",
     builtin: true,
     layout: "rail",
     theme: { ...DEFAULT_THEME, overrides: {} },
-    backdrop: { ...DEFAULT_BACKDROP },
+    backdrop: {
+      ...DEFAULT_BACKDROP,
+      mode: "artwork",
+      // Deep, because the interface over it is four flat inks and a bright
+      // wallpaper is the one thing that can make them look accidental. The skin
+      // also drains its colour in CSS — see `--backdrop-saturate-scale`.
+      blur: 56,
+      dim: 0.72,
+      saturate: 0,
+    },
   },
   {
     id: "builtin:obsidian",
@@ -248,6 +287,63 @@ export const BUILTIN_PRESETS: Preset[] = [
   },
 ];
 
+/** Where the HUD appears, as a screen corner. */
+export type HudCorner = "tl" | "tr" | "bl" | "br";
+
+/**
+ * The Nit features: local, optional, and none of them appearance.
+ *
+ * A slice of its own rather than fields on `ThemeState`, for one reason that
+ * matters — a theme file is something people trade, and `exportTheme` writes
+ * `ThemeState` verbatim. A downloaded theme must not be able to switch on
+ * clipboard reading, rebind a global hotkey or shorten how long your listening
+ * history is kept.
+ */
+export interface NitState {
+  /**
+   * Watch the clipboard for SoundCloud links.
+   *
+   * Off, and it stays off until someone reads the sentence next to it and turns
+   * it on. See `features/trap` for the rules this switch is only half of.
+   */
+  linkTrap: boolean;
+  /** The always-on-top now-playing window. Desktop only. */
+  hud: boolean;
+  hudCorner: HudCorner;
+  /** Reopen where the last session stopped, paused, with the queue intact. */
+  resume: boolean;
+  /** Days of listening history to keep. `0` means forever. */
+  diaryDays: number;
+  /** Global shortcuts, action id → accelerator. Empty string means unbound. */
+  shortcuts: Record<string, string>;
+}
+
+/**
+ * Accelerators as they ship.
+ *
+ * Modest on purpose: a global shortcut is taken from every other application on
+ * the machine, so the defaults are combinations nothing else is likely to want,
+ * and all of them are rebindable.
+ */
+export const DEFAULT_SHORTCUTS: Record<string, string> = {
+  mark: "CmdOrCtrl+Alt+M",
+  hud: "CmdOrCtrl+Alt+H",
+  playPause: "CmdOrCtrl+Alt+Space",
+  next: "CmdOrCtrl+Alt+Right",
+  prev: "CmdOrCtrl+Alt+Left",
+};
+
+const DEFAULT_NIT: NitState = {
+  linkTrap: false,
+  hud: false,
+  hudCorner: "br",
+  resume: true,
+  // Six months: long enough that "what was I listening to in the spring" works,
+  // short enough that the answer is not a life record nobody asked for.
+  diaryDays: 180,
+  shortcuts: { ...DEFAULT_SHORTCUTS },
+};
+
 interface SettingsState {
   layout: LayoutId;
   theme: ThemeState;
@@ -256,18 +352,6 @@ interface SettingsState {
   /** Ids of easter-egg extras the user has found. */
   unlocked: string[];
 
-  /**
-   * Let the window manager draw the title bar instead of the app.
-   *
-   * The escape hatch for the custom chrome, not a style choice: without system
-   * decorations the app owns dragging, the maximise button and every resize
-   * edge, and a tiling WM or an unusual compositor can leave one of those not
-   * working. Applied live with `setDecorations`, so a user who has locked
-   * themselves out of resizing can get the real frame back without a restart —
-   * which is also why it is *not* part of `ThemeState`: an imported theme file
-   * must never be able to take a window's controls away.
-   */
-  nativeFrame: boolean;
 
   /** UI language. Applied to the live `t` dictionary, not just stored. */
   locale: Locale;
@@ -290,6 +374,8 @@ interface SettingsState {
   offlineOnly: boolean;
   /** Equaliser and the rest of the signal chain. */
   audio: AudioConfig;
+  /** The Nit features. */
+  nit: NitState;
 
   /** Accent sampled from the current cover. Runtime only — never persisted. */
   artworkAccent: { brand: string; brand2: string } | null;
@@ -297,7 +383,6 @@ interface SettingsState {
   artworkUrl: string | null;
 
   setLayout: (layout: LayoutId) => void;
-  setNativeFrame: (on: boolean) => void;
   /** Reveal a hidden extra. Returns true the first time only. */
   unlock: (id: string) => boolean;
   setTheme: (patch: Partial<ThemeState>) => void;
@@ -326,6 +411,9 @@ interface SettingsState {
   setOfflineOnly: (on: boolean) => void;
   setAudio: (patch: Partial<AudioConfig>) => void;
   resetAudio: () => void;
+  setNit: (patch: Partial<NitState>) => void;
+  /** Rebind one global shortcut. An empty accelerator unbinds it. */
+  setShortcut: (id: string, accelerator: string) => void;
 }
 
 /**
@@ -363,6 +451,7 @@ export const useSettingsStore = create<SettingsState>()(
           glass: theme.glass,
           apple: theme.apple,
           monoArtwork: theme.monoArtwork,
+          printShift: theme.printShift,
           // Artwork accent sits under the user's own edits, above the palette.
           overrides: {
             ...(theme.accentFromArtwork && sampled
@@ -397,9 +486,6 @@ export const useSettingsStore = create<SettingsState>()(
         backdrop: DEFAULT_BACKDROP,
         presets: [],
         unlocked: [],
-        // The app draws its own title bar by default; this is the way back to the
-        // system's. See the field's comment for why that is the default.
-        nativeFrame: false,
 
         locale: detectLocale(),
         autoplayNext: true,
@@ -409,18 +495,13 @@ export const useSettingsStore = create<SettingsState>()(
         radio: false,
         offlineOnly: false,
         audio: { ...DEFAULT_AUDIO },
+        nit: { ...DEFAULT_NIT, shortcuts: { ...DEFAULT_SHORTCUTS } },
 
         artworkAccent: null,
         artworkUrl: null,
 
         setLayout: (layout) => set({ layout }),
 
-        setNativeFrame(on) {
-          set({ nativeFrame: on });
-          // Live, not on next launch: the whole reason this setting exists is
-          // that someone may be unable to resize or move the window right now.
-          void setNativeDecorations(on);
-        },
 
         unlock(id) {
           if (get().unlocked.includes(id)) return false;
@@ -582,11 +663,24 @@ export const useSettingsStore = create<SettingsState>()(
           set({ audio });
           applyAudio(audio);
         },
+
+        setNit(patch) {
+          set({ nit: { ...get().nit, ...patch } });
+        },
+
+        setShortcut(id, accelerator) {
+          set({
+            nit: {
+              ...get().nit,
+              shortcuts: { ...get().nit.shortcuts, [id]: accelerator },
+            },
+          });
+        },
       };
     },
     {
       name: "cloudify.settings",
-      version: 5,
+      version: 7,
       merge: (persisted, current) => fillDefaults(current, persisted),
       // Runtime-only artwork state must not be written to disk.
       partialize: (s) => ({
@@ -595,7 +689,6 @@ export const useSettingsStore = create<SettingsState>()(
         backdrop: s.backdrop,
         presets: s.presets,
         unlocked: s.unlocked,
-        nativeFrame: s.nativeFrame,
         locale: s.locale,
         autoplayNext: s.autoplayNext,
         rememberVolume: s.rememberVolume,
@@ -604,6 +697,7 @@ export const useSettingsStore = create<SettingsState>()(
         radio: s.radio,
         offlineOnly: s.offlineOnly,
         audio: s.audio,
+        nit: s.nit,
       }),
       migrate: (persisted, from) => {
         // v1 stored a flat {theme, accent, ...}; too far from the three-axis
@@ -647,12 +741,59 @@ export const useSettingsStore = create<SettingsState>()(
           // and leaving that is right: it is what they chose for every other
           // look, and it is no longer what Apple mode reads.
           delete theme.appleTransparency;
+
+          // v6: `aurora` is gone. Anything still naming it resolves to nothing,
+          // and `buildVars` would fall back silently — which is the right
+          // behaviour for a stray id and the wrong one for a saved preset the
+          // user can see in a list, where the swatch would then disagree with
+          // what applying it does.
+          if (from < 6 && theme.skin === "aurora") theme.skin = "nit";
         }
 
         retire(state?.theme);
         // v4: the same cleanup for saved presets, which v3 forgot — applying
         // one of those put an unresolvable id back into the live theme.
         for (const preset of state?.presets ?? []) retire(preset?.theme);
+
+        // v6: the app has a look of its own, and every install moves onto it.
+        //
+        // This is a *choice*, and an unusual one — a migration that overwrites
+        // settings someone deliberately changed is normally indefensible. It is
+        // here because the previous default was not a design, it was an absence
+        // of one, and shipping the app's identity to new installs only would
+        // mean the people who have been using it longest are the only ones who
+        // never see it.
+        //
+        // What it does not touch: their saved presets, their hand-written
+        // overrides, their layout, their language, their audio chain and their
+        // volume. So the way back is one tap on a preset they already have, and
+        // nothing they authored is lost — only the three fields that say which
+        // of the app's own looks is on.
+        if (from < 6 && state?.theme) {
+          state.theme.palette = "signal";
+          state.theme.skin = "nit";
+          state.theme.apple = false;
+        }
+
+        // v7: one look, and everyone lands on it.
+        //
+        // The same argument as v6 and it has to be made again, because the
+        // thing v6 shipped turned out to be the problem rather than the fix:
+        // the app had five appearances and the drift between them is what read
+        // as unfinished. Ember on One replaces all of them, Apple mode
+        // included.
+        //
+        // Overwriting a look someone chose is only defensible when the choice
+        // is about to stop existing, which is exactly the case here. The same
+        // three fields as last time, and nothing else: presets, overrides,
+        // layout, language, audio and volume are all left alone, so a preset
+        // they saved is still one tap away.
+        if (from < 7 && state?.theme) {
+          state.theme.palette = "ember";
+          state.theme.skin = "one";
+          state.theme.apple = true;
+          state.theme.accentFromArtwork = true;
+        }
 
         return state as never;
       },
@@ -673,12 +814,9 @@ export const useSettingsStore = create<SettingsState>()(
     glass: s.theme.glass,
     apple: s.theme.apple,
     monoArtwork: s.theme.monoArtwork,
+    printShift: s.theme.printShift,
     overrides: s.theme.overrides,
   });
-  // `tauri.conf.json` launches the window undecorated, which is the common case
-  // and avoids a visible re-frame at startup. Only the minority who asked for the
-  // system frame need it put back, so only they pay for the flip.
-  if (s.nativeFrame) void setNativeDecorations(true);
   applyBackdrop({
     "--backdrop-image": s.backdrop.image && s.backdrop.mode === "image"
       ? `url("${s.backdrop.image}")`

@@ -391,6 +391,73 @@
   color: var(--brand);
 }
 
+/* A secondary action in a player: the glyph, and nothing round it.
+ *
+ * These were six `lg-chip`s in a row — six filled circles with rims, on a bar
+ * that is itself glass, beside a volume control that has none. Chrome on
+ * chrome: the circles cost as much ink as the transport in the middle, which is
+ * the one cluster that is supposed to carry weight. And a ring around a *share*
+ * button says nothing about the share button.
+ *
+ * One signal per question. The disc answers "where does this click land" and so
+ * belongs to the pointer; the accent answers "is this on" and so belongs to the
+ * state. They were briefly the same shape, and a liked track then wore a disc
+ * that never went away — which reads not as *liked* but as a hover the
+ * interface forgot to clean up. Both are still shapes that come and go; it is
+ * only that they now come and go for different reasons.
+ *
+ * The colour is set here rather than left to each button, because not every
+ * button has one to give: "downloaded" is a state with no colour of its own,
+ * and on the disc alone it had nothing left to say once the disc was gone.
+ */
+.lg-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  /* One resting colour for the row, set here rather than left to each button.
+     Three of the six are shared components that colour themselves quiet and
+     three are written in place and coloured nothing at all, so the row came out
+     half grey and half white — the same six controls, at two weights, for no
+     reason a reader could name.
+     Safe to set now in a way it was not before: the "on" state below is CSS
+     too, so an unlayered colour here no longer buries a component's own
+     `text-brand` the way `.lg-chip` used to. */
+  color: var(--ios-label-2);
+  transition:
+    background-color var(--motion-fast) linear,
+    color var(--motion-fast) linear;
+}
+.lg-action:hover {
+  background-color: var(--ios-fill-3);
+  color: var(--foreground);
+}
+/* After `:hover`, so a switched-on control keeps its colour under the pointer
+   and gains only the disc. */
+.lg-action[data-on="true"] {
+  color: var(--brand);
+}
+
+/* And a little larger, now that nothing is drawn around them.
+ *
+ * The disc was carrying weight the glyph did not have to: 16px of line inside a
+ * 32px filled circle reads as a 32px control. Take the circle away and the same
+ * glyph reads as what it is, which is small — the row went quiet and then went
+ * faint. Sized here rather than on each button so the two players cannot drift
+ * apart, which is how they got here in the first place.
+ *
+ * The full-screen player runs a step larger again, as its buttons always have:
+ * its row is the only thing on that line, where the bar's is one cluster among
+ * four. */
+.lg-action svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+.lg-on-artwork .lg-action svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
 /* ── Over artwork ──────────────────────────────────────────────────────────
  *
  * A subtree laid over a cover this app has never seen — the now-playing view.
@@ -411,6 +478,14 @@
   --secondary: rgb(255 255 255 / 0.92);
   --secondary-foreground: rgb(0 0 0);
 
+  /* Components colour their own quiet parts with this, and it was the one
+     token this block forgot. Nothing over the artwork may inherit a colour from
+     the palette: on a light theme that is a dark grey glyph on a dark cover,
+     which is to say an invisible one. It matters more than it did — `.lg-chip`
+     used to force every glyph's colour and so hid the omission, and `.lg-action`
+     deliberately does not, because a button that cannot choose its own colour
+     cannot show that it is switched on. */
+  --muted-foreground: rgb(255 255 255 / 0.6);
   --ios-label-2: rgb(255 255 255 / 0.6);
   --ios-label-3: rgb(255 255 255 / 0.32);
   --ios-separator: rgb(255 255 255 / 0.18);
@@ -422,19 +497,54 @@
   /* Glass over a dark scrim has to darken, not lighten — the light-mode tints
      would put a white panel on a black backdrop under white text. */
   --ios-glass-tint: rgb(255 255 255 / 0.1);
-  /* Near-opaque, unlike everywhere else this token is used. Chrome elsewhere
-     sits over content that may show through harmlessly; here it is a menu and a
-     lyrics sheet laid directly over the transport, and at 0.66 the seek bar and
-     the times read straight through them, which looks like a rendering fault
-     rather than like glass. */
-  --ios-glass-tint-strong: rgb(28 28 30 / 0.92);
+  /* The menu and the queue, in the look's own colour rather than in a grey.
+     Two things had to be true before this could be:
+
+     It was `rgb(28 28 30 / 0.92)`, near-opaque, because these panels lie
+     directly over the title and the scrubber and at any real transparency both
+     read straight through — which looks like a rendering fault, not like glass.
+     The menu now dims the screen behind it, so there is nothing left to read
+     through, and the material can go back to being a material.
+
+     And a *glass* panel is how the artwork gets into it: the blur samples what
+     is behind, and behind is the cover filling the window. So neither of the
+     two answers to "theme colours or artwork colours" needed choosing between —
+     the mix carries the accent, the blur carries the cover. The dark base stays
+     dark on purpose whatever the palette does: this subtree fixes its text to
+     white, and a light panel under white text is unreadable however
+     fashionable. */
+  --ios-glass-tint-strong: rgb(18 18 20 / 0.62);
   --ios-glass-rim: rgb(255 255 255 / 0.22);
   --ios-glass-rim-inner: rgb(255 255 255 / 0.16);
   --ios-glass-sheen: rgb(255 255 255 / 0.14);
   --ios-glass-glint: rgb(255 255 255 / 0.07);
-  --ios-glass-solid: rgb(28 28 30);
+  /* Transparency off: no cover to draw colour from, so the accent carries the
+     look on its own. */
+  --ios-glass-solid: rgb(20 20 22);
   --ios-glass-brightness: 1.12;
   --ios-glass-contrast: 1;
+}
+
+/* The accent, mixed into the two panel colours above.
+ *
+ * In its own `@supports` rather than as a second declaration beside them, and
+ * that is not ceremony: the minifier collapses two declarations of one property
+ * into a `color-mix` plus a fallback of its own choosing, and the fallback it
+ * picks for `color-mix(in srgb, var(--brand) 14%, …)` is `var(--brand)` on its
+ * own — a flat sheet of saturated accent where a dark panel should be. Across a
+ * feature query there is nothing to collapse.
+ *
+ * Every engine this ships on has had `color-mix` for years; this is for the one
+ * that has not, and for the day the minifier changes its mind. */
+@supports (color: color-mix(in srgb, red, blue)) {
+  .lg-on-artwork {
+    --ios-glass-tint-strong: color-mix(
+      in srgb,
+      var(--brand) 14%,
+      rgb(18 18 20 / 0.62)
+    );
+    --ios-glass-solid: color-mix(in srgb, var(--brand) 16%, rgb(20 20 22));
+  }
 }
 
 /* The content pane, Tahoe-style: its own rounded card beside the sidebar,
@@ -591,6 +701,73 @@
    what the elevated variants of the system backgrounds are for. */
 :root[data-apple="1"][data-glass="0"] .panel-raised {
   background: var(--ios-elevated);
+}
+
+/* What opens *over* something is nearly opaque, and tinted. Chrome is glass;
+ * menus and sheets are a heavier material.
+ *
+ * This is the line iOS itself draws, and it is not decoration. A bar or a dock
+ * has content sliding under it, and the material is what tells you the content
+ * is still there. A menu is different: it is a list of words laid over a
+ * *different* list of words, or over a wall of album art, and 62% of anything
+ * leaves both legible enough to compete and neither legible enough to read. The
+ * search suggestions hit it first, the track menu hit it next, and both looked
+ * less like glass than like a rendering fault.
+ *
+ * `.pop-in` is the hook because it is exactly the set that means "this appeared
+ * over what you were looking at" — every menu, dialog and palette carries it,
+ * and the page's own cards, which are `panel-raised` too and should stay glass,
+ * do not.
+ *
+ * "Nearly" is doing the work. Solid was readable and looked borrowed from
+ * another application — a grey box over a page full of colour. The last tenth
+ * of transparency is not there to see through; it is there so the blur behind
+ * has something to pick the page's colour up from, which on these screens is
+ * the artwork. Same answer as the full-screen player's panels reached by the
+ * same road: the accent gives the hue, the blur gives the rest.
+ */
+:root[data-apple="1"][data-glass="1"] .panel-raised.pop-in,
+:root[data-apple="1"][data-glass="1"] .search-popover {
+  /* The accent second, not first: the minifier turns a `color-mix` into itself
+     plus a fallback made of the *first* colour, and a menu painted a flat sheet
+     of accent is a worse failure than one painted plain elevated grey. */
+  background: color-mix(in srgb, var(--ios-sheet-base) 88%, var(--brand));
+  backdrop-filter: blur(var(--ios-blur-sheet))
+    saturate(var(--ios-glass-saturate));
+}
+/* Transparency off: nothing behind to sample, so the accent carries it alone. */
+:root[data-apple="1"][data-glass="0"] .panel-raised.pop-in,
+:root[data-apple="1"][data-glass="0"] .search-popover {
+  background: color-mix(in srgb, var(--ios-elevated) 90%, var(--brand));
+  backdrop-filter: none;
+}
+
+/* The mode's own menus and sheets, on the same short blur.
+ *
+ * They are `.lg`, not `.panel`, so the rule above never reached them — the "…"
+ * menu and the floating queue were still on the navigation blur, which is
+ * 28px. That is the right number for a bar with content sliding under it and
+ * the wrong one for a menu: a menu is not showing you what is behind it, it is
+ * standing in front of it, and all a long blur does there is smear the little
+ * that gets through.
+ *
+ * `.pop-in` again, and for the same reason as above: it marks the things that
+ * opened over something. The player bar and the dock keep their glass. */
+:root[data-apple="1"][data-glass="1"] .lg.pop-in {
+  /* The body has to come up as the blur comes down, and that is not a
+     compromise — it is the same decision made once. A pane that hides almost
+     nothing and blurs almost nothing is not glass, it is a dirty window: you
+     read the artwork's shapes through the menu and the menu through the
+     artwork, and neither wins. Nearly opaque, faintly tinted, barely blurred is
+     one coherent material, and it is the one the app's other menus already
+     wear. */
+  background-color: color-mix(in srgb, var(--ios-sheet-base) 88%, var(--brand));
+  backdrop-filter: blur(var(--ios-blur-sheet))
+    saturate(var(--ios-glass-saturate));
+}
+:root[data-apple="1"][data-glass="0"] .lg.pop-in {
+  background-color: color-mix(in srgb, var(--ios-elevated) 90%, var(--brand));
+  backdrop-filter: none;
 }
 
 /* ── Lists ─────────────────────────────────────────────────────────────────
@@ -754,6 +931,34 @@
   height: 1.375rem;
 }
 
+/* Play, as the one loud object in the app.
+ *
+ * Every other transport glyph in this shell is a bare mark on the background,
+ * which is right for the ones you press occasionally. Play is not one of those,
+ * and the rule above had flattened it into the row with them — five identical
+ * grey glyphs, one of which happens to be the thing the whole application is
+ * for.
+ *
+ * So it gets the accent, filled, at a size the others do not have. It is
+ * deliberately the *only* place a solid accent disc appears: an accent used
+ * twice is a colour, an accent used once is a landmark, and this is the control
+ * the eye should find without looking.
+ *
+ * Scoped to the record column and the full-screen view, not to every play
+ * button in the app — a filled disc on each of forty list rows is a wall of
+ * dots, and there the hover glyph over the cover is the right size of gesture.
+ */
+.np-transport [data-transport="play"],
+.lg-on-artwork [data-transport="play"] {
+  background: var(--brand);
+  color: var(--brand-foreground);
+}
+.np-transport [data-transport="play"]:hover,
+.lg-on-artwork [data-transport="play"]:hover {
+  background: var(--brand);
+  scale: 1.04;
+}
+
 /* The scrubber. iOS Music has no thumb on it at all — the bar itself thickens
    when you touch it, and hover is the pointer's version of touching. The
    played portion is label-coloured, not accented: the accent is spent on
@@ -836,11 +1041,19 @@
 
 /* Text fields and pickers are filled, not outlined. `:not([type])` is not
    belt-and-braces: every text field in the app is written without a `type`,
-   which is a text field to HTML but not to `input[type="text"]`. */
+   which is a text field to HTML but not to `input[type="text"]`.
+ *
+ * `[data-inline]` opts out, and it earns its keep. Not every `<input>` is a
+ * field: a note on a mark is a *line of the row*, editable in place, and
+ * filling it turned a list of three marks into a stack of three grey capsules
+ * under a search box of exactly the same shape — four fields where there was
+ * one. The component asked for `bg-transparent` and lost, as anything layered
+ * does against this file.
+ */
 :root[data-apple="1"] select,
-:root[data-apple="1"] input:not([type]),
-:root[data-apple="1"] input[type="text"],
-:root[data-apple="1"] input[type="search"] {
+:root[data-apple="1"] input:not([type]):not([data-inline]),
+:root[data-apple="1"] input[type="text"]:not([data-inline]),
+:root[data-apple="1"] input[type="search"]:not([data-inline]) {
   background-color: var(--ios-fill-3);
   border-color: transparent;
   border-radius: var(--radius-control);
@@ -869,6 +1082,32 @@
   background: var(--ios-label-3);
   border: 2px solid transparent;
   background-clip: content-box;
+}
+/* The padding all goes on the inside edge, so the capsule sits against the
+   window instead of floating two pixels off it — same as the other skins. This
+   has to be restated here rather than inherited: the shorthand above is
+   unlayered and would otherwise put the base rule's widths back. */
+:root[data-apple="1"] ::-webkit-scrollbar-thumb:vertical {
+  border-left-width: 4px;
+  border-right-width: 0;
+}
+:root[data-apple="1"] ::-webkit-scrollbar-thumb:horizontal {
+  border-top-width: 4px;
+  border-bottom-width: 0;
+}
+/* The content pane is a rounded rectangle and the scroller inside it is square,
+   so along the top and bottom of the track the bar is drawn where the pane's own
+   corner has already curved away — a grey stub floating in the gap between the
+   pane and the window, with nothing behind it. The pane cannot clip it: a
+   custom-styled WebKit scrollbar is painted outside the ancestor's rounded
+   overflow.
+
+   So the track is shortened by the radius instead, which is the honest fix
+   rather than a cover-up: a scrollbar that ran into a rounded corner would have
+   to bend, and it cannot. macOS does the same thing inside a rounded pane. */
+:root[data-apple="1"] .lg-pane-scroll::-webkit-scrollbar-track {
+  margin-top: var(--radius-hero);
+  margin-bottom: var(--radius-hero);
 }
 :root[data-apple="1"] ::-webkit-scrollbar-thumb:hover {
   background: var(--ios-label-2);

@@ -12,8 +12,12 @@ export function PlaylistList({ playlists }: { playlists: Playlist[] }) {
   const openPlaylist = useNavStore((s) => s.openPlaylist);
   const { visible, sentinel, hasMore } = useIncremental(playlists, 40);
 
+  // No rules between rows, and no card around them — the same change the track
+  // list made, for the same reason: forty hairlines draw a table nobody asked
+  // for, and the covers are structure enough. Rows separate themselves by the
+  // fill that appears under the pointer.
   return (
-    <ul className="list-card flex flex-col divide-y divide-border">
+    <ul className="flex flex-col gap-0.5">
       {visible.map((playlist, index) => {
         const art = artwork(playlist.artwork_url);
         // The row and the share action are siblings, not nested buttons —
@@ -24,37 +28,39 @@ export function PlaylistList({ playlists }: { playlists: Playlist[] }) {
             // The index drives the stagger; capped, because a delay long enough
             // to notice on item forty is a list that takes a second to appear.
             style={{ "--i": Math.min(index, 14) } as React.CSSProperties}
-            className="rise-in group/row flex items-center bg-row pr-2 transition-[background-color] duration-[var(--motion-fast)] hover:bg-accent"
+            className="rise-in group/row flex items-center rounded-[var(--radius-control)] bg-row pr-2 transition-colors duration-[var(--motion-fast)] hover:bg-accent"
           >
             <button
               onClick={() => openPlaylist(playlist)}
               className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2 text-left"
             >
               {art ? (
-                <img
-                  src={art}
-                  alt=""
-                  loading="lazy"
-                  decoding="async"
-                  className="artwork h-10 w-10 shrink-0 rounded-[var(--radius-control)] object-cover"
-                />
+                <span className="art-frame block h-12 w-12 shrink-0 rounded-[var(--radius-control)]">
+                  <img
+                    src={art}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    className="artwork h-12 w-12 object-cover"
+                  />
+                </span>
               ) : (
                 <ArtFallback
                   seed={playlist.id}
                   Glyph={ListMusic}
-                  className="h-10 w-10 shrink-0 rounded-[var(--radius-control)]"
+                  className="h-12 w-12 shrink-0 rounded-[var(--radius-control)]"
                 />
               )}
               <div className="flex min-w-0 flex-col">
-                <span className="truncate text-sm font-medium">
+                <span className="type-body truncate">
                   {playlist.title}
                 </span>
-                <span className="truncate text-xs text-muted-foreground">
+                <span className="type-label truncate text-muted-foreground">
                   {playlist.is_album ? t.library.album : t.library.playlist}
                   {playlist.owner && ` · ${playlist.owner}`}
                 </span>
               </div>
-              <span className="ml-auto shrink-0 text-xs text-muted-foreground">
+              <span className="type-caption ml-auto shrink-0 text-muted-foreground">
                 {playlist.track_count} {t.library.tracksShort}
               </span>
             </button>

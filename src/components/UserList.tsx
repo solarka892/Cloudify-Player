@@ -19,7 +19,7 @@ export function UserList({ users }: { users: User[] }) {
   const { visible, sentinel, hasMore } = useIncremental(users, 40);
 
   return (
-    <ul className="list-card flex flex-col divide-y divide-border">
+    <ul className="flex flex-col gap-0.5">
       {visible.map((user, index) => {
         const avatar = artwork(user.avatar_url);
         // The row and the share action are siblings, not nested buttons —
@@ -28,37 +28,39 @@ export function UserList({ users }: { users: User[] }) {
           <li
             key={user.id}
             style={{ "--i": Math.min(index, 14) } as React.CSSProperties}
-            className="rise-in group/row flex items-center bg-row pr-2 transition-[background-color] duration-[var(--motion-fast)] hover:bg-accent"
+            className="rise-in group/row flex items-center rounded-[var(--radius-control)] bg-row pr-2 transition-colors duration-[var(--motion-fast)] hover:bg-accent"
           >
             <button
               onClick={() => openUser(user)}
               className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2 text-left"
             >
               {avatar ? (
-                <img
-                  src={avatar}
-                  alt=""
-                  loading="lazy"
-                  decoding="async"
-                  className="artwork h-10 w-10 shrink-0 rounded-[var(--radius-round)] object-cover"
-                />
+                <span className="art-frame block h-12 w-12 shrink-0 rounded-[var(--radius-round)]">
+                  <img
+                    src={avatar}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    className="artwork h-12 w-12 object-cover"
+                  />
+                </span>
               ) : (
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-round)] bg-secondary">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[var(--radius-round)] bg-secondary">
                   <UserIcon className="h-4 w-4 text-muted-foreground" />
                 </div>
               )}
               <div className="flex min-w-0 flex-col">
-                <span className="truncate text-sm font-medium">
+                <span className="type-body truncate">
                   {user.username}
                 </span>
                 {user.followers_count != null && (
-                  <span className="truncate text-xs text-muted-foreground">
+                  <span className="type-label truncate text-muted-foreground">
                     {formatCount(user.followers_count)} {t.auth.followers}
                   </span>
                 )}
               </div>
               {user.track_count != null && (
-                <span className="ml-auto shrink-0 text-xs text-muted-foreground">
+                <span className="type-caption ml-auto shrink-0 text-muted-foreground">
                   {user.track_count} {t.library.tracksShort}
                 </span>
               )}

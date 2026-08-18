@@ -1,0 +1,117 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   The app's own faces, shipped with it.
+
+   Onest for everything you read, JetBrains Mono for everything you *measure* —
+   durations, counters, bitrates, mark times. Both are SIL Open Font Licence
+   1.1; the licences are in `licenses/` and must ship with any binary.
+
+   ## Why the app carries font files at all
+
+   It did not, and the rule was a good one: the app is offline, a CDN link is a
+   request to a third party on every launch, and a user's own machine already
+   has faces they chose. What changed is that the app now has a look of its own
+   rather than a set of neutral ones, and a look that renders in Segoe UI on one
+   machine and in Cantarell on the next is not a look. The system stacks are
+   still there, behind these, in every skin that is not Nit — and `--font-ui`,
+   `--font-display` and `--font-mono` are still tokens, so a typeface named in
+   Settings overrides all of this exactly as before.
+
+   ## Why eight files rather than two
+
+   These are Google's own subset builds, split by `unicode-range`, and the split
+   does real work: a Russian interface never downloads the Vietnamese glyphs and
+   an English one never touches Cyrillic. The browser fetches a range only when
+   a character in it is actually painted. Total on disk is 134 KB for both
+   families and all four ranges — the whole of Latin, Latin Extended, Cyrillic
+   and Cyrillic Extended, which is what eleven interface languages need. Greek
+   and Vietnamese are deliberately not here; nothing in the app is written in
+   them, and they were a third of the weight.
+
+   Both are variable fonts spanning the whole weight axis in one file, so 200
+   and 800 cost nothing extra — which is what makes the display role (800, tight
+   tracking) affordable.
+
+   `font-display: swap` on purpose: a local file resolves in a frame or two, and
+   on the off chance it does not, text you can read in the wrong face beats a
+   blank window.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* ── Onest ───────────────────────────────────────────────────────────────── */
+
+@font-face {
+  font-family: "Onest";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("../fonts/onest-cyrillic-ext.woff2") format("woff2");
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F,
+    U+FE2E-FE2F;
+}
+@font-face {
+  font-family: "Onest";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("../fonts/onest-cyrillic.woff2") format("woff2");
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: "Onest";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("../fonts/onest-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
+    U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF,
+    U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Onest";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("../fonts/onest-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* ── JetBrains Mono ──────────────────────────────────────────────────────── */
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url("../fonts/jetbrains-mono-cyrillic-ext.woff2") format("woff2");
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F,
+    U+FE2E-FE2F;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url("../fonts/jetbrains-mono-cyrillic.woff2") format("woff2");
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url("../fonts/jetbrains-mono-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
+    U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF,
+    U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url("../fonts/jetbrains-mono-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}

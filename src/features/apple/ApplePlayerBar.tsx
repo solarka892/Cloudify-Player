@@ -1,15 +1,14 @@
-import { useState } from "react";
-import { ChevronUp, ListMusic, Mic2, Music } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ChevronUp, Clock, ListMusic, Music } from "lucide-react";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
 import { useNavStore } from "@/stores/useNavStore";
+import { useNitStore } from "@/stores/useNitStore";
 import { LikeButton } from "@/components/LikeButton";
 import { RepostButton } from "@/components/RepostButton";
 import { ShareButton } from "@/components/ShareButton";
-import { Ambient } from "@/components/Ambient";
 import { AppleNowPlaying } from "./AppleNowPlaying";
 import { QueuePanel } from "@/features/player/QueuePanel";
-import { LyricsPanel } from "@/features/player/Lyrics";
 import { OfflineBadge } from "@/components/OfflineBadge";
 import {
   PlayPauseButton,
@@ -30,15 +29,18 @@ import {
   AppleBackward,
   AppleDownload,
   AppleForward,
+  AppleHeart,
   ApplePause,
   ApplePlay,
+  AppleRepost,
   AppleShare,
 } from "./icons";
 import type { Track } from "@/lib/tauri";
 import { t } from "@/i18n";
 import { useArtwork } from "@/hooks/useArtwork";
 
-type Panel = "none" | "queue" | "lyrics";
+/** The bar has one sheet left; lyrics moved to the full-screen player. */
+type Panel = "none" | "queue";
 
 /**
  * SF's transport, handed to the shared controls through their context. Two
@@ -71,11 +73,23 @@ export function ApplePlayerBar() {
   const setExpanded = useNavStore((s) => s.setNowPlaying);
   const compact = useCompact();
 
+  const later = useNitStore((s) => s.later);
+  const loadLater = useNitStore((s) => s.loadLater);
+  const saveLater = useNitStore((s) => s.saveLater);
+  const dropLater = useNitStore((s) => s.dropLater);
+
   const downloadedIds = useDownloadsStore((s) => s.ids);
   const active = useDownloadsStore((s) => s.active);
   const startDownload = useDownloadsStore((s) => s.start);
 
   const art = useArtwork(current, "t120x120");
+
+  // The list is small and local, and the bar is the only place that reads it
+  // without having opened Nit first — so it asks for it once rather than
+  // showing an unlit button over a track that is in fact already put aside.
+  useEffect(() => {
+    void loadLater();
+  }, [loadLater]);
 
   if (!current) return null;
 
@@ -90,6 +104,7 @@ export function ApplePlayerBar() {
 
   const isDownloaded = downloadedIds.has(current.id);
   const downloading = active[current.id];
+  const saved = later.some((item) => item.track_id === current.id);
   const progress = downloading?.total
     ? (downloading.received / downloading.total) * 100
     : null;
@@ -105,16 +120,7 @@ export function ApplePlayerBar() {
             chrome
             className="pop-in absolute bottom-full right-0 mb-3 flex h-[26rem] w-[21rem] flex-col overflow-hidden"
           >
-            {panel === "queue" ? (
-              <QueuePanel onClose={() => setPanel("none")} />
-            ) : (
-              <div className="relative min-h-0 flex-1 overflow-hidden">
-                <Ambient />
-                <div className="relative h-full overflow-y-auto">
-                  <LyricsPanel track={current} compact />
-                </div>
-              </div>
-            )}
+            <QueuePanel onClose={() => setPanel("none")} />
           </Glass>
         )}
 
@@ -144,13 +150,13 @@ export function ApplePlayerBar() {
 
             <div className="flex min-w-0 flex-col">
               <span className="flex min-w-0 items-center gap-1.5">
-                <span className="truncate text-[0.9375rem] font-medium">
+                <span className="type-body truncate">
                   {current.title}
                 </span>
                 <OfflineBadge />
               </span>
               {current.artist && (
-                <span className="truncate text-[0.8125rem] text-[var(--ios-label-2)]">
+                <span className="type-label truncate text-[var(--ios-label-2)]">
                   {current.artist}
                 </span>
               )}
@@ -170,13 +176,14 @@ export function ApplePlayerBar() {
             <SeekBar />
           </div>
 
-          {/* Secondary actions, each on its own glass. */}
+          {/* Secondary actions: glyphs, with the disc kept for what is on or
+              under the pointer — see `.lg-action`. */}
           <div className="flex shrink-0 items-center gap-1.5">
-            <LikeButton track={current} className="lg-chip h-8 w-8" />
-            <RepostButton track={current} className="lg-chip h-8 w-8" />
+            <LikeButton track={current} className="lg-action h-8 w-8" Icon={AppleHeart} />
+            <RepostButton track={current} className="lg-action h-8 w-8" Icon={AppleRepost} />
             <ShareButton
               url={current.permalink_url}
-              className="lg-chip h-8 w-8"
+              className="lg-action h-8 w-8"
               Icon={AppleShare}
             />
             <button
@@ -191,7 +198,7 @@ export function ApplePlayerBar() {
                     ? `${Math.round(progress)}%`
                     : t.player.download
               }
-              className="lg-chip relative h-8 w-8"
+              className="lg-action relative h-8 w-8"
             >
               <AppleDownload className="h-4 w-4" />
               {progress != null && (
@@ -201,12 +208,20 @@ export function ApplePlayerBar() {
                 />
               )}
             </button>
+            {/* "Later" in the bar, where the lyrics button was. Lyrics are a
+                thing you sit down with, and the full-screen player opens them
+                beside the cover where there is room to read; putting something
+                you *set aside in passing* on the bar you pass by is the better
+                use of the slot. */}
             <Chip
-              on={panel === "lyrics"}
-              label={t.player.lyrics}
-              onClick={() => setPanel(panel === "lyrics" ? "none" : "lyrics")}
+              on={saved}
+              label={saved ? t.later.remove : t.later.add}
+              onClick={() => {
+                if (saved) void dropLater(current.id);
+                else void saveLater(current, "manual");
+              }}
             >
-              <Mic2 className="h-4 w-4" />
+              <Clock className="h-4 w-4" />
             </Chip>
             <Chip
               on={panel === "queue"}
@@ -264,13 +279,13 @@ function CompactBar({ track, onExpand }: { track: Track; onExpand: () => void })
         )}
         <span className="flex min-w-0 flex-col">
           <span className="flex min-w-0 items-center gap-1.5">
-            <span className="truncate text-[0.9375rem] font-medium">
+            <span className="type-body truncate">
               {track.title}
             </span>
             <OfflineBadge />
           </span>
           {track.artist && (
-            <span className="truncate text-[0.8125rem] text-[var(--ios-label-2)]">
+            <span className="type-label truncate text-[var(--ios-label-2)]">
               {track.artist}
             </span>
           )}
@@ -302,7 +317,7 @@ function Chip({
       aria-label={label}
       title={label}
       data-on={on ? "true" : undefined}
-      className="lg-chip h-8 w-8"
+      className="lg-action h-8 w-8"
     >
       {children}
     </button>

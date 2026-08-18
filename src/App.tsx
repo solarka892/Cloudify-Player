@@ -12,8 +12,8 @@ import {
 import { isAndroid } from "@/lib/platform";
 import { useNativeMediaSession } from "@/hooks/useNativeMediaSession";
 import { AppShell } from "@/components/shell/AppShell";
-import { TitleBar } from "@/components/shell/TitleBar";
-import { AppleShell } from "@/features/apple/AppleShell";
+import { WindowControls } from "@/components/shell/WindowControls";
+import { ColumnShell } from "@/features/shell/ColumnShell";
 import { ApplePlayerBar } from "@/features/apple/ApplePlayerBar";
 import { Toaster } from "@/components/Toaster";
 import { ConfirmHost } from "@/components/ConfirmHost";
@@ -21,6 +21,10 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SkinLight } from "@/components/Ambient";
 import { LogoMark } from "@/components/Logo";
 import { HotkeyHelp } from "@/components/HotkeyHelp";
+import { Thread } from "@/features/nit/Thread";
+import { CommandPalette } from "@/features/nit/CommandPalette";
+import { NitView } from "@/features/nit/NitView";
+import { useNitSession } from "@/features/nit/useNitSession";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import { useArtwork } from "@/hooks/useArtwork";
 import { useBackGesture } from "@/hooks/useBackGesture";
@@ -40,6 +44,7 @@ import { useMessagesStore } from "@/stores/useMessagesStore";
 import { useNotificationsStore } from "@/stores/useNotificationsStore";
 import { useRepostStore } from "@/stores/useRepostStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
+import { SKINS } from "@/theme/skins";
 import { t } from "@/i18n";
 
 type AuthStatus =
@@ -54,6 +59,7 @@ type AuthStatus =
 function App() {
   const [auth, setAuth] = useState<AuthStatus>({ state: "unknown" });
   const [showHelp, setShowHelp] = useState(false);
+  const [showPalette, setShowPalette] = useState(false);
   // Navigation lives in the store now: notifications, profiles and pasted
   // links all move the app around, not just the nav bar.
   const view = useNavStore((s) => s.view);
@@ -88,6 +94,20 @@ function App() {
       : "cloudify";
   }, [current]);
 
+  // Cmd-K / Ctrl-K. Not in `useHotkeys`: everything there is a bare key that
+  // stands down while a field has focus, and this one has to open *from* a
+  // field — a palette you cannot reach from the search box is half a palette.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setShowPalette((open) => !open);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   useHotkeys({
     toggleHelp: () => setShowHelp((v) => !v),
     focusSearch: () => {
@@ -99,6 +119,7 @@ function App() {
     },
     closeOverlays: () => {
       setShowHelp(false);
+      setShowPalette(false);
       setNowPlaying(false);
     },
   });
@@ -190,7 +211,7 @@ function App() {
   }
 
   const { me } = auth;
-  const Shell = apple ? AppleShell : AppShell;
+  const Shell = apple ? ColumnShell : AppShell;
 
   return (
     <Chrome>
@@ -207,6 +228,10 @@ function App() {
       <Toaster />
       <ConfirmHost />
       {showHelp && <HotkeyHelp onClose={() => setShowHelp(false)} />}
+      {showPalette && <CommandPalette onClose={() => setShowPalette(false)} />}
+      {/* The marks, the diary, the resume point and the waveform of whatever is
+          playing. Renders nothing. */}
+      <NitSession />
 
       {/* Keyed so a tab change remounts and replays the entry animation. */}
       <div key={detail ? `detail-${detail.kind}-${detail.id}` : view} className="view-enter">
@@ -221,6 +246,7 @@ function App() {
           )}
           {view === "search" && <SearchView />}
           {view === "library" && <LibraryView userId={me.id} />}
+          {view === "nit" && <NitView />}
           {view === "messages" && <MessagesView />}
           {view === "notifications" && <NotificationsView />}
           {view === "profile" && <ProfileView userId={me.id} isSelf />}
@@ -254,12 +280,12 @@ function App() {
  *
  * Wraps all three of `App`'s branches, including the pre-auth screen and the
  * blank frame shown while the session is being checked: the window launches
- * undecorated, so a title bar that only appeared once signed in would leave no
- * way to close the app before signing in.
+ * undecorated, so window controls that only appeared once signed in would leave
+ * no way to close the app before signing in.
  *
- * A flex column rather than the title bar floating over the content, because the
- * bar takes real height from the shells below it — both of them are `h-full`, and
- * a fixed bar would have put 32px of the interface underneath itself.
+ * A flex column, because the thread takes real height from the shells below it —
+ * both of them are `h-full`, and a fixed strip would have put its own height of
+ * the interface underneath itself.
  *
  * `.app-frame` is the window's outer hairline. Without system decorations there
  * is no frame and, on Linux and Windows, no drop shadow either, so on a dark
@@ -274,10 +300,34 @@ function App() {
  * whatever chrome is last. See `globals.css`. All of it is 0px off Android.
  */
 function Chrome({ children }: { children: React.ReactNode }) {
+  // The thread belongs to the look that was drawn around it: it replaces the
+  // player's seek bar, carries the marks and takes a row of the window frame.
+  // Under a skin that keeps its seek bar it would be a second, disagreeing
+  // answer to "how far through am I", so it is simply not mounted. Apple mode
+  // replaces the shell and the player outright and keeps its own.
+  const skin = useSettingsStore((s) => s.theme.skin);
+  const apple = useSettingsStore((s) => s.theme.apple);
+  const thread = !apple && SKINS[skin]?.thread;
+
   return (
     <div className="app-frame relative flex h-full w-full flex-col overflow-hidden">
-      <TitleBar />
-      <div className="relative min-h-0 flex-1">{children}</div>
+      {/* The thread is the window's top edge: the playing track's waveform,
+          filling as it plays, with a rule through it for every mark.
+
+          A row of its own rather than an overlay on the chrome that used to be
+          here. As an overlay it had to steal from the drag region and from the
+          top of the window buttons, and could never be taller than what it
+          stole; as a row it owns its height and nothing overlaps. It keeps that
+          height with nothing playing, so starting a track does not push the
+          window down. */}
+      {thread && <Thread />}
+      <div className="relative min-h-0 flex-1">
+        {children}
+        {/* What is left of the frame: eight invisible strips that resize an
+            undecorated window. The bar and the buttons that used to sit on it
+            are both gone — see `WindowControls`. */}
+        <WindowControls />
+      </div>
     </div>
   );
 }
@@ -294,6 +344,11 @@ function Chrome({ children }: { children: React.ReactNode }) {
  * notification. The reposts feed is what every repost button reads its state
  * from, and it is persisted, so this is a refresh rather than a cold load.
  */
+function NitSession() {
+  useNitSession();
+  return null;
+}
+
 function SocialSeed({ userId }: { userId: number }) {
   const loadReposts = useRepostStore((s) => s.load);
   const loadConversations = useMessagesStore((s) => s.load);
