@@ -1,10 +1,26 @@
 import { useState } from "react";
-import { Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
+import {
+  Bookmark,
+  ListMusic,
+  Pause,
+  Play,
+  Repeat,
+  Repeat1,
+  Shuffle,
+  SkipBack,
+  SkipForward,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { ArtFallback } from "@/components/ArtFallback";
 import { LikeButton } from "@/components/LikeButton";
 import { OfflineBadge } from "@/components/OfflineBadge";
+import { DownloadAllButton } from "@/components/DownloadAllButton";
+import { QueuePanel } from "@/features/player/QueuePanel";
+import { useNitStore } from "@/stores/useNitStore";
+import { toast } from "@/stores/useToastStore";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useNavStore } from "@/stores/useNavStore";
 import { useArtwork } from "@/hooks/useArtwork";
@@ -46,6 +62,8 @@ export function Legend() {
   const toggleMute = usePlayerStore((s) => s.toggleMute);
   const setNowPlaying = useNavStore((s) => s.setNowPlaying);
   const [showVolume, setShowVolume] = useState(false);
+  const [showQueue, setShowQueue] = useState(false);
+  const saveLater = useNitStore((s) => s.saveLater);
   const art = useArtwork(current, "t120x120");
 
   return (
@@ -130,6 +148,29 @@ export function Legend() {
             </span>
           </div>
 
+          {/* The rest of what the old bar carried. Kept because they were on it:
+              the queue is the whole reason a queue exists, and "later" is the
+              gesture the panel was rebuilt around two tasks ago. */}
+          <div className="flex items-center gap-1">
+            <Control
+              onClick={() => setShowQueue(true)}
+              label={t.player.queue}
+              on={showQueue}
+            >
+              <ListMusic className="h-4 w-4" />
+            </Control>
+            <Control
+              onClick={() => {
+                void saveLater(current, "manual");
+                toast(t.later.added, "success");
+              }}
+              label={t.later.add}
+            >
+              <Bookmark className="h-4 w-4" />
+            </Control>
+            <DownloadAllButton tracks={[current]} />
+          </div>
+
           {/* Volume opens rather than sitting out: a second horizontal bar under
               the seek bar reads as a second progress bar, which is the mistake
               the old player made twice. */}
@@ -176,6 +217,8 @@ export function Legend() {
       {/* The declaration. This is the part that makes the block a legend rather
           than a player with a label on it. */}
       <Ramp />
+
+      {showQueue && <QueuePanel onClose={() => setShowQueue(false)} />}
     </aside>
   );
 }
