@@ -22,6 +22,8 @@
     "loginFailed": "Échec de la connexion",
     "followers": "abonnés",
     "manualToggle": "Se connecter avec un jeton",
+    "loginInApp": "Se connecter dans l'application",
+    "loginInAppHint": "Ouvre une fenêtre SoundCloud dans cloudify. Aucun navigateur particulier n'est nécessaire ; un captcha peut être demandé une fois.",
     "manualHint": "Connectez-vous sur soundcloud.com → F12 → Stockage (Firefox) ou Application (Chrome) → Cookies → soundcloud.com → copiez la valeur de oauth_token",
     "manualPlaceholder": "Collez le oauth_token",
     "manualSubmit": "Se connecter avec le jeton",
@@ -37,6 +39,10 @@
     "offline": {
       "what": "Pas de connexion.",
       "why": "L'application n'a pas pu joindre SoundCloud. Vérifiez votre connexion."
+    },
+    "noReadableBrowser": {
+      "what": "Aucun navigateur ici ne peut transmettre la connexion.",
+      "why": "Connectez-vous dans l'application ou collez un jeton."
     },
     "rateLimited": {
       "what": "SoundCloud demande de ralentir.",

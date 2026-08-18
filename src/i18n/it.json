@@ -22,6 +22,8 @@
     "loginFailed": "Accesso non riuscito",
     "followers": "follower",
     "manualToggle": "Accedi con un token",
+    "loginInApp": "Accedi dentro l'app",
+    "loginInAppHint": "Apre una finestra SoundCloud dentro cloudify. Non serve un browser particolare; potrebbe essere richiesto un captcha una volta.",
     "manualHint": "Accedi su soundcloud.com → F12 → Archiviazione (Firefox) o Application (Chrome) → Cookie → soundcloud.com → copia il valore di oauth_token",
     "manualPlaceholder": "Incolla oauth_token",
     "manualSubmit": "Accedi con il token",
@@ -37,6 +39,10 @@
     "offline": {
       "what": "Nessuna connessione.",
       "why": "L'app non è riuscita a raggiungere SoundCloud. Controlla la connessione."
+    },
+    "noReadableBrowser": {
+      "what": "Nessun browser qui può passare l'accesso.",
+      "why": "Accedi dentro l'app oppure incolla un token."
     },
     "rateLimited": {
       "what": "SoundCloud chiede di rallentare.",

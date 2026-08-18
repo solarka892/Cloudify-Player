@@ -68,6 +68,11 @@ function classify(kind: string): {
       return { key: "sessionExpired", remedy: "signIn" };
     case "not-logged-in":
       return { key: "notLoggedIn", remedy: "signIn" };
+    // Refused before the browser was even opened: nothing on this machine can
+    // hand a cookie over. No remedy button, because the sign-in screen showing
+    // this already has the two other routes on it.
+    case "no-readable-browser":
+      return { key: "noReadableBrowser", remedy: "none" };
     case "bot-filtered":
       return { key: "botFiltered", remedy: "openSoundCloud" };
     case "no-stream":

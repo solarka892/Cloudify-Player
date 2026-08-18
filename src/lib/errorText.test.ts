@@ -27,6 +27,7 @@ const KINDS_FROM_RUST = [
   "not-soundcloud-url",
   "unexpected-host",
   "not-logged-in",
+  "no-readable-browser",
   "unsupported",
   "login-timeout",
   "empty-input",

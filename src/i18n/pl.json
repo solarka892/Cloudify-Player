@@ -22,6 +22,8 @@
     "loginFailed": "Nie udało się zalogować",
     "followers": "obserwujących",
     "manualToggle": "Zaloguj się tokenem",
+    "loginInApp": "Zaloguj się w aplikacji",
+    "loginInAppHint": "Otwiera okno SoundCloud w cloudify. Nie potrzebuje konkretnej przeglądarki; być może raz trzeba przejść captchę.",
     "manualHint": "Zaloguj się na soundcloud.com → F12 → Magazyn (Firefox) lub Application (Chrome) → Ciasteczka → soundcloud.com → skopiuj wartość oauth_token",
     "manualPlaceholder": "Wklej oauth_token",
     "manualSubmit": "Zaloguj się tokenem",
@@ -37,6 +39,10 @@
     "offline": {
       "what": "Brak połączenia.",
       "why": "Aplikacja nie mogła połączyć się z SoundCloud. Sprawdź internet."
+    },
+    "noReadableBrowser": {
+      "what": "Żadna przeglądarka tutaj nie może przekazać logowania.",
+      "why": "Zaloguj się w aplikacji albo wklej token."
     },
     "rateLimited": {
       "what": "SoundCloud prosi o zwolnienie.",

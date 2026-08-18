@@ -26,6 +26,8 @@
     "loginFailed": "Sign-in failed",
     "followers": "followers",
     "manualToggle": "Sign in with a token",
+    "loginInApp": "Sign in inside the app",
+    "loginInAppHint": "Opens a SoundCloud window inside cloudify. Needs no particular browser; you may have to pass a captcha once.",
     "manualHint": "Log in on soundcloud.com → F12 → Storage (Firefox) or Application (Chrome) → Cookies → soundcloud.com → copy the oauth_token value",
     "manualPlaceholder": "Paste oauth_token",
     "manualSubmit": "Sign in with token",
@@ -41,6 +43,10 @@
     "offline": {
       "what": "No connection.",
       "why": "The app could not reach SoundCloud. Check your internet."
+    },
+    "noReadableBrowser": {
+      "what": "No browser here can hand over the sign-in.",
+      "why": "Sign in inside the app instead, or paste a token."
     },
     "rateLimited": {
       "what": "SoundCloud is asking us to slow down.",

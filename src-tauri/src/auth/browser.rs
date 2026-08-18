@@ -43,6 +43,31 @@ pub fn find_token() -> Option<String> {
     find_cookie("oauth_token")
 }
 
+/// Whether there is any cookie store on this machine this build can read.
+///
+/// Asked *before* opening the browser, so the flow can decline instead of
+/// performing it. The failure it prevents is the one this module's header warns
+/// about and macOS runs into constantly: a Chromium-family default browser (or
+/// Safari without Full Disk Access) leaves nothing readable, so the app opened a
+/// browser, the user signed in, and then waited three minutes for a timeout that
+/// was certain from the first second. Telling them up front costs nothing and is
+/// the difference between "sign-in is broken" and "sign-in needs a different
+/// route on this machine".
+///
+/// Note what this does *not* claim: that a token will be found. The user may
+/// have a readable browser installed and sign in with a different one. It only
+/// rules out the case where success was impossible.
+pub fn can_read_any_store() -> bool {
+    if !cookie_dbs().is_empty() {
+        return true;
+    }
+    #[cfg(target_os = "macos")]
+    if !safari_jars().is_empty() {
+        return true;
+    }
+    false
+}
+
 /// First non-empty value of `name` for soundcloud.com, across every store.
 fn find_cookie(name: &str) -> Option<String> {
     for db in cookie_dbs() {

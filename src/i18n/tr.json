@@ -22,6 +22,8 @@
     "loginFailed": "Giriş yapılamadı",
     "followers": "takipçi",
     "manualToggle": "Token ile giriş yap",
+    "loginInApp": "Uygulama içinde giriş yap",
+    "loginInAppHint": "cloudify içinde bir SoundCloud penceresi açar. Belirli bir tarayıcı gerekmez; bir kez captcha çözmen gerekebilir.",
     "manualHint": "soundcloud.com’da giriş yap → F12 → Depolama (Firefox) veya Application (Chrome) → Çerezler → soundcloud.com → oauth_token değerini kopyala",
     "manualPlaceholder": "oauth_token’ı yapıştır",
     "manualSubmit": "Token ile giriş yap",
@@ -37,6 +39,10 @@
     "offline": {
       "what": "Bağlantı yok.",
       "why": "Uygulama SoundCloud'a ulaşamadı. İnternetini kontrol et."
+    },
+    "noReadableBrowser": {
+      "what": "Buradaki hiçbir tarayıcı girişi aktaramıyor.",
+      "why": "Uygulama içinde giriş yap ya da bir token yapıştır."
     },
     "rateLimited": {
       "what": "SoundCloud yavaşlamamızı istiyor.",

@@ -130,6 +130,22 @@ const SUPPORTED_BROWSERS: &str = "Firefox, Zen and LibreWolf";
 #[cfg(not(target_os = "android"))]
 #[tauri::command]
 pub async fn sc_login_browser() -> Result<sc_api::me::Me, bridge::Failure> {
+    // Asked before the browser is opened, not after three minutes of polling.
+    // With no readable cookie store the flow cannot possibly finish, and the old
+    // behaviour was to open a browser anyway, let the user sign in, and then time
+    // out — which reads as "sign-in is broken" rather than "this machine needs
+    // another route". Chromium-family browsers encrypt their cookies and Safari
+    // sits behind Full Disk Access, so this is the common case on macOS.
+    if !auth::browser::can_read_any_store() {
+        return Err(bridge::stated(
+            "no-readable-browser",
+            format!(
+                "found no browser whose cookies this build can read. Readable: \
+                 {SUPPORTED_BROWSERS}. Sign in inside the app instead, or paste a token."
+            ),
+        ));
+    }
+
     auth::browser::open_signin().map_err(bridge::failure)?;
 
     let deadline = Instant::now() + BROWSER_LOGIN_TIMEOUT;

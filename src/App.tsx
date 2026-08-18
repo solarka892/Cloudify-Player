@@ -184,6 +184,23 @@ function App() {
             loginFailed(e);
           }
         }}
+        onAppLogin={
+          isAndroid
+            ? undefined
+            : async () => {
+                beginLogin();
+                try {
+                  // A SoundCloud window we own: Rust reads the token out of that
+                  // window's own cookie store, so no browser profile is touched
+                  // and the platform stops mattering. It reports success only, so
+                  // who signed in is a separate question.
+                  await scLogin();
+                  signedIn(await scGetMe());
+                } catch (e) {
+                  loginFailed(e);
+                }
+              }
+        }
         onTokenLogin={async (token) => {
           beginLogin();
           try {
@@ -348,14 +365,32 @@ function SocialSeed({ userId }: { userId: number }) {
   return null;
 }
 
-/** Pre-auth screen. Deliberately quiet: one primary path, one fallback. */
+/**
+ * Pre-auth screen. One primary path and, on the desktop, two fallbacks.
+ *
+ * The order is deliberate and is the answer to task 3. Signing in through the
+ * real browser stays first because it is the one that asks least of the user —
+ * they are probably already signed in there. But it only works where this build
+ * can read the browser's cookies, which is the Firefox family plus Safari with
+ * Full Disk Access; a Chromium default browser (the common case on macOS) leaves
+ * it with nothing to read, which is what "sign-in does not work on macOS" was.
+ *
+ * `onAppLogin` is the route with no browser in it at all: a SoundCloud window
+ * inside cloudify, whose cookies belong to us. It was written, it works, and
+ * until now nothing on the desktop reached it — the button existed only on
+ * Android. A captcha may appear in it; answering one is a thing a person can do,
+ * unlike finding a token in devtools.
+ */
 function LoginView({
   status,
   onLogin,
+  onAppLogin,
   onTokenLogin,
 }: {
   status: Session;
   onLogin: () => void;
+  /** Sign in in a window we own. Absent on Android, where it is `onLogin`. */
+  onAppLogin?: () => void;
   onTokenLogin: (token: string) => void;
 }) {
   const [showManual, setShowManual] = useState(false);
@@ -391,6 +426,21 @@ function LoginView({
               : t.auth.loggingIn
             : t.auth.login}
         </button>
+
+        {onAppLogin && (
+          <div className="flex w-full flex-col items-center gap-1">
+            <button
+              onClick={onAppLogin}
+              disabled={busy}
+              className="w-full rounded-[var(--radius-control)] border border-border bg-secondary px-5 py-2 text-sm transition-colors duration-[var(--motion-fast)] hover:bg-accent disabled:opacity-50"
+            >
+              {t.auth.loginInApp}
+            </button>
+            <p className="text-center text-xs text-muted-foreground">
+              {t.auth.loginInAppHint}
+            </p>
+          </div>
+        )}
 
         <button
           onClick={() => setShowManual((v) => !v)}

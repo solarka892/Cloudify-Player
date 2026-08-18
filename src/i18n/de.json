@@ -22,6 +22,8 @@
     "loginFailed": "Anmeldung fehlgeschlagen",
     "followers": "Follower",
     "manualToggle": "Mit Token anmelden",
+    "loginInApp": "Im Programm anmelden",
+    "loginInAppHint": "Öffnet ein SoundCloud-Fenster in cloudify. Braucht keinen bestimmten Browser; eventuell ist einmal ein Captcha zu lösen.",
     "manualHint": "Auf soundcloud.com anmelden → F12 → Speicher (Firefox) bzw. Application (Chrome) → Cookies → soundcloud.com → Wert von oauth_token kopieren",
     "manualPlaceholder": "oauth_token einfügen",
     "manualSubmit": "Mit Token anmelden",
@@ -37,6 +39,10 @@
     "offline": {
       "what": "Keine Verbindung.",
       "why": "Die App konnte SoundCloud nicht erreichen. Prüfen Sie Ihr Internet."
+    },
+    "noReadableBrowser": {
+      "what": "Kein Browser hier kann die Anmeldung übergeben.",
+      "why": "Melden Sie sich stattdessen im Programm an oder fügen Sie ein Token ein."
     },
     "rateLimited": {
       "what": "SoundCloud bittet um eine Pause.",

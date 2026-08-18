@@ -22,6 +22,8 @@
     "loginFailed": "No se pudo iniciar sesión",
     "followers": "seguidores",
     "manualToggle": "Iniciar sesión con un token",
+    "loginInApp": "Iniciar sesión dentro de la aplicación",
+    "loginInAppHint": "Abre una ventana de SoundCloud dentro de cloudify. No necesita un navegador concreto; puede que haya que pasar un captcha una vez.",
     "manualHint": "Inicia sesión en soundcloud.com → F12 → Almacenamiento (Firefox) o Application (Chrome) → Cookies → soundcloud.com → copia el valor de oauth_token",
     "manualPlaceholder": "Pega el oauth_token",
     "manualSubmit": "Iniciar sesión con el token",
@@ -37,6 +39,10 @@
     "offline": {
       "what": "Sin conexión.",
       "why": "La aplicación no pudo comunicarse con SoundCloud. Comprueba tu internet."
+    },
+    "noReadableBrowser": {
+      "what": "Ningún navegador de aquí puede entregar el inicio de sesión.",
+      "why": "Inicia sesión dentro de la aplicación o pega un token."
     },
     "rateLimited": {
       "what": "SoundCloud pide ir más despacio.",

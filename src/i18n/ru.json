@@ -26,6 +26,8 @@
     "loginFailed": "Не удалось войти",
     "followers": "подписчиков",
     "manualToggle": "Войти по токену вручную",
+    "loginInApp": "Войти внутри приложения",
+    "loginInAppHint": "Откроет окно SoundCloud внутри cloudify. Браузер не нужен; возможно, один раз попросят пройти капчу.",
     "manualHint": "Залогиньтесь на soundcloud.com → F12 → Storage (Firefox/Zen) или Application (Chrome) → Cookies → soundcloud.com → скопируйте значение oauth_token",
     "manualPlaceholder": "Вставьте oauth_token",
     "manualSubmit": "Войти по токену",
@@ -41,6 +43,10 @@
     "offline": {
       "what": "Нет связи.",
       "why": "Приложение не смогло дозвониться до SoundCloud. Проверьте интернет."
+    },
+    "noReadableBrowser": {
+      "what": "Ни один браузер здесь не может передать вход.",
+      "why": "Войдите внутри приложения или вставьте токен."
     },
     "rateLimited": {
       "what": "SoundCloud просит сбавить скорость.",

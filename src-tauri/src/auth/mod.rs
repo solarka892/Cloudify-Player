@@ -46,11 +46,23 @@ const LOGIN_TIMEOUT: Duration = Duration::from_secs(300);
 #[cfg(any(desktop, target_os = "android"))]
 const POLL_INTERVAL: Duration = Duration::from_millis(800);
 
-/// Present the embedded webview as a normal desktop Chrome browser. WebKitGTK's
-/// default UA triggers SoundCloud's anti-bot verification; a real-looking UA
-/// (and NOT tampering with `navigator.*`, which anti-fraud detects) is the best
-/// shot at passing. If SC still shows a captcha, use the manual-token path.
-#[cfg(desktop)]
+/// Present the embedded webview as a normal desktop browser. The default UA of
+/// an embedded webview triggers SoundCloud's anti-bot verification; a
+/// real-looking one (and NOT tampering with `navigator.*`, which anti-fraud
+/// detects) is the best shot at passing. A captcha may still appear — that one is
+/// answerable, and answering it once is the point of this window.
+///
+/// **Per platform, because a UA that contradicts the engine behind it is itself a
+/// bot signal.** Anti-bot systems compare the two, and this used to claim
+/// "X11; Linux" everywhere: on macOS that is a Chrome-on-Linux string in front of
+/// a WebKit view, which is a combination no real browser produces. Linux keeps
+/// exactly the string it has been passing with — there is no reason to
+/// experiment on the platform where this works.
+#[cfg(all(desktop, target_os = "macos"))]
+const BROWSER_UA: &str =
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) \
+     Version/17.4 Safari/605.1.15";
+#[cfg(all(desktop, not(target_os = "macos")))]
 const BROWSER_UA: &str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) \
      Chrome/131.0.0.0 Safari/537.36";
 
