@@ -191,6 +191,12 @@
     "clearRecent": "Limpar"
   },
   "player": {
+    "legend": "Legenda",
+    "repeat": "Repetir",
+    "nothing": "Nada está tocando",
+    "rampMeans": "Faixa na linha = duração",
+    "rampLow": "curto",
+    "rampHigh": "longo",
     "play": "Tocar",
     "pause": "Pausar",
     "prev": "Faixa anterior",
@@ -228,6 +234,9 @@
     "playingOffline": "A reproduzir a partir das transferências"
   },
   "settings": {
+    "printing": "Impressão",
+    "sheetHint": "Uma folha, duas impressões. O destaque só pode ser uma faixa da escala.",
+    "water": "Água",
     "layout": "Disposição",
     "layoutHint": "Como a navegação e o conteúdo são organizados",
     "layoutRail": "Barra estreita",
@@ -249,7 +258,7 @@
     "themeSystem": "Do sistema",
     "palette": "Paleta",
     "accent": "Destaque",
-    "accentHint": "Aplicado sobre a paleta",
+    "accentHint": "Apenas as cinco faixas da escala",
     "accentAuto": "Da paleta",
     "accentArtwork": "Destaque da capa",
     "accentArtworkHint": "A cor acompanha a faixa que está tocando",
@@ -386,6 +395,8 @@
     "hint": "Inativos enquanto um campo de texto está em foco. E sim, há outro código escondido aqui."
   },
   "eggs": {
+    "graticuleFound": "A folha está quadriculada.",
+    "graticuleAgain": "Grade oculta.",
     "vaporFound": "Você achou a paleta escondida Vapor",
     "vaporAgain": "Vapor de novo"
   },

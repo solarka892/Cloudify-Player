@@ -191,6 +191,12 @@
     "clearRecent": "Temizle"
   },
   "player": {
+    "legend": "Gösterge",
+    "repeat": "Yinele",
+    "nothing": "Hiçbir şey çalmıyor",
+    "rampMeans": "Satırdaki bant = süre",
+    "rampLow": "kısa",
+    "rampHigh": "uzun",
     "play": "Çal",
     "pause": "Duraklat",
     "prev": "Önceki parça",
@@ -228,6 +234,9 @@
     "playingOffline": "İndirilenlerden çalıyor"
   },
   "settings": {
+    "printing": "Baskı",
+    "sheetHint": "Tek sayfa, iki baskı. Vurgu yalnızca skalanın bir bandı olabilir.",
+    "water": "Su",
     "layout": "Yerleşim",
     "layoutHint": "Gezinme ve içeriğin nasıl yerleştiği",
     "layoutRail": "İnce şerit",
@@ -249,7 +258,7 @@
     "themeSystem": "Sistem",
     "palette": "Palet",
     "accent": "Vurgu",
-    "accentHint": "Paletin üzerine uygulanır",
+    "accentHint": "Yalnızca skalanın beş bandı",
     "accentAuto": "Paletten",
     "accentArtwork": "Kapaktan vurgu",
     "accentArtworkHint": "Renk çalan parçayı izler",
@@ -386,6 +395,8 @@
     "hint": "Bir metin alanı seçiliyken çalışmaz. Ve evet, burada bir kod daha gizli."
   },
   "eggs": {
+    "graticuleFound": "Sayfa çizgilendi.",
+    "graticuleAgain": "Izgara kapandı.",
     "vaporFound": "Gizli Vapor paleti bulundu",
     "vaporAgain": "Yine Vapor"
   },

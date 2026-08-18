@@ -15,19 +15,14 @@ import {
 } from "@/stores/useAuthStore";
 import { isAndroid } from "@/lib/platform";
 import { useNativeMediaSession } from "@/hooks/useNativeMediaSession";
-import { AppShell } from "@/components/shell/AppShell";
-import { WindowControls } from "@/components/shell/WindowControls";
-import { ColumnShell } from "@/features/shell/ColumnShell";
-import { ApplePlayerBar } from "@/features/apple/ApplePlayerBar";
+import { Sheet } from "@/features/sheet/Sheet";
 import { Toaster } from "@/components/Toaster";
 import { NoNetworkNotice } from "@/components/NoNetworkNotice";
 import { FailureNotice } from "@/components/FailureNotice";
 import { ConfirmHost } from "@/components/ConfirmHost";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { SkinLight } from "@/components/Ambient";
 import { LogoMark } from "@/components/Logo";
 import { HotkeyHelp } from "@/components/HotkeyHelp";
-import { Thread } from "@/features/nit/Thread";
 import { CommandPalette } from "@/features/nit/CommandPalette";
 import { NitView } from "@/features/nit/NitView";
 import { useNitSession } from "@/features/nit/useNitSession";
@@ -43,14 +38,12 @@ import { SettingsView } from "@/features/settings/SettingsView";
 import { DetailView } from "@/features/detail/DetailView";
 import { MessagesView } from "@/features/messages/MessagesView";
 import { NotificationsView } from "@/features/notifications/NotificationsView";
-import { PlayerBar } from "@/features/player/PlayerBar";
 import { useNavStore } from "@/stores/useNavStore";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useMessagesStore } from "@/stores/useMessagesStore";
 import { useNotificationsStore } from "@/stores/useNotificationsStore";
 import { useRepostStore } from "@/stores/useRepostStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
-import { SKINS } from "@/theme/skins";
 import { t } from "@/i18n";
 
 function App() {
@@ -137,10 +130,6 @@ function App() {
   const currentArt = useArtwork(current, "t500x500");
   const setArtwork = useSettingsStore((s) => s.setArtwork);
   const locale = useSettingsStore((s) => s.locale);
-  // Apple mode replaces the frame and the player outright, not just their
-  // styling: floating chrome with the content behind it is a different tree,
-  // not a restyled one. Everything inside `children` is shared.
-  const apple = useSettingsStore((s) => s.theme.apple);
   useEffect(() => {
     // 500px, not a thumbnail: this is stretched across the whole window, and
     // the blur is a user setting — turn it down and a 120px source is a mess of
@@ -155,7 +144,9 @@ function App() {
   }, []);
 
   if (session.state === "unknown") {
-    return <Chrome><div className="h-full w-full bg-background" /></Chrome>;
+    // A blank sheet, not a spinner: nothing in this language spins, and the
+    // answer arrives in a frame or two.
+    return <div className="h-full w-full bg-sheet" />;
   }
 
   // `hasSession` rather than `state === "loggedIn"`, and that is the whole fix
@@ -165,7 +156,6 @@ function App() {
   const me = sessionUser(session);
   if (!hasSession(session) || !me) {
     return (
-      <Chrome>
       <LoginView
         status={session}
         onLogin={async () => {
@@ -210,22 +200,13 @@ function App() {
           }
         }}
       />
-      </Chrome>
     );
   }
-  const Shell = apple ? ColumnShell : AppShell;
-
+  // Keyed on the language: `t` is a live binding, but memoised subtrees would
+  // otherwise keep strings they rendered before the switch. Keying here and not
+  // higher up means the session survives a language change.
   return (
-    <Chrome>
-    {/* Keyed on the language: `t` is a live binding, but memoised subtrees would
-        otherwise keep strings they rendered before the switch. Keying here and
-        not higher up means the session survives a language change. */}
-    <Shell
-      key={locale}
-      view={view}
-      onNavigate={setView}
-      player={apple ? <ApplePlayerBar /> : <PlayerBar />}
-    >
+    <Sheet key={locale}>
       <SocialSeed userId={me.id} />
       <Toaster />
       {/* Only visible while SoundCloud is unreachable, and it says so instead of
@@ -272,65 +253,7 @@ function App() {
       )}
       </ErrorBoundary>
       </div>
-    </Shell>
-    </Chrome>
-  );
-}
-
-/**
- * The window, around whatever the app is currently showing.
- *
- * Wraps all three of `App`'s branches, including the pre-auth screen and the
- * blank frame shown while the session is being checked: the window launches
- * undecorated, so window controls that only appeared once signed in would leave
- * no way to close the app before signing in.
- *
- * A flex column, because the thread takes real height from the shells below it —
- * both of them are `h-full`, and a fixed strip would have put its own height of
- * the interface underneath itself.
- *
- * `.app-frame` is the window's outer hairline. Without system decorations there
- * is no frame and, on Linux and Windows, no drop shadow either, so on a dark
- * desktop the app would have no visible edge at all. Only the skins that ask for
- * it draw one — see `globals.css`.
- *
- * `.app-frame` also carries the safe-area inset for the top and the sides, which
- * is what keeps every layout — not just the two edges the phone shell happens to
- * draw — clear of the camera cutout and the status bar. The bottom is
- * deliberately not here: a bottom bar is meant to run *under* the translucent
- * gesture bar with only its content lifted clear, so that inset belongs to
- * whatever chrome is last. See `globals.css`. All of it is 0px off Android.
- */
-function Chrome({ children }: { children: React.ReactNode }) {
-  // The thread belongs to the look that was drawn around it: it replaces the
-  // player's seek bar, carries the marks and takes a row of the window frame.
-  // Under a skin that keeps its seek bar it would be a second, disagreeing
-  // answer to "how far through am I", so it is simply not mounted. Apple mode
-  // replaces the shell and the player outright and keeps its own.
-  const skin = useSettingsStore((s) => s.theme.skin);
-  const apple = useSettingsStore((s) => s.theme.apple);
-  const thread = !apple && SKINS[skin]?.thread;
-
-  return (
-    <div className="app-frame relative flex h-full w-full flex-col overflow-hidden">
-      {/* The thread is the window's top edge: the playing track's waveform,
-          filling as it plays, with a rule through it for every mark.
-
-          A row of its own rather than an overlay on the chrome that used to be
-          here. As an overlay it had to steal from the drag region and from the
-          top of the window buttons, and could never be taller than what it
-          stole; as a row it owns its height and nothing overlaps. It keeps that
-          height with nothing playing, so starting a track does not push the
-          window down. */}
-      {thread && <Thread />}
-      <div className="relative min-h-0 flex-1">
-        {children}
-        {/* What is left of the frame: eight invisible strips that resize an
-            undecorated window. The bar and the buttons that used to sit on it
-            are both gone — see `WindowControls`. */}
-        <WindowControls />
-      </div>
-    </div>
+    </Sheet>
   );
 }
 
@@ -399,10 +322,6 @@ function LoginView({
 
   return (
     <div className="relative flex h-full w-full items-center justify-center bg-background p-8 text-foreground">
-      {useSettingsStore.getState().backdrop.mode !== "none" && (
-        <div className="app-backdrop" aria-hidden />
-      )}
-      <SkinLight />
       <div className="panel panel-raised relative z-10 flex w-full max-w-md flex-col items-center gap-5 rounded-[var(--radius-hero)] p-8">
         <div className="flex flex-col items-center gap-2">
           <LogoMark className="h-16 w-24" />

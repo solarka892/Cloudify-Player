@@ -191,6 +191,12 @@
     "clearRecent": "Limpiar"
   },
   "player": {
+    "legend": "Leyenda",
+    "repeat": "Repetir",
+    "nothing": "No suena nada",
+    "rampMeans": "Banda en la fila = duración",
+    "rampLow": "corto",
+    "rampHigh": "largo",
     "play": "Reproducir",
     "pause": "Pausar",
     "prev": "Pista anterior",
@@ -228,6 +234,9 @@
     "playingOffline": "Reproduciendo desde tus descargas"
   },
   "settings": {
+    "printing": "Impresión",
+    "sheetHint": "Una hoja, dos impresiones. El acento solo puede ser una banda de la escala.",
+    "water": "Agua",
     "layout": "Disposición",
     "layoutHint": "Cómo se colocan la navegación y el contenido",
     "layoutRail": "Barra estrecha",
@@ -249,7 +258,7 @@
     "themeSystem": "Del sistema",
     "palette": "Paleta",
     "accent": "Acento",
-    "accentHint": "Se aplica sobre la paleta",
+    "accentHint": "Solo las cinco bandas de la escala",
     "accentAuto": "De la paleta",
     "accentArtwork": "Acento de la portada",
     "accentArtworkHint": "El color sigue a la pista que suena",
@@ -386,6 +395,8 @@
     "hint": "No funcionan mientras escribes en un campo. Y sí, aquí hay otro código escondido."
   },
   "eggs": {
+    "graticuleFound": "La hoja está cuadriculada.",
+    "graticuleAgain": "Cuadrícula oculta.",
     "vaporFound": "Has encontrado la paleta oculta Vapor",
     "vaporAgain": "Vapor otra vez"
   },

@@ -191,6 +191,12 @@
     "clearRecent": "Leeren"
   },
   "player": {
+    "legend": "Legende",
+    "repeat": "Wiederholen",
+    "nothing": "Es läuft nichts",
+    "rampMeans": "Band an der Zeile = Länge",
+    "rampLow": "kurz",
+    "rampHigh": "lang",
     "play": "Abspielen",
     "pause": "Pause",
     "prev": "Vorheriger Track",
@@ -228,6 +234,9 @@
     "playingOffline": "Wird aus deinen Downloads abgespielt"
   },
   "settings": {
+    "printing": "Druck",
+    "sheetHint": "Ein Blatt, zwei Drucke. Der Akzent kann nur ein Band der Skala sein.",
+    "water": "Wasser",
     "layout": "Anordnung",
     "layoutHint": "Wie Navigation und Inhalt angeordnet sind",
     "layoutRail": "Schmale Leiste",
@@ -249,7 +258,7 @@
     "themeSystem": "System",
     "palette": "Palette",
     "accent": "Akzent",
-    "accentHint": "Wird über die Palette gelegt",
+    "accentHint": "Nur die fünf Bänder der Reliefskala",
     "accentAuto": "Aus der Palette",
     "accentArtwork": "Akzent vom Cover",
     "accentArtworkHint": "Die Farbe folgt dem laufenden Track",
@@ -386,6 +395,8 @@
     "hint": "Inaktiv, solange ein Textfeld den Fokus hat. Und ja, hier ist noch ein Code versteckt."
   },
   "eggs": {
+    "graticuleFound": "Das Blatt ist gerastert.",
+    "graticuleAgain": "Raster aus.",
     "vaporFound": "Die versteckte Palette Vapor gefunden",
     "vaporAgain": "Wieder Vapor"
   },

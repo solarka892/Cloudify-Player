@@ -191,6 +191,12 @@
     "clearRecent": "Effacer"
   },
   "player": {
+    "legend": "Légende",
+    "repeat": "Répéter",
+    "nothing": "Rien ne joue",
+    "rampMeans": "Bande sur la ligne = durée",
+    "rampLow": "court",
+    "rampHigh": "long",
     "play": "Lecture",
     "pause": "Pause",
     "prev": "Titre précédent",
@@ -228,6 +234,9 @@
     "playingOffline": "Lecture depuis vos téléchargements"
   },
   "settings": {
+    "printing": "Tirage",
+    "sheetHint": "Une feuille, deux tirages. L'accent ne peut être qu'une bande de la gamme.",
+    "water": "Eau",
     "layout": "Disposition",
     "layoutHint": "Comment la navigation et le contenu sont agencés",
     "layoutRail": "Barre étroite",
@@ -249,7 +258,7 @@
     "themeSystem": "Système",
     "palette": "Palette",
     "accent": "Accent",
-    "accentHint": "Appliqué par-dessus la palette",
+    "accentHint": "Uniquement les cinq bandes de la gamme",
     "accentAuto": "Depuis la palette",
     "accentArtwork": "Accent depuis la pochette",
     "accentArtworkHint": "La couleur suit le titre en cours",
@@ -386,6 +395,8 @@
     "hint": "Inactifs quand un champ de texte a le focus. Et oui, il y a encore un code caché ici."
   },
   "eggs": {
+    "graticuleFound": "La feuille est quadrillée.",
+    "graticuleAgain": "Grille masquée.",
     "vaporFound": "Palette cachée Vapor trouvée",
     "vaporAgain": "Vapor de nouveau"
   },

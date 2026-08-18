@@ -25,7 +25,6 @@ import {
 import { LikeButton } from "@/components/LikeButton";
 import { RepostButton } from "@/components/RepostButton";
 import { ShareButton } from "@/components/ShareButton";
-import { Ambient } from "@/components/Ambient";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { AudioLines } from "lucide-react";
 import { useDismiss } from "@/hooks/useDismiss";
@@ -399,7 +398,6 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
 function LyricsSurface({ track }: { track: Track }) {
   return (
     <div className="relative min-h-0 flex-1 overflow-hidden">
-      <Ambient />
       <div className="relative h-full overflow-y-auto">
         <LyricsPanel track={track} />
       </div>

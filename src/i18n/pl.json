@@ -191,6 +191,12 @@
     "clearRecent": "Wyczyść"
   },
   "player": {
+    "legend": "Legenda",
+    "repeat": "Powtarzaj",
+    "nothing": "Nic nie gra",
+    "rampMeans": "Pasek przy wierszu = długość",
+    "rampLow": "krótko",
+    "rampHigh": "długo",
     "play": "Odtwórz",
     "pause": "Pauza",
     "prev": "Poprzedni utwór",
@@ -228,6 +234,9 @@
     "playingOffline": "Odtwarzanie z pobranych"
   },
   "settings": {
+    "printing": "Odbitka",
+    "sheetHint": "Jeden arkusz, dwie odbitki. Akcentem może być tylko pasmo skali.",
+    "water": "Woda",
     "layout": "Układ",
     "layoutHint": "Jak rozmieszczone są nawigacja i treść",
     "layoutRail": "Wąski pasek",
@@ -249,7 +258,7 @@
     "themeSystem": "Systemowy",
     "palette": "Paleta",
     "accent": "Akcent",
-    "accentHint": "Nakładany na paletę",
+    "accentHint": "Tylko pięć pasm skali",
     "accentAuto": "Z palety",
     "accentArtwork": "Akcent z okładki",
     "accentArtworkHint": "Kolor idzie za odtwarzanym utworem",
@@ -386,6 +395,8 @@
     "hint": "Nieaktywne, gdy kursor jest w polu tekstowym. I tak, jest tu ukryty jeszcze jeden kod."
   },
   "eggs": {
+    "graticuleFound": "Arkusz rozliniowany.",
+    "graticuleAgain": "Siatka zdjęta.",
     "vaporFound": "Znaleziono ukrytą paletę Vapor",
     "vaporAgain": "Znowu Vapor"
   },

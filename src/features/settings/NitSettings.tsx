@@ -14,8 +14,6 @@ import { useSettingsStore } from "@/stores/useSettingsStore";
  * it, and no way for the two to disagree.
  */
 export function NitSettings() {
-  const theme = useSettingsStore((s) => s.theme);
-  const setTheme = useSettingsStore((s) => s.setTheme);
   const audio = useSettingsStore((s) => s.audio);
   const setAudio = useSettingsStore((s) => s.setAudio);
   const nit = useSettingsStore((s) => s.nit);
@@ -24,18 +22,10 @@ export function NitSettings() {
   return (
     <div className="stack-lg">
       <Group title={t.settings.secNit} hint={t.settings.nitHint}>
-        <Toggle
-          label={t.settings.monoArtwork}
-          hint={t.settings.monoArtworkHint}
-          value={theme.monoArtwork}
-          onChange={(monoArtwork) => setTheme({ monoArtwork })}
-        />
-        <Toggle
-          label={t.settings.printShift}
-          hint={t.settings.printShiftHint}
-          value={theme.printShift}
-          onChange={(printShift) => setTheme({ printShift })}
-        />
+        {/* Two switches used to sit here: reduce cover art to one tone, and
+            print screen headings twice out of register. Both were treatments a
+            skin asked for, and Relief asks for neither — artwork is pasted on
+            the sheet as it is, and a heading is printed once. */}
         <Toggle
           label={t.settings.resume}
           hint={t.settings.resumeHint}

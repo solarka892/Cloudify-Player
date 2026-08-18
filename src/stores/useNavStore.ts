@@ -1,6 +1,22 @@
 import { create } from "zustand";
 import type { Playlist, Track, User } from "@/lib/tauri";
-import type { ViewId } from "@/components/shell/nav-items";
+/**
+ * The app's top-level sheets.
+ *
+ * Declared here rather than beside the navigation that draws them: which sheets
+ * exist is a fact about where the app can be, and the store is what holds that.
+ * The old list lived next to an icon set in the shell, which meant deleting the
+ * shell deleted the vocabulary every route was written in.
+ */
+export type ViewId =
+  | "home"
+  | "search"
+  | "library"
+  | "nit"
+  | "messages"
+  | "notifications"
+  | "profile"
+  | "settings";
 
 /**
  * Where the app is: which tab, what is drilled into on top of it, and how you

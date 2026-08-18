@@ -236,6 +236,12 @@
     "browseTags": "Browse by tag"
   },
   "player": {
+    "legend": "Legend",
+    "repeat": "Repeat",
+    "nothing": "Nothing is playing",
+    "rampMeans": "Band on a row = length",
+    "rampLow": "short",
+    "rampHigh": "long",
     "play": "Play",
     "pause": "Pause",
     "prev": "Previous track",
@@ -273,6 +279,9 @@
     "playingOffline": "Playing from your downloads"
   },
   "settings": {
+    "printing": "Printing",
+    "sheetHint": "One sheet, in two printings. The accent can only ever be a band of the ramp.",
+    "water": "Water",
     "layout": "Layout",
     "layoutHint": "How navigation and content are arranged",
     "layoutRail": "Rail",
@@ -297,7 +306,7 @@
     "themeSystem": "System",
     "palette": "Palette",
     "accent": "Accent",
-    "accentHint": "Applied on top of the palette",
+    "accentHint": "Only the five bands of the relief ramp",
     "accentAuto": "From palette",
     "accentArtwork": "Accent from artwork",
     "accentArtworkHint": "Colour follows the playing track",
@@ -459,6 +468,8 @@
     "hint": "Inactive while a text field has focus. And yes, there is one more code hidden here."
   },
   "eggs": {
+    "graticuleFound": "The sheet is ruled.",
+    "graticuleAgain": "Grid off.",
     "vaporFound": "Found the hidden Vapor palette",
     "vaporAgain": "Vapor again"
   },

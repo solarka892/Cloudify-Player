@@ -191,6 +191,12 @@
     "clearRecent": "Cancella"
   },
   "player": {
+    "legend": "Legenda",
+    "repeat": "Ripeti",
+    "nothing": "Non sta suonando nulla",
+    "rampMeans": "Banda sulla riga = durata",
+    "rampLow": "breve",
+    "rampHigh": "lungo",
     "play": "Riproduci",
     "pause": "Pausa",
     "prev": "Brano precedente",
@@ -228,6 +234,9 @@
     "playingOffline": "In riproduzione dai download"
   },
   "settings": {
+    "printing": "Stampa",
+    "sheetHint": "Un foglio, due stampe. L'accento può essere solo una banda della scala.",
+    "water": "Acqua",
     "layout": "Disposizione",
     "layoutHint": "Come sono disposti navigazione e contenuti",
     "layoutRail": "Barra sottile",
@@ -249,7 +258,7 @@
     "themeSystem": "Sistema",
     "palette": "Palette",
     "accent": "Accento",
-    "accentHint": "Applicato sopra la palette",
+    "accentHint": "Solo le cinque bande della scala",
     "accentAuto": "Dalla palette",
     "accentArtwork": "Accento dalla copertina",
     "accentArtworkHint": "Il colore segue il brano in riproduzione",
@@ -386,6 +395,8 @@
     "hint": "Non attive quando un campo di testo ha il focus. E sì, qui è nascosto un altro codice."
   },
   "eggs": {
+    "graticuleFound": "Il foglio è quadrettato.",
+    "graticuleAgain": "Griglia via.",
     "vaporFound": "Trovata la palette nascosta Vapor",
     "vaporAgain": "Vapor di nuovo"
   },
