@@ -18,6 +18,13 @@ import { cn } from "@/lib/utils";
  * keyboard and by window menu — `Alt+F4` and `Alt+Space` on Windows, whatever
  * the compositor is bound to on Linux. Nothing in the app calls for them.
  *
+ * That last argument is a Windows and Linux argument, and it does not travel.
+ * macOS has neither of those bindings: its window buttons *are* the traffic
+ * lights, so an undecorated window there cannot be closed, moved or resized
+ * with a mouse at all. It therefore keeps its frame, with the title bar made
+ * transparent so the app still reaches the top edge, and renders none of this —
+ * see `hasWindowChrome` and `tauri.macos.conf.json`.
+ *
  * What could not go with them: the resize strips. An undecorated window loses
  * the compositor's invisible border along with the visible one, so without these
  * the window can only be resized from a keyboard shortcut.

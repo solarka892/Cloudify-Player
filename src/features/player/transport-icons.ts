@@ -9,9 +9,10 @@ import { Pause, Play, SkipBack, SkipForward } from "lucide-react";
  * `controls.tsx`, because a file that exports both components and a context
  * cannot be hot-reloaded.
  *
- * Apple mode supplies SF's drawings (see `features/apple/icons.tsx`); everyone
- * else gets lucide's, which is the default below. Only the *drawing* changes:
- * the behaviour, the labels and the hooks stay in `controls.tsx`.
+ * One set draws them now: lucide's, the default below. The context outlived
+ * the Apple shell that was the other set, and is kept because replacing all
+ * four at once is exactly what a skin would want — and only the *drawing*
+ * would change. The behaviour, the labels and the hooks stay in `controls.tsx`.
  */
 
 /** A stand-in for either a lucide icon or a hand-drawn one. */

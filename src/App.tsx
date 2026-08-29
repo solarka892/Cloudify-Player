@@ -17,8 +17,6 @@ import { isAndroid } from "@/lib/platform";
 import { useNativeMediaSession } from "@/hooks/useNativeMediaSession";
 import { AppShell } from "@/components/shell/AppShell";
 import { WindowControls } from "@/components/shell/WindowControls";
-import { ColumnShell } from "@/features/shell/ColumnShell";
-import { ApplePlayerBar } from "@/features/apple/ApplePlayerBar";
 import { Toaster } from "@/components/Toaster";
 import { NoNetworkNotice } from "@/components/NoNetworkNotice";
 import { FailureNotice } from "@/components/FailureNotice";
@@ -137,10 +135,6 @@ function App() {
   const currentArt = useArtwork(current, "t500x500");
   const setArtwork = useSettingsStore((s) => s.setArtwork);
   const locale = useSettingsStore((s) => s.locale);
-  // Apple mode replaces the frame and the player outright, not just their
-  // styling: floating chrome with the content behind it is a different tree,
-  // not a restyled one. Everything inside `children` is shared.
-  const apple = useSettingsStore((s) => s.theme.apple);
   useEffect(() => {
     // 500px, not a thumbnail: this is stretched across the whole window, and
     // the blur is a user setting — turn it down and a 120px source is a mess of
@@ -213,18 +207,16 @@ function App() {
       </Chrome>
     );
   }
-  const Shell = apple ? ColumnShell : AppShell;
-
   return (
     <Chrome>
     {/* Keyed on the language: `t` is a live binding, but memoised subtrees would
         otherwise keep strings they rendered before the switch. Keying here and
         not higher up means the session survives a language change. */}
-    <Shell
+    <AppShell
       key={locale}
       view={view}
       onNavigate={setView}
-      player={apple ? <ApplePlayerBar /> : <PlayerBar />}
+      player={<PlayerBar />}
     >
       <SocialSeed userId={me.id} />
       <Toaster />
@@ -272,7 +264,7 @@ function App() {
       )}
       </ErrorBoundary>
       </div>
-    </Shell>
+    </AppShell>
     </Chrome>
   );
 }
@@ -305,14 +297,31 @@ function Chrome({ children }: { children: React.ReactNode }) {
   // The thread belongs to the look that was drawn around it: it replaces the
   // player's seek bar, carries the marks and takes a row of the window frame.
   // Under a skin that keeps its seek bar it would be a second, disagreeing
-  // answer to "how far through am I", so it is simply not mounted. Apple mode
-  // replaces the shell and the player outright and keeps its own.
+  // answer to "how far through am I", so it is simply not mounted.
   const skin = useSettingsStore((s) => s.theme.skin);
-  const apple = useSettingsStore((s) => s.theme.apple);
-  const thread = !apple && SKINS[skin]?.thread;
+  const thread = SKINS[skin]?.thread;
 
   return (
     <div className="app-frame relative flex h-full w-full flex-col overflow-hidden">
+      {/* The band macOS floats its window buttons in.
+
+          Not a gap: the rail, the sidebar and the header all run up into it and
+          inset their own contents by `--titlebar-inset` instead, so the panel
+          reaches the window's top edge and the buttons sit *on* it — which is
+          what every Mac app looks like. A frame-wide padding was tried first
+          and read as a dead strip above a slab.
+
+          What the panels cannot do is drag the window: the buttons work because
+          they are the system's own views over the webview, but the space beside
+          them is page. This claims it.
+
+          Zero-height everywhere else, where the token is 0 and there is no
+          system frame to drag by. */}
+      <div
+        data-tauri-drag-region
+        aria-hidden
+        className="absolute inset-x-0 top-0 z-30 h-[var(--titlebar-inset)]"
+      />
       {/* The thread is the window's top edge: the playing track's waveform,
           filling as it plays, with a rule through it for every mark.
 

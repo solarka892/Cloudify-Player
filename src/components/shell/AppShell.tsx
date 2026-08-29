@@ -71,7 +71,7 @@ export function AppShell({
     <main ref={scroller} className="relative z-10 min-h-0 flex-1 overflow-y-auto">
       {/* 16px of side padding on a phone against 24px elsewhere: at 360px wide
           the wider gutter costs an eighth of the usable width. */}
-      <div className="mx-auto w-full max-w-6xl px-4 py-4 md:px-6 md:py-6">
+      <div className="mx-auto w-full max-w-6xl px-4 py-4 pt-[calc(1rem+var(--titlebar-inset))] md:px-6 md:py-6 md:pt-[calc(1.5rem+var(--titlebar-inset))]">
         {children}
       </div>
     </main>

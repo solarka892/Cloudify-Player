@@ -24,7 +24,6 @@ function input(patch: Partial<ThemeInput> = {}): ThemeInput {
     density: "cozy",
     uiScale: 100,
     glass: false,
-    apple: false,
     monoArtwork: true,
     printShift: true,
     overrides: {},
@@ -171,14 +170,15 @@ describe("the glass switch", () => {
     }
   });
 
-  it("is overruled by Apple mode, which is always glass", () => {
-    // Liquid Glass is the whole of that look; there is no opaque version of it
-    // to offer, so the switch stops applying rather than being obeyed. The
-    // stored value is untouched and comes back when the mode is left — which is
-    // why this asserts against `glass: false` specifically.
-    const vars = buildVars(input({ apple: true, glass: false }));
-    expect(vars["--blur"]).not.toBe("0px");
-    expect(vars["--surface-alpha"]).not.toBe("100%");
+  it("is obeyed when off, on every skin", () => {
+    // Nothing overrules it any more: the one look that forced glass on was the
+    // Apple shell, and it is gone. Off has to mean off, because this is the
+    // perf escape on a software-composited desktop.
+    for (const skin of SKIN_IDS) {
+      const vars = buildVars(input({ skin, glass: false }));
+      expect(vars["--blur"], skin).toBe("0px");
+      expect(vars["--surface-alpha"], skin).toBe("100%");
+    }
   });
 });
 
@@ -210,10 +210,6 @@ describe("--art-filter", () => {
     for (const skin of SKIN_IDS) {
       expect(Object.keys(SKINS[skin].vars), skin).toContain("--art-filter");
     }
-    // Apple mode replaces the skin wholesale and has to answer for it too.
-    expect(buildVars(input({ skin: "obsidian", apple: true }))["--art-filter"]).toBe(
-      "none",
-    );
   });
 });
 

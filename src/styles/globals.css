@@ -1,10 +1,10 @@
 @import "tailwindcss";
 /* The app's own faces. Must precede anything that names them. */
 @import "./fonts.css";
-/* Apple mode's stylesheet. Inert until `theme/apply.ts` sets `data-apple` on
-   <html>, and deliberately unlayered so it can restyle components that colour
-   themselves with utilities — see the header there. */
-@import "./apple.css";
+:root[data-mac="1"] {
+  /* 28px: the height of a macOS title bar, which is what the buttons sit in. */
+  --titlebar-inset: 1.75rem;
+}
 
 /* Enable class-based dark mode (the <html> element carries `.dark`). */
 @custom-variant dark (&:is(.dark *));
@@ -21,6 +21,16 @@
    value isn't reachable through a token here, add a token.
    ───────────────────────────────────────────────────────────────────────── */
 :root {
+  /* How much of the window's top edge the system's own buttons sit over.
+
+     Zero everywhere but macOS, which keeps its window frame and floats the
+     close/minimise/zoom buttons over the top-left of the content. Backgrounds
+     still run underneath them — the rail and the sidebar reach the window's
+     top edge — and it is each panel's *contents* that are pushed down by this,
+     so the wordmark and the first nav item clear the buttons. `main.tsx` sets
+     `data-mac`, because CSS cannot ask which platform it is on. */
+  --titlebar-inset: 0px;
+
   /* colour — palette layer */
   --background: oklch(0.985 0 0);
   --foreground: oklch(0.185 0 0);
@@ -1845,7 +1855,7 @@ button.pill-readout:hover {
 /* ═══════════════════════════════════════════════════════════════════════════
    Obsidian: the rules a custom property cannot express.
 
-   Deliberately *unlayered*, for the same reason `apple.css` is: Tailwind's
+   Deliberately *unlayered*: Tailwind's
    utilities layer beats anything in `@layer components` no matter how specific,
    and every one of these has to override a utility a component already carries
    (`text-xs` on a label, `rounded-full` where a token cannot reach, the browser's

@@ -39,24 +39,16 @@ import {
   t,
   type Locale,
 } from "@/i18n";
-import {
-  AppleAppearance,
-  AppleBookmark,
-  AppleCheck,
-  AppleChevronDown,
-  AppleDisplay,
-  AppleDownload,
-  AppleList,
-  AppleMoon,
-  ApplePhoto,
-  ApplePlayCircle,
-  AppleReset,
-  AppleSpeaker,
-  AppleSun,
-  AppleTrash,
-  AppleUpload,
-  type Glyph,
-} from "@/features/apple/icons";
+/**
+ * An icon component, as every glyph in this screen is drawn.
+ *
+ * Declared here rather than imported: it used to come from the SF set that the
+ * Apple shell supplied, and that set went with the shell.
+ */
+type Glyph = React.ComponentType<{
+  className?: string;
+  strokeWidth?: number;
+}>;
 import { scrollViewToTop } from "@/lib/scroll";
 import { cn } from "@/lib/utils";
 import { ViewHead } from "@/components/ViewHead";
@@ -394,18 +386,10 @@ export function SettingsView() {
           is visibly held down says which look is holding it, and comes back the
           moment that look does not. `buildVars` is the authority — this only
           shows what it has already decided. */}
-      <Group
-        title={t.settings.glass}
-        hint={theme.apple ? t.settings.glassAppleLocked : t.settings.glassHint}
-        muted={theme.apple}
-      >
-        <Row
-          label={t.settings.glassOn}
-          hint={theme.apple ? t.settings.glassAppleLocked : t.settings.glassPerf}
-        >
+      <Group title={t.settings.glass} hint={t.settings.glassHint}>
+        <Row label={t.settings.glassOn} hint={t.settings.glassPerf}>
           <Switch
-            checked={theme.apple || theme.glass}
-            disabled={theme.apple}
+            checked={theme.glass}
             onCheckedChange={(on) => setTheme({ glass: on })}
           />
         </Row>
@@ -711,32 +695,15 @@ const LUCIDE_GLYPHS: GlyphSet = {
   },
 };
 
-const APPLE_GLYPHS: GlyphSet = {
-  check: AppleCheck,
-  chevronDown: AppleChevronDown,
-  reset: AppleReset,
-  trash: AppleTrash,
-  upload: AppleUpload,
-  download: AppleDownload,
-  image: ApplePhoto,
-  dark: AppleMoon,
-  light: AppleSun,
-  system: AppleDisplay,
-  sections: {
-    appearance: AppleAppearance,
-    nit: AppleBookmark,
-    backdrop: ApplePhoto,
-    audio: AppleSpeaker,
-    playback: ApplePlayCircle,
-    storage: AppleList,
-  },
-};
-
-/** Which set is in force. A hook so nested building blocks can ask too. */
+/**
+ * The glyphs this screen draws with.
+ *
+ * One set now, and still a function rather than the constant itself: every
+ * nested building block calls it, and a second set is the kind of thing that
+ * comes back.
+ */
 function useGlyphs(): GlyphSet {
-  return useSettingsStore((s) => s.theme.apple)
-    ? APPLE_GLYPHS
-    : LUCIDE_GLYPHS;
+  return LUCIDE_GLYPHS;
 }
 
 const SECTIONS: { id: SectionId; label: string }[] = [

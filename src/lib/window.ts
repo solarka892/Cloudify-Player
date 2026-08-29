@@ -1,4 +1,4 @@
-import { isAndroid } from "./platform";
+import { isAndroid, isApplePlatform } from "./platform";
 
 /**
  * The window itself: dragging it, and resizing it from its own edges.
@@ -13,8 +13,18 @@ import { isAndroid } from "./platform";
  * plugin into the Android bundle for code that can never run there.
  */
 
-/** Whether this build frames its own window at all. */
-export const hasWindowChrome = !isAndroid;
+/**
+ * Whether this build frames its own window at all.
+ *
+ * False on Android, which has no window, and false on Apple platforms, where
+ * the window is decorated and the system draws the frame itself — see
+ * `tauri.macos.conf.json`. macOS has no `Alt+F4` and no `Alt+Space` window
+ * menu, so an undecorated window there is one a mouse cannot close, move or
+ * resize; the overlay title bar gives back the traffic lights and the drag,
+ * and with a real frame the compositor's resize border returns with them.
+ * Drawing our own strips on top of it would only fight it for the top edge.
+ */
+export const hasWindowChrome = !isAndroid && !isApplePlatform;
 
 type Win = Awaited<
   ReturnType<typeof import("@tauri-apps/api/window").getCurrentWindow>

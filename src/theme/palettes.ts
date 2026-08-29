@@ -1,5 +1,46 @@
-import { APPLE_DARK, APPLE_LIGHT } from "./apple";
 import type { Shade } from "./tokens";
+
+/**
+ * The iOS system colours, kept after the Apple shell was removed.
+ *
+ * They lived in `theme/apple.ts` with the rest of that look, but they were
+ * never part of it: a palette is colour and nothing else, and this one reads
+ * perfectly well under the app's own form. The shell went; the colours are
+ * still a choice someone can make.
+ *
+ * Not oklch like the rest — these are Apple's published sRGB values, and
+ * converting them would move them.
+ */
+
+/** Dark mode: black page, elevated greys, high-contrast labels. */
+const APPLE_DARK: Shade = {
+  // systemGroupedBackground (dark) is pure black — the OLED look, and what
+  // Music, Settings and every grouped list actually sit on.
+  bg: "rgb(0 0 0)",
+  // secondarySystemGroupedBackground: what a card or list is filled with.
+  surface: "rgb(28 28 30)",
+  // tertiarySystemGroupedBackground: the row under a pressed finger.
+  surface2: "rgb(44 44 46)",
+  text: "rgb(255 255 255)",
+  // secondaryLabel — a tinted white, not a grey. iOS never uses flat grey text.
+  muted: "rgb(235 235 245 / 0.6)",
+  // separator (dark), which is translucent so it darkens whatever is under it.
+  line: "rgb(84 84 88 / 0.65)",
+  brand: "rgb(10 132 255)", // systemBlue, dark
+  brand2: "rgb(94 92 230)", // systemIndigo, dark
+};
+
+/** Light mode: the grey grouped background with white cards on top. */
+const APPLE_LIGHT: Shade = {
+  bg: "rgb(242 242 247)", // systemGroupedBackground
+  surface: "rgb(255 255 255)",
+  surface2: "rgb(242 242 247)",
+  text: "rgb(0 0 0)",
+  muted: "rgb(60 60 67 / 0.6)", // secondaryLabel
+  line: "rgb(60 60 67 / 0.29)", // separator
+  brand: "rgb(0 122 255)", // systemBlue
+  brand2: "rgb(88 86 214)", // systemIndigo
+};
 
 /**
  * Palettes control *colour* only — never form.
@@ -154,14 +195,9 @@ export const PALETTES: Record<PaletteId, Palette> = {
   /**
    * The iOS system palette, as an ordinary palette.
    *
-   * It lives here rather than only inside Apple mode so the picker keeps
-   * working while that mode is on: the mode owns the *form* and the shell, and
-   * switches to this on the way in, but colour stays the user's to change. It
-   * is also perfectly usable under the other skins, which is the argument for
-   * it being a palette in the first place.
-   *
-   * Not oklch like the rest — these are Apple's published sRGB values, and
-   * converting them would move them.
+   * It outlived the mode it arrived with, which is the argument for it having
+   * been a palette in the first place: colour was never that look's to own, and
+   * these read perfectly well under the app's own form. See `APPLE_DARK` above.
    */
   apple: {
     id: "apple",

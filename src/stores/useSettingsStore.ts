@@ -69,18 +69,8 @@ export interface ThemeState {
   density: Density;
   uiScale: number;
   /** Blurred, translucent surfaces. Costly to render; the toggle is the perf
-   *  escape — except in Apple mode, which forces it on. See `buildVars`. */
+   *  escape. See `buildVars`. */
   glass: boolean;
-  /**
-   * Apple mode. Not a skin — it replaces the palette, the skin, the shell and
-   * the player with an iOS interface. See `theme/apple.ts`.
-   *
-   * Chosen through a built-in preset rather than a switch of its own: it is one
-   * of three *looks* the app ships, not a modifier on top of the other two, and
-   * a lone toggle three sections below the looks it competes with said the
-   * opposite.
-   */
-  apple: boolean;
   /**
    * Reduce cover art to the skin's own treatment — Nit's two-ink duotone,
    * Obsidian's greyscale. Only those two ask for a filter, so this is inert
@@ -146,11 +136,6 @@ const DEFAULT_THEME: ThemeState = {
   // Off by default: `backdrop-filter` on every surface is the biggest
   // rendering cost on a software-composited desktop. Opt in, don't opt out.
   glass: false,
-  // On, and no longer a "mode": this is the app's shell now. It kept the name
-  // in the code because renaming a flag across the store, the theme engine and
-  // a stylesheet is churn without a reader — see `theme/apple.ts`, which is
-  // where the impersonation actually ended.
-  apple: true,
   // On by default so the Nit and Obsidian presets need no extra step to look
   // like themselves; inert under every other skin, which is why it costs
   // nothing to default to on.
@@ -172,120 +157,6 @@ const DEFAULT_BACKDROP: BackdropState = {
   dim: 0.55,
   saturate: 1.2,
 };
-
-/**
- * Presets that ship with the app.
- *
- * The three appearance axes are independent, and that is the point — but a
- * *designed* look is a particular combination of them, and asking the user to
- * find four settings before Obsidian looks like Obsidian would hide the design
- * behind the architecture. A preset is the one place the axes are allowed to be
- * named together, and it stays a suggestion: every switch it touches is still
- * there afterwards.
- *
- * Built-ins are not persisted. They live here so a later version can change what
- * "Obsidian" means without a migration, and so nothing the user saved can be
- * shadowed by an id we later reuse.
- */
-export const BUILTIN_PRESETS: Preset[] = [
-  {
-    // The app as it ships, and the look it is named after. Listed as a look of
-    // its own rather than assumed, because the other two replace enough — a
-    // palette, a skin, a whole shell — that "put it back" has to be one tap.
-    //
-    // It replaced "Standard", which was the old default (Aurora Glass over
-    // Midnight). That skin is gone; the palette is not, and is still one choice
-    // among fifteen below.
-    id: "builtin:nit",
-    name: "Nit",
-    builtin: true,
-    layout: "rail",
-    theme: { ...DEFAULT_THEME, overrides: {} },
-    backdrop: {
-      ...DEFAULT_BACKDROP,
-      mode: "artwork",
-      // Deep, because the interface over it is four flat inks and a bright
-      // wallpaper is the one thing that can make them look accidental. The skin
-      // also drains its colour in CSS — see `--backdrop-saturate-scale`.
-      blur: 56,
-      dim: 0.72,
-      saturate: 0,
-    },
-  },
-  {
-    id: "builtin:obsidian",
-    name: "Obsidian",
-    builtin: true,
-    layout: "rail",
-    theme: {
-      ...DEFAULT_THEME,
-      mode: "dark",
-      palette: "obsidian",
-      skin: "obsidian",
-      // The reference look. Glass stays a user-owned perf switch everywhere
-      // else, but the preset is a statement about how the mode is meant to look,
-      // and frosted is how: 30px of blur over a 26% surface.
-      glass: true,
-      accent: null,
-      // Both off: the accent is white by palette, and a sampled one would be the
-      // one colour in the interface. See `Palette.achromatic`.
-      accentFromArtwork: false,
-      apple: false,
-      density: "cozy",
-      monoArtwork: true,
-      // A preset that carried overrides would silently discard the user's own
-      // hand edits, which are theirs and not part of any look we ship.
-      overrides: {},
-    },
-    backdrop: {
-      ...DEFAULT_BACKDROP,
-      mode: "artwork",
-      blur: 64,
-      // Deeper than the default 0.55: the wallpaper is the only thing the loupe
-      // has to compete with, and at 0.55 a bright cover washes the light out.
-      dim: 0.78,
-      // Not optional. The blurred cover is a full-window field of colour, and it
-      // is the single easiest way to put colour back into a mode that rules it
-      // out — the skin also zeroes this in CSS, and both are on purpose.
-      saturate: 0,
-    },
-  },
-  {
-    id: "builtin:apple",
-    name: "Apple",
-    builtin: true,
-    layout: "rail",
-    theme: {
-      ...DEFAULT_THEME,
-      mode: "dark",
-      // The mode's own colours. It selects the palette rather than enforcing
-      // it, so the picker below still works afterwards.
-      palette: "apple",
-      apple: true,
-      // Not a choice here, and not a choice afterwards either: `buildVars`
-      // forces glass on while `apple` is set. Written true anyway so the saved
-      // shape says what the look is, and so leaving the mode does not land the
-      // user on opaque surfaces they never asked for.
-      glass: true,
-      accent: null,
-      accentFromArtwork: false,
-      // Apple mode is the one look built around the artwork's own colour;
-      // draining it is Obsidian's idea, not iOS's.
-      monoArtwork: false,
-      overrides: {},
-    },
-    backdrop: {
-      ...DEFAULT_BACKDROP,
-      mode: "artwork",
-      // Shallower and brighter than the default: the chrome here floats *over*
-      // the wallpaper with glass between, so the wallpaper is meant to be
-      // legible through it rather than pushed to the back.
-      blur: 48,
-      dim: 0.42,
-      saturate: 1.35,
-    },
-  },
-];
 
 /** Where the HUD appears, as a screen corner. */
 export type HudCorner = "tl" | "tr" | "bl" | "br";
@@ -449,7 +320,6 @@ export const useSettingsStore = create<SettingsState>()(
           density: theme.density,
           uiScale: theme.uiScale,
           glass: theme.glass,
-          apple: theme.apple,
           monoArtwork: theme.monoArtwork,
           printShift: theme.printShift,
           // Artwork accent sits under the user's own edits, above the palette.
@@ -585,14 +455,11 @@ export const useSettingsStore = create<SettingsState>()(
         },
 
         applyPreset(id) {
-          const preset =
-            get().presets.find((p) => p.id === id) ??
-            BUILTIN_PRESETS.find((p) => p.id === id);
+          const preset = get().presets.find((p) => p.id === id);
           if (!preset) return;
-          // Copied field by field, not referenced. A built-in is a module-level
-          // object shared by every window and every later `applyPreset`, so
-          // handing its `theme` straight to `set` would let the next settings
-          // change edit the preset itself.
+          // Copied field by field, not referenced: handing a saved preset's
+          // `theme` straight to `set` would let the next settings change edit
+          // the preset itself.
           set({
             theme: { ...preset.theme, overrides: { ...preset.theme.overrides } },
             backdrop: { ...preset.backdrop },
@@ -680,7 +547,7 @@ export const useSettingsStore = create<SettingsState>()(
     },
     {
       name: "cloudify.settings",
-      version: 7,
+      version: 8,
       merge: (persisted, current) => fillDefaults(current, persisted),
       // Runtime-only artwork state must not be written to disk.
       partialize: (s) => ({
@@ -772,7 +639,6 @@ export const useSettingsStore = create<SettingsState>()(
         if (from < 6 && state?.theme) {
           state.theme.palette = "signal";
           state.theme.skin = "nit";
-          state.theme.apple = false;
         }
 
         // v7: one look, and everyone lands on it.
@@ -791,8 +657,23 @@ export const useSettingsStore = create<SettingsState>()(
         if (from < 7 && state?.theme) {
           state.theme.palette = "ember";
           state.theme.skin = "one";
-          state.theme.apple = true;
           state.theme.accentFromArtwork = true;
+        }
+
+        // v8: the column shell is gone and the player is a bar again.
+        //
+        // v7 landed every install on the column shell, but not on purpose: it
+        // was settling the *look*, and it carried the shell along because one
+        // flag happened to hold both. A look is a palette and a skin. Where the
+        // player stands is neither, and nobody chose the column.
+        //
+        // The flag is deleted rather than set: there is no longer a field for
+        // it to be, and a saved `apple: true` outliving the shell it named is
+        // how a setting comes back from the dead. Everything else the user
+        // chose — palette, skin, accent, layout, audio — is left alone.
+        if (from < 8 && state?.theme) {
+          delete state.theme.apple;
+          for (const preset of state.presets ?? []) delete preset?.theme?.apple;
         }
 
         return state as never;
@@ -812,7 +693,6 @@ export const useSettingsStore = create<SettingsState>()(
     density: s.theme.density,
     uiScale: s.theme.uiScale,
     glass: s.theme.glass,
-    apple: s.theme.apple,
     monoArtwork: s.theme.monoArtwork,
     printShift: s.theme.printShift,
     overrides: s.theme.overrides,
