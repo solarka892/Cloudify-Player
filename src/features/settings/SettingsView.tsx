@@ -898,7 +898,11 @@ function Slider({
   onChange: (value: number) => void;
 }) {
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2.5">
+      {/* 112px, not 160. A settings row is a label and a control, and the
+          control was running most of the width of the panel for a value with
+          five useful positions in it. Narrow enough to read as a control beside
+          its own name. */}
       <input
         type="range"
         min={min}
@@ -906,9 +910,13 @@ function Slider({
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.currentTarget.value))}
-        className="h-1 w-40 cursor-pointer accent-[var(--brand)]"
+        className="h-1 w-28 cursor-pointer accent-[var(--brand)]"
       />
-      <span className="w-12 text-right font-mono text-xs text-muted-foreground">
+      {/* `.readout` rather than a bare mono class: the project keeps JetBrains
+          Mono to digits and reaches it through this one name, so a font change
+          lands everywhere at once. `tabular-nums` comes with it, which is what
+          stops the row twitching as the number changes width. */}
+      <span className="readout w-10 text-right text-xs text-muted-foreground">
         {value}
         {suffix}
       </span>

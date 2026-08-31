@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import {
@@ -141,7 +141,7 @@ export function AudioSettings() {
               step={1}
               value={audio.preampDb}
               onChange={(e) => setAudio({ preampDb: Number(e.currentTarget.value) })}
-              className="h-1 flex-1 cursor-pointer accent-[var(--brand)]"
+              className="ml-auto h-1 w-28 cursor-pointer accent-[var(--brand)]"
             />
             <span className="w-12 text-right font-mono text-xs tabular-nums text-muted-foreground">
               {audio.preampDb > 0 ? `+${audio.preampDb}` : audio.preampDb} dB
@@ -178,7 +178,7 @@ export function AudioSettings() {
               step={0.05}
               value={audio.balance}
               onChange={(e) => setAudio({ balance: Number(e.currentTarget.value) })}
-              className="h-1 w-40 cursor-pointer accent-[var(--brand)]"
+              className="h-1 w-28 cursor-pointer accent-[var(--brand)]"
             />
             <span className="w-12 text-right font-mono text-xs tabular-nums text-muted-foreground">
               {audio.balance === 0
@@ -204,7 +204,7 @@ export function AudioSettings() {
               step={250}
               value={fadeMs}
               onChange={(e) => setFadeMs(Number(e.currentTarget.value))}
-              className="h-1 w-40 cursor-pointer accent-[var(--brand)]"
+              className="h-1 w-28 cursor-pointer accent-[var(--brand)]"
             />
             <span className="w-12 text-right font-mono text-xs tabular-nums text-muted-foreground">
               {(fadeMs / 1000).toFixed(2)}s
@@ -273,9 +273,26 @@ function Diagnostics() {
       </div>
 
       {lines.length > 0 && (
-        <pre className="overflow-x-auto rounded-[var(--radius-control)] border border-border bg-card p-3 font-mono text-[11px] leading-relaxed text-muted-foreground">
-          {lines.join("\n")}
-        </pre>
+        <div className="relative">
+          {/* The report is read once and then it is in the way — it is the
+              longest thing on the screen and it answers a question that has
+              already been answered. Running the check again replaces it, but
+              until now there was no way to simply be done with it short of
+              leaving the section. */}
+          <button
+            onClick={() => setLines([])}
+            aria-label={t.player.close}
+            title={t.player.close}
+            className="absolute right-2 top-2 rounded-[var(--radius-control)] p-1 text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+          {/* Room on the right for the button, so a long line cannot run under
+              it — the widest rows here are URLs and they do not wrap. */}
+          <pre className="overflow-x-auto rounded-[var(--radius-control)] border border-border bg-card p-3 pr-10 font-mono text-[11px] leading-relaxed text-muted-foreground">
+            {lines.join("\n")}
+          </pre>
+        </div>
       )}
     </div>
   );

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { Minus, Plus, Trash2 } from "lucide-react";
 import { t } from "@/i18n";
 import { clock } from "@/hooks/useHotkeys";
 import { diaryClear, diaryList, type DiaryEntry } from "@/lib/store";
@@ -91,6 +91,16 @@ export function DiaryView() {
 }
 
 function Entries({ entries }: { entries: DiaryEntry[] }) {
+  /**
+   * Which groups are open. Empty to begin with, so everything starts folded.
+   *
+   * A day is twenty or forty rows and the diary keeps months of them: unfolded
+   * by default it opens as a wall with no shape, and the dates — the thing
+   * anyone is actually scanning for — are lost among the rows they head. Folded,
+   * the screen is a list of days, which is what the grouping was for.
+   */
+  const [open, setOpen] = useState<Set<string>>(new Set());
+
   // Day, then part of the day. The grouping *is* the feature: "what was I
   // listening to on the night of the 14th" is how anyone looks for a track they
   // half remember, and a flat reverse-chronological list cannot answer it.
@@ -122,52 +132,94 @@ function Entries({ entries }: { entries: DiaryEntry[] }) {
 
   return (
     <div>
-      {[...groups.values()].map((group) => (
-        <div
-          key={`${group.day}-${group.part}`}
-          className="grid grid-cols-[5rem_minmax(0,1fr)] gap-4 border-b border-border py-4"
-        >
-          {/* The date, large, in the left column: it is the thing you scan for. */}
-          <div className="label leading-relaxed text-muted-foreground">
-            <b className="block text-[1.375rem] font-semibold tracking-tight text-foreground">
-              {group.day}
-            </b>
-            {group.month} · {group.part}
-          </div>
-          <div className="min-w-0">
-            {group.entries.map((entry) => (
-              <div
-                key={entry.id}
-                className="flex items-baseline gap-2.5 py-1 text-sm"
-              >
-                <span className="readout w-10 shrink-0 text-xs text-muted-foreground">
-                  {new Date(entry.started_at * 1000).toLocaleTimeString(
-                    undefined,
-                    { hour: "2-digit", minute: "2-digit" },
-                  )}
-                </span>
-                <span className="min-w-0 truncate">{entry.title}</span>
-                {entry.artist && (
-                  <span className="min-w-0 truncate text-muted-foreground">
-                    {entry.artist}
-                  </span>
-                )}
-                <span className="readout ml-auto shrink-0 text-xs text-muted-foreground">
-                  {/* `marked` cannot be written any more — marks went with Nit
-                      — but rows that already say it are still rows. */}
-                  {entry.outcome === "skipped"
-                    ? t.diary.skipped.replace("{time}", clock(entry.position_ms))
-                    : entry.outcome === "marked"
-                      ? t.diary.marked
-                      : entry.outcome === "liked"
-                        ? t.diary.liked
-                        : t.diary.played}
-                </span>
+      {[...groups.entries()].map(([key, group]) => {
+        const isOpen = open.has(key);
+        return (
+          <div key={key} className="border-b border-border">
+            <button
+              onClick={() =>
+                setOpen((prev) => {
+                  const next = new Set(prev);
+                  if (!next.delete(key)) next.add(key);
+                  return next;
+                })
+              }
+              aria-expanded={isOpen}
+              className="grid w-full grid-cols-[5rem_minmax(0,1fr)_auto] items-center gap-4 rounded-[var(--radius-control)] py-4 text-left transition-colors duration-[var(--motion-fast)] hover:bg-accent"
+            >
+              {/* The date, large, in the left column: it is the thing you scan
+                  for, and folded it is nearly all there is to scan. */}
+              <div className="label leading-relaxed text-muted-foreground">
+                <b className="block text-[1.375rem] font-semibold tracking-tight text-foreground">
+                  {group.day}
+                </b>
+                {group.month} · {group.part}
               </div>
-            ))}
+              <span className="readout text-xs text-muted-foreground">
+                {group.entries.length}
+              </span>
+              <span className="pr-2 text-muted-foreground">
+                {isOpen ? (
+                  <Minus className="h-4 w-4" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+              </span>
+            </button>
+
+            {/* Rows to no rows, animated.
+                A height cannot be transitioned from `auto`, but a grid track
+                can: `1fr` to `0fr` is two numbers, and the row inside is what
+                gets squeezed. The `min-h-0` is what lets it actually reach
+                zero — without it the content's own height holds the track
+                open. */}
+            <div
+              className={cn(
+                "grid transition-[grid-template-rows] duration-[var(--motion-slow)] ease-out",
+                isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+              )}
+            >
+              <div className="min-h-0 overflow-hidden">
+                <div className="pb-4 pl-[6rem]">
+                  {group.entries.map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="flex items-baseline gap-2.5 py-1 text-sm"
+                    >
+                      <span className="readout w-10 shrink-0 text-xs text-muted-foreground">
+                        {new Date(entry.started_at * 1000).toLocaleTimeString(
+                          undefined,
+                          { hour: "2-digit", minute: "2-digit" },
+                        )}
+                      </span>
+                      <span className="min-w-0 truncate">{entry.title}</span>
+                      {entry.artist && (
+                        <span className="min-w-0 truncate text-muted-foreground">
+                          {entry.artist}
+                        </span>
+                      )}
+                      <span className="readout ml-auto shrink-0 pr-2 text-xs text-muted-foreground">
+                        {/* `marked` cannot be written any more — marks went with
+                            Nit — but rows that already say it are still rows. */}
+                        {entry.outcome === "skipped"
+                          ? t.diary.skipped.replace(
+                              "{time}",
+                              clock(entry.position_ms),
+                            )
+                          : entry.outcome === "marked"
+                            ? t.diary.marked
+                            : entry.outcome === "liked"
+                              ? t.diary.liked
+                              : t.diary.played}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
