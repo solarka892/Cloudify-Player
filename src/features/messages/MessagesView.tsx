@@ -6,7 +6,6 @@ import {
   Plus,
   RefreshCw,
   Search,
-  Send,
   Trash2,
   User as UserIcon,
   X,
@@ -38,8 +37,6 @@ export function MessagesView() {
   const markRead = useMessagesStore((s) => s.markRead);
   const remove = useMessagesStore((s) => s.remove);
 
-  const pendingThread = useNavStore((s) => s.pendingThread);
-  const clearPendingThread = useNavStore((s) => s.clearPendingThread);
 
   const [selected, setSelected] = useState<User | null>(null);
   const [composing, setComposing] = useState(false);
@@ -51,11 +48,6 @@ export function MessagesView() {
   }, [load]);
 
   // "Message" on a profile lands here with someone already chosen.
-  useEffect(() => {
-    if (!pendingThread) return;
-    setSelected(pendingThread);
-    clearPendingThread();
-  }, [pendingThread, clearPendingThread]);
 
   // Opening a thread is what marks it read, the same as everywhere else.
   useEffect(() => {
@@ -281,11 +273,8 @@ function Avatar({ url, size = "md" }: { url: string | null; size?: "sm" | "md" }
 function Thread({ user, onBack }: { user: User; onBack?: () => void }) {
   const messages = useMessagesStore((s) => s.threads[user.id]);
   const loading = useMessagesStore((s) => s.loadingThread === user.id);
-  const sending = useMessagesStore((s) => s.sending === user.id);
   const loadThread = useMessagesStore((s) => s.loadThread);
-  const send = useMessagesStore((s) => s.send);
   const openUser = useNavStore((s) => s.openUser);
-  const [draft, setDraft] = useState("");
   const bottom = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -297,19 +286,6 @@ function Thread({ user, onBack }: { user: User; onBack?: () => void }) {
     bottom.current?.scrollIntoView({ block: "end" });
   }, [messages]);
 
-  async function submit() {
-    const text = draft.trim();
-    if (!text || sending) return;
-    // Cleared up front: leaving the text in the box while the request runs
-    // invites a double send, and the store restores nothing on failure anyway.
-    setDraft("");
-    try {
-      await send(user, text);
-    } catch (e) {
-      setDraft(text);
-      toast(`${t.messages.sendFailed}: ${e}`, "error");
-    }
-  }
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
@@ -351,29 +327,17 @@ function Thread({ user, onBack }: { user: User; onBack?: () => void }) {
         <div ref={bottom} />
       </div>
 
-      <form
-        className="flex items-center gap-2 border-t border-border pt-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void submit();
-        }}
-      >
-        <input
-          value={draft}
-          onChange={(e) => setDraft(e.currentTarget.value)}
-          placeholder={t.messages.placeholder}
-          className="min-w-0 flex-1 rounded-[var(--radius-control)] border border-border bg-card px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring"
-        />
-        <button
-          type="submit"
-          disabled={sending || !draft.trim()}
-          aria-label={t.messages.send}
-          className="brand-gradient flex shrink-0 items-center gap-1.5 rounded-[var(--radius-control)] px-3 py-2 text-sm font-semibold text-brand-foreground transition-opacity duration-[var(--motion-fast)] hover:opacity-90 disabled:opacity-50"
-        >
-          <Send className="h-4 w-4" />
-          {sending ? t.messages.sending : t.messages.send}
-        </button>
-      </form>
+      {/* No composer.
+
+          Sending never worked: the write route SoundCloud's own web app uses
+          for this is not one an unofficial client gets to call, so every send
+          failed after the message had already been typed. A field that takes
+          your words and loses them is worse than no field — the conversations
+          are still worth reading, and this says which half of the screen is
+          real. */}
+      <p className="border-t border-border pt-3 text-xs text-muted-foreground">
+        {t.messages.readOnly}
+      </p>
     </div>
   );
 }

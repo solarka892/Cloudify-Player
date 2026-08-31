@@ -25,6 +25,8 @@ import {
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
 import { toast } from "@/stores/useToastStore";
 import { t } from "@/i18n";
+import { asFailure } from "@/lib/failure";
+import { explain } from "@/lib/errorText";
 
 /**
  * Playback: what's queued, in what order, and what the element is doing.
@@ -635,7 +637,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
       // that will not start does nothing at all: no sound, no reason. The
       // message matters — a throttled client_id, a dead track and a blocked
       // autoplay all land here and need different responses.
-      toast(`${t.player.playbackFailed}: ${e}`, "error");
+      toast(`${t.player.playbackFailed}: ${explain(asFailure(e)).what}`, "error");
     }
   }
 
@@ -721,7 +723,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
         isPlaying: false,
         wantsPlay: false,
       });
-      toast(`${t.player.playbackFailed}: ${e}`, "error");
+      toast(`${t.player.playbackFailed}: ${explain(asFailure(e)).what}`, "error");
     }
   }
 

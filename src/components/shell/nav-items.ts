@@ -1,7 +1,7 @@
 import {
   Bell,
-  Flag,
   Home,
+  Bookmark,
   Library,
   Mail,
   Search,
@@ -22,7 +22,7 @@ export type ViewId =
   | "home"
   | "search"
   | "library"
-  | "nit"
+  | "diary"
   | "messages"
   | "notifications"
   | "profile"
@@ -44,9 +44,9 @@ export const NAV_ITEMS: NavItem[] = [
   { id: "library", get label() {
     return t.nav.library;
   }, Icon: Library },
-  { id: "nit", get label() {
-    return t.nav.nit;
-  }, Icon: Flag },
+  { id: "diary", get label() {
+    return t.nav.diary;
+  }, Icon: Bookmark },
   { id: "messages", get label() {
     return t.nav.messages;
   }, Icon: Mail },

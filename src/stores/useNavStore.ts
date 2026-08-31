@@ -67,30 +67,30 @@ interface NavState {
    * A conversation the messages view should open when it mounts. Set by the
    * "Message" button on a profile, cleared once the view has honoured it.
    */
-  pendingThread: User | null;
   /**
    * A query the search view should run when it mounts. Set by tag chips and
    * by "find more like this" affordances elsewhere in the app.
    */
   pendingQuery: string | null;
   /**
-   * A tab the Nit view should open on. Set by anything elsewhere in the app
-   * that has said "there is something here" and needs to be able to show it —
-   * the library's duplicates strip is the first.
+   * The library tab something sent the user to, if it named one.
+   *
+   * Same shape and the same reason as `pendingQuery`: the library opens on the
+   * tab you last left it on, so a link that means "the history, specifically"
+   * has nowhere to say that. Without it every "see all" on the home screen
+   * landed on likes, whatever it was written under.
    */
-  pendingNitTab: string | null;
+  pendingLibrarySection: string | null;
 
   setView: (view: ViewId) => void;
-  /** Go to Nit, on a named tab. */
-  openNit: (tab: string) => void;
+  /** Go to the library, on a named tab. */
+  openLibrary: (section: string) => void;
   openSearch: (query: string) => void;
   openPlaylist: (playlist: Playlist) => void;
   openUser: (user: User) => void;
   openTrack: (track: Track) => void;
-  openThread: (user: User) => void;
-  clearPendingThread: () => void;
   clearPendingQuery: () => void;
-  clearPendingNitTab: () => void;
+  clearPendingLibrarySection: () => void;
   /**
    * Go back one step. Returns false when there was nowhere to go — which is what
    * tells Android's back gesture it may leave the app.
@@ -145,14 +145,14 @@ export const useNavStore = create<NavState>((set, get) => {
     future: [],
     nowPlaying: false,
     searchFocusToken: 0,
-    pendingThread: null,
     pendingQuery: null,
-    pendingNitTab: null,
+    pendingLibrarySection: null,
 
     // Leaving a tab abandons whatever was drilled into on it.
     setView: (view) => go({ view, detail: null }),
 
-    openNit: (tab) => go({ view: "nit", detail: null, pendingNitTab: tab }),
+    openLibrary: (section) =>
+      go({ view: "library", detail: null, pendingLibrarySection: section }),
 
     openSearch: (query) =>
       go({ view: "search", detail: null, pendingQuery: query }),
@@ -190,11 +190,8 @@ export const useNavStore = create<NavState>((set, get) => {
         },
       }),
 
-    openThread: (user) =>
-      go({ view: "messages", detail: null, pendingThread: user }),
-    clearPendingThread: () => set({ pendingThread: null }),
     clearPendingQuery: () => set({ pendingQuery: null }),
-    clearPendingNitTab: () => set({ pendingNitTab: null }),
+    clearPendingLibrarySection: () => set({ pendingLibrarySection: null }),
 
     back() {
       // The full-screen player is the topmost thing on screen and the one every

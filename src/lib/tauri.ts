@@ -581,10 +581,6 @@ export function scConversation(
   return invoke<Message[]>("sc_conversation", { userId, limit });
 }
 
-/** Send a message; creates the thread if there isn't one. Requires login. */
-export function scSendMessage(userId: number, content: string): Promise<void> {
-  return invoke<void>("sc_send_message", { userId, content });
-}
 
 /** Mark a thread read or unread. Requires login. */
 export function scMarkConversation(

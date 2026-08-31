@@ -3,7 +3,9 @@ import { Play, Shuffle } from "lucide-react";
 import { scMixedSelections, scStream, type Selection, type Track } from "@/lib/tauri";
 import { PlaylistTile, SectionHeader, TileGrid, TrackTile } from "@/components/ArtTile";
 import { useLibraryStore } from "@/stores/useLibraryStore";
+import { useNavStore } from "@/stores/useNavStore";
 import { usePlayerStore } from "@/stores/usePlayerStore";
+import { useSettingsStore } from "@/stores/useSettingsStore";
 import { t } from "@/i18n";
 import { ArtFallback } from "@/components/ArtFallback";
 import { artwork, cn } from "@/lib/utils";
@@ -33,13 +35,16 @@ function shuffled<T>(items: T[]): T[] {
   return out;
 }
 
-export function HomeView({
-  userId,
-  onNavigate,
-}: {
-  userId: number;
-  onNavigate: (view: "library" | "search") => void;
-}) {
+export function HomeView({ userId }: { userId: number }) {
+  /**
+   * Straight to the store, where a view used to be handed down as a callback.
+   *
+   * Every "see all" on this screen means a particular tab of the library, and
+   * the prop could only name the view — so all three said "the library" and the
+   * library opens on likes. The one under "recently played" therefore showed
+   * likes, which is the one thing it does not mean.
+   */
+  const openLibrary = useNavStore((s) => s.openLibrary);
   const likes = useLibraryStore((s) => s.likes);
   const own = useLibraryStore((s) => s.ownPlaylists);
   const history = useLibraryStore((s) => s.history);
@@ -74,7 +79,25 @@ export function HomeView({
   }, [userId]);
 
   const tracks = likes.items;
-  const hero = tracks[0];
+  /**
+   * Whose cover the panel wears.
+   *
+   * The playing track's, when the app is already taking its colour from the
+   * cover — the setting is "the interface follows what is playing", and a
+   * banner that is the largest colour on the screen not following it was the
+   * setting half-applied. It sat on the first liked track instead: a record
+   * from whenever, picked by sort order, that the panel then announced in
+   * display type.
+   *
+   * With the setting off, or with nothing playing, it goes back to that first
+   * liked track — the panel still has to be *some* colour, and the alternative
+   * is the flat one below.
+   */
+  const playing = usePlayerStore((s) => s.current);
+  const fromArtwork = useSettingsStore((s) => s.theme.accentFromArtwork);
+  const hero = (fromArtwork && playing?.artwork_url ? playing : tracks[0]) as
+    | typeof playing
+    | undefined;
 
   function playAll(shuffle: boolean) {
     if (tracks.length === 0) return;
@@ -105,7 +128,7 @@ export function HomeView({
         on; darkening the whole thing evenly would take the colour back out
         again, which is the entire point of the panel.
       */}
-      <section className="relative isolate flex min-h-[15rem] flex-col justify-end overflow-hidden rounded-[var(--radius-hero)] p-7">
+      <section className="relative isolate flex min-h-[11rem] flex-col justify-end overflow-hidden rounded-[var(--radius-hero)] p-6">
         {hero?.artwork_url && (
           <>
             <img
@@ -178,7 +201,7 @@ export function HomeView({
         <section className="stack">
           <SectionHeader
             title={t.home.recent}
-            action={{ label: t.home.seeAll, onClick: () => onNavigate("library") }}
+            action={{ label: t.home.seeAll, onClick: () => openLibrary("history") }}
           />
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
             {history.items.slice(0, QUICK).map((track) => (
@@ -199,7 +222,7 @@ export function HomeView({
       {tracks.length > 0 && (
         <Row
           title={t.home.fromLikes}
-          onSeeAll={() => onNavigate("library")}
+          onSeeAll={() => openLibrary("likes")}
           tracks={tracks.slice(0, ROW)}
           queue={tracks}
         />
@@ -209,7 +232,7 @@ export function HomeView({
         <section className="stack">
           <SectionHeader
             title={t.library.ownPlaylists}
-            action={{ label: t.home.seeAll, onClick: () => onNavigate("library") }}
+            action={{ label: t.home.seeAll, onClick: () => openLibrary("playlists") }}
           />
           <TileGrid>
             {own.items.slice(0, ROW).map((playlist, i) => (

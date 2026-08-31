@@ -23,13 +23,11 @@ export function DownloadAllButton({
   label?: string;
 }) {
   const ids = useDownloadsStore((s) => s.ids);
-  const active = useDownloadsStore((s) => s.active);
   const running = useDownloadsStore((s) => s.bulkRunning);
   const startBulk = useDownloadsStore((s) => s.startBulk);
   const stopBulk = useDownloadsStore((s) => s.stopBulk);
 
   const pending = tracks.filter((track) => !ids.has(track.id));
-  const inFlight = Object.keys(active).length;
 
   async function run() {
     if (pending.length === 0) return;
@@ -61,7 +59,6 @@ export function DownloadAllButton({
       >
         <Square className="h-3.5 w-3.5 fill-current" />
         <span className="hidden md:inline">{t.downloads.stop}</span>
-        {inFlight > 0 && <span className="tabular-nums opacity-70">·</span>}
       </button>
     );
   }

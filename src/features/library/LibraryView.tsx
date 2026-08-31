@@ -25,11 +25,9 @@ import { FailureNotice } from "@/components/FailureNotice";
 import { toastFailure } from "@/lib/notify";
 import { t } from "@/i18n";
 import { ViewHead } from "@/components/ViewHead";
-import { Strip, StripAction } from "@/components/Strip";
+import { Strip } from "@/components/Strip";
 import { matchedByFolding, matches } from "@/lib/fold";
-import { dupesHide } from "@/lib/store";
 import { useNavStore } from "@/stores/useNavStore";
-import { useNitStore } from "@/stores/useNitStore";
 import { toast } from "@/stores/useToastStore";
 import { scrollViewToTop } from "@/lib/scroll";
 import { artwork, cn } from "@/lib/utils";
@@ -73,13 +71,11 @@ const SECTIONS: { id: SectionId; label: string }[] = [
 ];
 
 /** Case-insensitive substring match over a title-ish field. */
-function useFilter<T>(items: T[], key: (item: T) => string) {
-  const [query, setQuery] = useState("");
+function useFilter<T>(items: T[], key: (item: T) => string, query: string) {
   const needle = query.trim().toLowerCase();
-  const filtered = needle
+  return needle
     ? items.filter((item) => key(item).toLowerCase().includes(needle))
     : items;
-  return { query, setQuery, filtered };
 }
 
 /** Start a list on shuffle without touching the shuffle toggle first. */
@@ -111,28 +107,43 @@ function ShufflePlayButton({ tracks }: { tracks: Track[] }) {
   );
 }
 
-/** Search box shown above a filterable section. */
+/**
+ * The library's search box. One of them, in the tab row.
+ *
+ * It used to be six — one per section, each with its own state and its own
+ * placeholder naming what that section held. That put the field in a different
+ * place on every tab, below the heading rather than beside the tabs, and said
+ * six times what the tabs already say once.
+ *
+ * No placeholder now: the magnifier is the label, and the tab beside it is the
+ * answer to "search what".
+ */
 function FilterBox({
   value,
   onChange,
-  placeholder,
 }: {
   value: string;
   onChange: (value: string) => void;
-  placeholder: string;
 }) {
   return (
-    // A floor as well as a share of the row: `flex-1` alone let the buttons
-    // beside it shrink the field until only its own magnifier fitted. Below the
-    // floor it wraps onto its own line instead, which is still usable.
-    <div className="relative min-w-[9rem] flex-1">
+    <div
+      // The nudge that sits the field on the tabs' underline is a *margin*, not
+      // padding. Padding grows the box the magnifier below centres itself in,
+      // which put it three pixels low — nearer the field's bottom edge than its
+      // top, in a control small enough for three pixels to show.
+      className="relative ml-auto mb-1.5 w-48 shrink-0 self-end md:w-56"
+    >
       <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
       <input
         value={value}
         onChange={(e) => onChange(e.currentTarget.value)}
-        placeholder={placeholder}
+        aria-label={t.nav.search}
         spellCheck={false}
-        className="w-full rounded-[var(--radius-control)] border border-border bg-card py-1.5 pl-8 pr-2 text-sm outline-none transition-[box-shadow] duration-[var(--motion-fast)] focus:ring-1 focus:ring-ring"
+        // No fill, which is what makes it one of this row rather than a hole
+        // in it: the buttons beside it are a border and nothing else, and the
+        // wallpaper behind the page shows through all three. `bg-card` here was
+        // an opaque black box against two translucent controls.
+        className="w-full rounded-[var(--radius-control)] border border-border bg-transparent py-1.5 pl-8 pr-2 text-xs outline-none transition-[box-shadow] duration-[var(--motion-fast)] focus:ring-1 focus:ring-ring"
       />
     </div>
   );
@@ -140,11 +151,33 @@ function FilterBox({
 
 export function LibraryView({ userId }: { userId: number }) {
   const [section, setSection] = useState<SectionId>("likes");
+  /**
+   * One query for the whole library, held here because this is what owns the
+   * tabs — and the field sits in their row now rather than under each
+   * section's heading.
+   */
+  const [query, setQuery] = useState("");
 
-  // A new list starts at its own top, not at the previous one's offset.
+  // A new list starts at its own top, not at the previous one's offset — and
+  // with an empty field, because a filter left over from the tab before it
+  // looks like an empty section.
   useEffect(() => {
     scrollViewToTop();
+    setQuery("");
   }, [section]);
+
+  // Something elsewhere said "the history, specifically" — see `openLibrary`.
+  // Consumed on arrival, so coming back here later lands on the tab you left
+  // rather than on the one a link sent you to once.
+  const pendingSection = useNavStore((s) => s.pendingLibrarySection);
+  const clearPendingSection = useNavStore((s) => s.clearPendingLibrarySection);
+  useEffect(() => {
+    if (!pendingSection) return;
+    if (SECTIONS.some((s) => s.id === pendingSection)) {
+      setSection(pendingSection as SectionId);
+    }
+    clearPendingSection();
+  }, [pendingSection, clearPendingSection]);
 
   return (
     <div className="flex w-full flex-col gap-3">
@@ -169,47 +202,41 @@ export function LibraryView({ userId }: { userId: number }) {
             <span className="label">{s.label}</span>
           </button>
         ))}
+        <FilterBox value={query} onChange={setQuery} />
       </nav>
 
       <div key={section} className="view-enter">
-      {section === "likes" && <LikesSection userId={userId} />}
-      {section === "playlists" && <PlaylistsSection userId={userId} albums={false} />}
-      {section === "albums" && <PlaylistsSection userId={userId} albums />}
-      {section === "reposts" && <RepostsSection userId={userId} />}
-      {section === "following" && <FollowingSection userId={userId} />}
+      {section === "likes" && <LikesSection userId={userId} query={query} />}
+      {section === "playlists" && <PlaylistsSection userId={userId} albums={false} query={query} />}
+      {section === "albums" && <PlaylistsSection userId={userId} albums query={query} />}
+      {section === "reposts" && <RepostsSection userId={userId} query={query} />}
+      {section === "following" && <FollowingSection userId={userId} query={query} />}
       {section === "stations" && <StationsSection userId={userId} />}
-      {section === "history" && <HistorySection userId={userId} />}
-      {section === "downloads" && <DownloadsSection />}
+      {section === "history" && <HistorySection userId={userId} query={query} />}
+      {section === "downloads" && <DownloadsSection query={query} />}
       </div>
     </div>
   );
 }
 
-function LikesSection({ userId }: { userId: number }) {
+function LikesSection({ userId, query }: { userId: number; query: string }) {
   const likes = useLibraryStore((s) => s.likes);
   const load = useLibraryStore((s) => s.loadLikes);
   const refresh = useLibraryStore((s) => s.refreshLikes);
-  const rowGone = useNitStore((s) => s.rowGone);
-  const dupes = useNitStore((s) => s.dupes);
-  const loadDupes = useNitStore((s) => s.loadDupes);
-  const openNit = useNavStore((s) => s.openNit);
-  const [hidden, setHidden] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     void load(userId);
   }, [userId, load]);
 
-  const [query, setQuery] = useState("");
   // Transliterated, and over the list already on screen: `vyazki` finds «Вязки»
   // with the network off, before the mirror has caught up, and without a round
   // trip per keystroke. Same folding the store's index uses — see `lib/fold`.
   const filtered = useMemo(() => {
-    const shown = likes.items.filter((track) => !hidden.has(track.id));
-    if (!query.trim()) return shown;
-    return shown.filter((track) =>
+    if (!query.trim()) return likes.items;
+    return likes.items.filter((track) =>
       matches(query, `${track.title} ${track.artist ?? ""}`),
     );
-  }, [likes.items, query, hidden]);
+  }, [likes.items, query]);
 
   // Worth saying out loud: this is the one moment the transliteration is
   // visible, and an interface that does it silently teaches nobody it can.
@@ -225,8 +252,6 @@ function LikesSection({ userId }: { userId: number }) {
     [filtered, query],
   );
 
-  const gone = filtered.filter((track) => rowGone[track.id]).length;
-  const duplicates = dupes.reduce((sum, group) => sum + group.others.length, 0);
   const totalMs = likes.items.reduce((sum, track) => sum + track.duration, 0);
 
   return (
@@ -240,13 +265,6 @@ function LikesSection({ userId }: { userId: number }) {
               .replace("{hours}", String(Math.round(totalMs / 3_600_000)))}
           </>
         }
-        actions={
-          <FilterBox
-            value={query}
-            onChange={setQuery}
-            placeholder={t.library.searchOffline}
-          />
-        }
       />
 
       {transliterated.length > 0 && (
@@ -256,49 +274,7 @@ function LikesSection({ userId }: { userId: number }) {
         </Strip>
       )}
 
-      {duplicates > 0 && (
-        <Strip
-          actions={
-            <>
-              {/* Look before you leap. The other button hides tracks and cannot
-                  be undone from here, and until now the strip offered that
-                  without ever saying *which* tracks — the one thing anyone
-                  would want to know first. Nit's duplicates tab already lists
-                  every group with its keeper, so this points at it rather than
-                  building a second view of the same thing. */}
-              <StripAction onClick={() => openNit("dupes")}>
-                {t.dupes.review}
-              </StripAction>
-              <StripAction
-                primary
-                onClick={() => {
-                  const ids = dupes.flatMap((g) => g.others.map((o) => o.id));
-                  void dupesHide(ids).then(() => {
-                    setHidden(new Set(ids));
-                    toast(
-                      t.dupes.hidden.replace("{n}", String(ids.length)),
-                      "success",
-                    );
-                    void loadDupes();
-                  });
-                }}
-              >
-                {t.dupes.keepOldest}
-              </StripAction>
-            </>
-          }
-        >
-          <b>{t.dupes.found.replace("{n}", String(duplicates))}</b>{" "}
-          <span className="text-muted-foreground">{t.dupes.hiddenHint}</span>
-        </Strip>
-      )}
 
-      {gone > 0 && (
-        <Strip tone="mark">
-          <b>{t.gone.count.replace("{n}", String(gone))}</b>{" "}
-          <span className="text-muted-foreground">{t.gone.hint}</span>
-        </Strip>
-      )}
 
       <Shell
         section={likes}
@@ -322,9 +298,11 @@ function LikesSection({ userId }: { userId: number }) {
 function PlaylistsSection({
   userId,
   albums,
+  query,
 }: {
   userId: number;
   albums: boolean;
+  query: string;
 }) {
   const own = useLibraryStore((s) => s.ownPlaylists);
   const liked = useLibraryStore((s) => s.likedPlaylists);
@@ -335,7 +313,6 @@ function PlaylistsSection({
     void load(userId);
   }, [userId, load]);
 
-  const [query, setQuery] = useState("");
   const needle = query.trim().toLowerCase();
   const match = (p: { title: string; owner: string | null }) =>
     !needle ||
@@ -350,13 +327,6 @@ function PlaylistsSection({
       count={mine.length + theirs.length}
       onRefresh={() => void refresh(userId)}
       emptyLabel={t.library.noPlaylists}
-      tools={
-        <FilterBox
-          value={query}
-          onChange={setQuery}
-          placeholder={t.library.searchPlaylists}
-        />
-      }
     >
       <div className="flex flex-col gap-4">
         {mine.length > 0 && (
@@ -386,7 +356,7 @@ function PlaylistsSection({
  * Fetched here rather than read from `useRepostStore`: that store keeps ids so
  * the repost buttons know their state, not the objects a list needs.
  */
-function RepostsSection({ userId }: { userId: number }) {
+function RepostsSection({ userId, query }: { userId: number; query: string }) {
   const [state, setState] = useState<{
     tracks: Track[];
     playlists: Playlist[];
@@ -419,8 +389,10 @@ function RepostsSection({ userId }: { userId: number }) {
     fetchReposts();
   }, [fetchReposts]);
 
-  const { query, setQuery, filtered } = useFilter(state.tracks, (t) =>
-    `${t.title} ${t.artist ?? ""}`,
+  const filtered = useFilter(
+    state.tracks,
+    (t) => `${t.title} ${t.artist ?? ""}`,
+    query,
   );
 
   return (
@@ -431,11 +403,6 @@ function RepostsSection({ userId }: { userId: number }) {
       emptyLabel={t.library.noReposts}
       tools={
         <>
-          <FilterBox
-            value={query}
-            onChange={setQuery}
-            placeholder={t.library.searchTracks}
-          />
           <ShufflePlayButton tracks={filtered} />
           <DownloadAllButton tracks={filtered} />
         </>
@@ -457,7 +424,7 @@ function RepostsSection({ userId }: { userId: number }) {
 }
 
 /** Who the user follows. The follow buttons live on the rows themselves. */
-function FollowingSection({ userId }: { userId: number }) {
+function FollowingSection({ userId, query }: { userId: number; query: string }) {
   const followings = useLibraryStore((s) => s.followings);
   const load = useLibraryStore((s) => s.loadFollowings);
   const refresh = useLibraryStore((s) => s.refreshFollowings);
@@ -466,10 +433,7 @@ function FollowingSection({ userId }: { userId: number }) {
     void load(userId);
   }, [userId, load]);
 
-  const { query, setQuery, filtered } = useFilter(
-    followings.items,
-    (u) => u.username,
-  );
+  const filtered = useFilter(followings.items, (u) => u.username, query);
 
   return (
     <Shell
@@ -477,20 +441,13 @@ function FollowingSection({ userId }: { userId: number }) {
       count={filtered.length}
       onRefresh={() => void refresh(userId)}
       emptyLabel={t.library.noFollowing}
-      tools={
-        <FilterBox
-          value={query}
-          onChange={setQuery}
-          placeholder={t.library.searchPeople}
-        />
-      }
     >
       <UserList users={filtered} />
     </Shell>
   );
 }
 
-function HistorySection({ userId }: { userId: number }) {
+function HistorySection({ userId, query }: { userId: number; query: string }) {
   const history = useLibraryStore((s) => s.history);
   const load = useLibraryStore((s) => s.loadHistory);
   const refresh = useLibraryStore((s) => s.refreshHistory);
@@ -499,8 +456,10 @@ function HistorySection({ userId }: { userId: number }) {
     void load(userId);
   }, [userId, load]);
 
-  const { query, setQuery, filtered } = useFilter(history.items, (t) =>
-    `${t.title} ${t.artist ?? ""}`,
+  const filtered = useFilter(
+    history.items,
+    (t) => `${t.title} ${t.artist ?? ""}`,
+    query,
   );
 
   return (
@@ -511,11 +470,6 @@ function HistorySection({ userId }: { userId: number }) {
       emptyLabel={t.library.noHistory}
       tools={
         <>
-          <FilterBox
-            value={query}
-            onChange={setQuery}
-            placeholder={t.library.searchTracks}
-          />
           <DownloadAllButton tracks={filtered} />
         </>
       }
@@ -668,7 +622,7 @@ function StationCard({
 }
 
 /** The offline library. Everything here plays with no connection. */
-function DownloadsSection() {
+function DownloadsSection({ query }: { query: string }) {
   const items = useDownloadsStore((s) => s.items);
   const active = useDownloadsStore((s) => s.active);
   const status = useDownloadsStore((s) => s.status);
@@ -681,7 +635,6 @@ function DownloadsSection() {
 
   const clearAll = useDownloadsStore((s) => s.clearAll);
   const dismiss = useDownloadsStore((s) => s.dismiss);
-  const [query, setQuery] = useState("");
   const needle = query.trim().toLowerCase();
   const pending = Object.values(active);
   const tracks: Track[] = needle
@@ -700,11 +653,6 @@ function DownloadsSection() {
             ? `${items.length} · ${totalMb.toFixed(1)} ${t.downloads.size}`
             : t.downloads.hint}
         </span>
-        <FilterBox
-          value={query}
-          onChange={setQuery}
-          placeholder={t.library.searchTracks}
-        />
         {items.length > 0 && (
           <button
             onClick={() => {
@@ -824,14 +772,22 @@ function Shell({
   children: React.ReactNode;
 }) {
   const loading = section.status === "loading";
+  const bulkRunning = useDownloadsStore((s) => s.bulkRunning);
+  const bulkDone = useDownloadsStore((s) => s.bulkDone);
+  const bulkTotal = useDownloadsStore((s) => s.bulkTotal);
 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
         {tools}
-        <span className="text-sm text-muted-foreground">
-          {count > 0 ? count : ""}
-        </span>
+        {/* Only the walk, when there is one. The section's own size used to
+            live here too and was saying nothing: the heading above already
+            gives it, and the button beside it carries its own count. */}
+        {bulkRunning && (
+          <span className="readout text-sm text-muted-foreground">
+            {bulkDone} / {bulkTotal}
+          </span>
+        )}
         <button
           onClick={onRefresh}
           disabled={loading}

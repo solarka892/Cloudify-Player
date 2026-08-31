@@ -275,7 +275,7 @@ export function SeekBar({ compact = false }: { compact?: boolean }) {
     <div className="flex w-full items-center gap-2">
       <span
         ref={elapsedRef}
-        className="w-10 shrink-0 text-right font-mono text-xs tabular-nums text-muted-foreground"
+        className="w-10 shrink-0 text-right readout text-xs text-muted-foreground"
       >
         {formatTime(0)}
       </span>
@@ -332,7 +332,7 @@ export function SeekBar({ compact = false }: { compact?: boolean }) {
         />
       </div>
       {!compact && (
-        <span className="w-10 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
+        <span className="w-10 shrink-0 readout text-xs text-muted-foreground">
           {formatTime(displayTotal)}
         </span>
       )}
@@ -340,7 +340,7 @@ export function SeekBar({ compact = false }: { compact?: boolean }) {
   );
 }
 
-export function VolumeControl() {
+export function VolumeControl({ className }: { className?: string } = {}) {
   const volume = usePlayerStore((s) => s.volume);
   const muted = usePlayerStore((s) => s.muted);
   const setVolume = usePlayerStore((s) => s.setVolume);
@@ -354,7 +354,7 @@ export function VolumeControl() {
     // reaching further than a solid thing sitting at the same distance. Matched
     // to the artwork's 16px on the left it looked like it was running out of the
     // panel. This is an optical correction, not a measured one.
-    <div className="flex w-36 shrink-0 items-center gap-2 pr-4">
+    <div className={cn("flex w-32 shrink-0 items-center gap-2 pr-4", className)}>
       <button
         onClick={toggleMute}
         aria-label={t.player.mute}
@@ -362,20 +362,40 @@ export function VolumeControl() {
       >
         <Icon className="h-4 w-4" />
       </button>
-      <input
-        type="range"
-        min={0}
-        max={1}
-        step={0.01}
-        value={muted ? 0 : volume}
-        onChange={(e) => setVolume(Number(e.currentTarget.value))}
-        aria-label={t.player.volume}
-        // The level, published as a custom property. Obsidian draws the volume as
-        // twelve rectangular segments rather than a slider, and a range input
-        // cannot show its own fill — but a background can, given the number.
-        style={{ "--level": muted ? 0 : volume } as React.CSSProperties}
-        className="volume-slider h-1 flex-1 cursor-pointer accent-[var(--brand)]"
-      />
+      {/* Built like the seek bar rather than left native, and for the reason
+          the seek bar was: `accent-color` paints a track WebKit decides the
+          height of, and it decides thicker than anything else in the bar. Two
+          sliders side by side drawn to different weights is the sort of thing
+          that reads as unfinished without being nameable. The painted track is
+          the same pair of classes, so a skin styles both at once. */}
+      <div className="group/vol relative flex-1">
+        <div className="volume-track seek-track pointer-events-none absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 overflow-hidden rounded-[var(--radius-round)] bg-secondary">
+          <div
+            className="seek-fill brand-gradient h-full rounded-[var(--radius-round)]"
+            style={{ width: `${(muted ? 0 : volume) * 100}%` }}
+          />
+        </div>
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.01}
+          value={muted ? 0 : volume}
+          onChange={(e) => setVolume(Number(e.currentTarget.value))}
+          aria-label={t.player.volume}
+          // The level, published as a custom property. Obsidian draws the volume
+          // as twelve rectangular segments rather than a slider, painted onto
+          // this input — a range cannot show its own fill, but a background can,
+          // given the number. That skin hides the track above; see `globals.css`.
+          style={{ "--level": muted ? 0 : volume } as React.CSSProperties}
+          className="volume-slider relative h-4 w-full cursor-pointer appearance-none bg-transparent
+            [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3
+            [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-[var(--radius-round)]
+            [&::-webkit-slider-thumb]:bg-foreground [&::-webkit-slider-thumb]:opacity-0
+            [&::-webkit-slider-thumb]:transition-opacity
+            group-hover/vol:[&::-webkit-slider-thumb]:opacity-100"
+        />
+      </div>
     </div>
   );
 }

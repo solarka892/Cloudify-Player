@@ -57,6 +57,20 @@ interface DownloadsState {
 
   /** True while a bulk download is walking a list. */
   bulkRunning: boolean;
+  /**
+   * How far that walk has got: copies made, and how many were asked for.
+   *
+   * Live, rather than only reported in the toast at the end. A bulk download of
+   * a thousand tracks is a job you leave running, and "it is running" is not
+   * the same answer as "it is getting somewhere" — without a number moving,
+   * the only way to tell a working queue from a stuck one was to watch the
+   * list for new marks.
+   *
+   * `bulkDone` counts copies that exist, not attempts: a track that failed is
+   * not downloaded, and the toast at the end is where failures are named.
+   */
+  bulkDone: number;
+  bulkTotal: number;
   /** Set when the user asks a bulk download to stop. */
   cancelled: boolean;
 
@@ -125,6 +139,8 @@ export const useDownloadsStore = create<DownloadsState>((set, get) => {
     status: "idle",
     error: null,
     bulkRunning: false,
+    bulkDone: 0,
+    bulkTotal: 0,
     cancelled: false,
 
     async load() {
@@ -200,7 +216,12 @@ export const useDownloadsStore = create<DownloadsState>((set, get) => {
 
     async startBulk(tracks) {
       if (get().bulkRunning) return { done: 0, failed: 0 };
-      set({ bulkRunning: true, cancelled: false });
+      set({
+        bulkRunning: true,
+        cancelled: false,
+        bulkDone: 0,
+        bulkTotal: tracks.length,
+      });
 
       let done = 0;
       let failed = 0;
@@ -217,6 +238,7 @@ export const useDownloadsStore = create<DownloadsState>((set, get) => {
         } else {
           done += 1;
           consecutiveFailures = 0;
+          set({ bulkDone: done });
         }
 
         // SoundCloud throttles a client_id that fires hundreds of signing
@@ -235,7 +257,7 @@ export const useDownloadsStore = create<DownloadsState>((set, get) => {
         if (consecutiveFailures >= 5) break;
       }
 
-      set({ bulkRunning: false, cancelled: false });
+      set({ bulkRunning: false, cancelled: false, bulkDone: 0, bulkTotal: 0 });
       return { done, failed };
     },
 

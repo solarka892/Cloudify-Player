@@ -11,25 +11,27 @@ import {
   loudnessGet,
   loudnessSet,
 } from "@/lib/store";
-import { scTrackDetail, type Track } from "@/lib/tauri";
+import { type Track } from "@/lib/tauri";
 import { setLevellingGain, usePlayerStore } from "@/stores/usePlayerStore";
-import { useNitStore } from "@/stores/useNitStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { toast } from "@/stores/useToastStore";
 
 /**
  * Everything that has to happen *while* something is playing.
  *
- * Five features share one subscription to the player rather than each mounting
- * their own, because they all key off the same two events — the track changed,
- * the position moved — and five separate effects on a store that updates four
- * times a second is four more re-render paths than the app needs.
+ * Two features share one subscription to the player rather than each mounting
+ * their own, because both key off the same two events — the track changed, the
+ * position moved — and a store that updates four times a second is not one to
+ * subscribe to twice for no reason.
  *
- *   - marks and the waveform for the thread;
- *   - the diary: an entry per listen, closed with what happened to it;
  *   - the resume point, written every few seconds and read at startup;
- *   - the loop between two marks;
- *   - loudness: measured while playing, applied on the next play.
+ *   - loudness: measured while playing, applied on the next play;
+ *   - the diary: one entry per listen, closed with what became of it.
+ *
+ * This was `useNitSession` and carried two more — marks and the waveform the
+ * thread drew, and the loop between two marks. Those went with Nit. The diary
+ * stayed on purpose: it is what the app knows about how you actually listen,
+ * and it has its own section now rather than a tab inside a feature.
  *
  * Renders nothing.
  */
@@ -49,7 +51,7 @@ interface ResumePoint {
   positionMs: number;
 }
 
-export function useNitSession(): void {
+export function usePlaybackSession(): void {
   const current = usePlayerStore((s) => s.current);
   const position = usePlayerStore((s) => s.position);
   const duration = usePlayerStore((s) => s.duration);
@@ -58,16 +60,16 @@ export function useNitSession(): void {
   const resumeEnabled = useSettingsStore((s) => s.nit.resume);
   const diaryDays = useSettingsStore((s) => s.nit.diaryDays);
 
+  const measurement = useRef(newMeasurement());
+  /** The track the open measurement belongs to. */
+  const measuring = useRef<number | null>(null);
   /** The open diary entry, and what it was for. */
   const entry = useRef<{ id: number; trackId: number } | null>(null);
-  const measurement = useRef(newMeasurement());
   /** Last position seen for the previous track, for the diary's outcome. */
   const lastSeen = useRef({ positionMs: 0, durationMs: 0 });
 
   // ── the track changed ───────────────────────────────────────────────────
   useEffect(() => {
-    const nit = useNitStore.getState();
-
     // Close the previous listen before opening the next: the outcome is only
     // knowable at the moment the track stops being the one that is playing.
     const open = entry.current;
@@ -75,30 +77,25 @@ export function useNitSession(): void {
       const { positionMs, durationMs } = lastSeen.current;
       const played = durationMs > 0 && positionMs / durationMs >= PLAYED_FRACTION;
       void diaryFinish(open.id, played ? "played" : "skipped", positionMs);
-
-      // The measurement belongs to the track that just ended, and only if
-      // enough of it was heard for the number to mean anything.
-      if (isUsable(measurement.current)) {
-        void loudnessSet(open.trackId, measurement.current.levelDb);
-      }
       entry.current = null;
+    }
+
+    // The measurement belongs to the track that just ended, and only if enough
+    // of it was heard for the number to mean anything.
+    const previous = measuring.current;
+    if (previous !== null && previous !== current?.id) {
+      if (isUsable(measurement.current)) {
+        void loudnessSet(previous, measurement.current.levelDb);
+      }
       measurement.current = newMeasurement();
+      measuring.current = null;
     }
 
     if (!current) {
-      void nit.focusTrack(null);
       setLevellingGain(1);
       return;
     }
-
-    // Marks now, waveform as soon as it can be found. The resolver is only
-    // called when the local copy misses, so a track played twice costs one
-    // request to SoundCloud, ever.
-    void nit.focusTrack(current, () =>
-      scTrackDetail(current.id)
-        .then((detail) => detail.waveform_url ?? null)
-        .catch(() => null),
-    );
+    measuring.current = current.id;
 
     void diaryStart(current).then((id) => {
       // A track switched away from while this was in flight must not leave an
@@ -111,8 +108,8 @@ export function useNitSession(): void {
     });
 
     // The trim for this track, from what it measured last time. Always set,
-    // including to 1 — a stale gain from the previous track would be worse
-    // than no levelling at all.
+    // including to 1 — a stale gain from the previous track would be worse than
+    // no levelling at all.
     if (!levelling) {
       setLevellingGain(1);
     } else {
@@ -129,19 +126,7 @@ export function useNitSession(): void {
   // ── while it plays ──────────────────────────────────────────────────────
   useEffect(() => {
     lastSeen.current = { positionMs: position * 1000, durationMs: duration * 1000 };
-
-    // The loop between two marks. Checked here rather than on a timer of its
-    // own: `position` already ticks, and a loop that overshoots by a frame is
-    // not a loop anyone can hear.
-    const loop = useNitStore.getState().loop;
-    if (loop && isPlaying) {
-      const [from, to] = loop;
-      const at = position * 1000;
-      if (at >= to || at < from - 250) {
-        usePlayerStore.getState().seek(from / 1000);
-      }
-    }
-  }, [position, duration, isPlaying]);
+  }, [position, duration]);
 
   // ── measuring ───────────────────────────────────────────────────────────
   useEffect(() => {
@@ -179,15 +164,8 @@ export function useNitSession(): void {
   // ── at startup ──────────────────────────────────────────────────────────
   useEffect(() => {
     // Retention first: a window the user shortened while the app was closed has
-    // to take effect before anything is written to the diary this session.
+    // to take effect before anything is written this session.
     void diaryPrune(diaryDays);
-
-    // What every list row wants to know about itself — marks and tombstones —
-    // and what the library screen's duplicate strip is counting. Both are one
-    // grouped query each and neither touches the network.
-    const nit = useNitStore.getState();
-    void nit.loadRowFacts();
-    void nit.loadDupes();
 
     if (!resumeEnabled) return;
     let cancelled = false;
@@ -222,9 +200,8 @@ export function useNitSession(): void {
     return () => {
       cancelled = true;
     };
-    // Startup only. `diaryDays` is read once here on purpose — changing it in
-    // Settings prunes immediately there, and re-running this would try to
-    // restore a session the user is already in the middle of.
+    // Startup only: re-running this would try to restore a session the user is
+    // already in the middle of.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }

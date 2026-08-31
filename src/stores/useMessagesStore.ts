@@ -4,11 +4,9 @@ import {
   scConversation,
   scDeleteConversation,
   scMarkConversation,
-  scSendMessage,
   scUnreadMessages,
   type Conversation,
   type Message,
-  type User,
 } from "@/lib/tauri";
 
 /**
@@ -33,13 +31,10 @@ interface MessagesState {
   threads: Record<number, Message[]>;
   /** Which thread is being fetched, if any. */
   loadingThread: number | null;
-  /** Which thread a send is in flight for. */
-  sending: number | null;
 
   load: (force?: boolean) => Promise<void>;
   refreshUnread: () => Promise<void>;
   loadThread: (userId: number, force?: boolean) => Promise<void>;
-  send: (user: User, content: string) => Promise<void>;
   markRead: (userId: number, read: boolean) => Promise<void>;
   remove: (userId: number) => Promise<void>;
 }
@@ -51,7 +46,6 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
   unread: 0,
   threads: {},
   loadingThread: null,
-  sending: null,
 
   async load(force = false) {
     if (!force && (get().status === "loading" || get().status === "ok")) return;
@@ -89,42 +83,6 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     } finally {
       // Only clear the flag if this is still the thread being waited on.
       if (get().loadingThread === userId) set({ loadingThread: null });
-    }
-  },
-
-  async send(user, content) {
-    set({ sending: user.id });
-    try {
-      await scSendMessage(user.id, content);
-
-      const sent: Message = {
-        id: null,
-        content,
-        created_at: new Date().toISOString(),
-        from_me: true,
-        track: null,
-      };
-      const existing = get().threads[user.id] ?? [];
-      const conversations = get().conversations;
-      const known = conversations.some((c) => c.user.id === user.id);
-
-      set({
-        threads: { ...get().threads, [user.id]: [...existing, sent] },
-        // A first message to someone has to create the inbox row itself;
-        // otherwise the thread exists but the list it is opened from does not.
-        conversations: known
-          ? conversations.map((c) =>
-              c.user.id === user.id
-                ? { ...c, last_message: content, last_at: sent.created_at, unread: false }
-                : c,
-            )
-          : [
-              { user, last_message: content, last_at: sent.created_at, unread: false },
-              ...conversations,
-            ],
-      });
-    } finally {
-      set({ sending: null });
     }
   },
 

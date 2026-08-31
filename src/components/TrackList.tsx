@@ -1,7 +1,6 @@
 import { memo, useState } from "react";
 import { Download, ListPlus, MoreVertical, Pause, Play } from "lucide-react";
 import type { Track } from "@/lib/tauri";
-import { useNitStore } from "@/stores/useNitStore";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
 import { toast } from "@/stores/useToastStore";
@@ -64,7 +63,12 @@ export function TrackList({ tracks }: { tracks: Track[] }) {
     <>
       <div
         ref={ref}
-        className="list-card relative"
+        // Not `list-card`, which is a framed one. That frame belongs to a card
+        // whose rows are flush and divided by rules — the two in Nit. Here every
+        // row is a rounded surface of its own with air around it, so the frame
+        // had nothing to enclose: its top and bottom scrolled out of sight and
+        // what was left were two vertical lines hugging the list.
+        className="relative overflow-hidden"
         // The full height is reserved up front so the scrollbar is honest.
         style={{ height: tracks.length * rowHeight }}
       >
@@ -128,12 +132,9 @@ const TrackRow = memo(function TrackRow({
   const isCurrent = usePlayerStore((s) => s.current?.id === track.id);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const isDownloaded = useDownloadsStore((s) => s.ids.has(track.id));
+  const downloading = useDownloadsStore((s) => s.active[track.id]);
+  const startDownload = useDownloadsStore((s) => s.start);
   const reposted = useRepostStore((s) => s.trackIds.has(track.id));
-  // What this app knows about the row that SoundCloud does not: how many marks
-  // are on it, and whether the upload is gone. One subscription per row into a
-  // map the store already holds, so no request and no per-row effect.
-  const marks = useNitStore((s) => s.rowMarks[track.id] ?? 0);
-  const goneAt = useNitStore((s) => s.rowGone[track.id]);
 
   return (
     <div
@@ -159,7 +160,6 @@ const TrackRow = memo(function TrackRow({
           // the fill that appears under the pointer.
           "group bg-row flex h-[calc(100%-0.25rem)] w-full items-center gap-3 rounded-[var(--radius-control)] px-2.5 text-left transition-colors duration-[var(--motion-fast)] hover:bg-accent",
           isCurrent && "bg-accent",
-          goneAt && "row-gone",
         )}
       >
         {/* The row's number. Hidden in every skin but the one that wants a
@@ -167,6 +167,7 @@ const TrackRow = memo(function TrackRow({
         <span className="row-index readout shrink-0">
           {String(index).padStart(2, "0")}
         </span>
+
 
         <div className="relative h-12 w-12 shrink-0">
           {art ? (
@@ -215,38 +216,7 @@ const TrackRow = memo(function TrackRow({
           )}
         </div>
 
-        {/* What is true about this row beyond its title. Outlines, never fills:
-            a filled tag would compete with the play button for the interface's
-            one accent. */}
-        {(goneAt || marks > 0) && (
-          <div className="ml-auto flex shrink-0 items-center gap-1.5">
-            {goneAt && (
-              <span className="row-tag" data-tone="gone">
-                {t.gone.badge}
-              </span>
-            )}
-            {marks > 0 && (
-              <span className="row-tag" data-tone="mark">
-                {t.marks.count.replace("{n}", String(marks))}
-              </span>
-            )}
-          </div>
-        )}
-
-        <div className={cn("flex shrink-0 items-center gap-1", !(goneAt || marks > 0) && "ml-auto")}>
-          {isDownloaded && (
-            <Download
-              className="h-3.5 w-3.5 text-brand"
-              aria-label={t.player.downloaded}
-            />
-          )}
-          {/* The heart leads the group and is always on screen: hiding it until
-              hover meant an unliked track showed nothing at all, so there was
-              no way to tell "not liked" from "no button here" without moving
-              the pointer over every row. Liked is the accent, not-liked is the
-              muted outline — the state is the colour, not the presence. */}
-          <LikeButton track={track} />
-
+        <div className="ml-auto flex shrink-0 items-center gap-1">
           {compact ? (
             /* A touch screen has no hover, so hover-revealed actions are
                unreachable on a phone — a row offered play and the heart and
@@ -293,6 +263,57 @@ const TrackRow = memo(function TrackRow({
               />
             </>
           )}
+          {/* What this library says about the track: whether you have a copy,
+              and whether you like it. Last in the row, hard against the
+              duration, so they land in the same place on every line — the
+              actions before them come and go with hover and with whether a
+              track is reposted, and anything sharing a row with those moved
+              about as the pointer travelled down the list.
+
+              Both are always drawn, and the state is the colour rather than
+              the presence: muted means no copy on disk and one click makes one,
+              the accent means there already is one. Same rule the heart has
+              always followed, and for the same reason — a row that shows
+              nothing cannot be told from a row where the button does not exist,
+              and finding out costs a trip with the pointer over every line.
+
+              (Download was hover-only for a version. It reads better on a long
+              list, and it was wrong: the one question worth answering at a
+              glance on a library of 1300 tracks is which of them you actually
+              have.) */}
+          <div className="flex shrink-0 items-center gap-0.5">
+            <button
+              onClick={(e) => {
+                // The whole row is a play button; this must not reach it.
+                e.stopPropagation();
+                void startDownload(track);
+              }}
+              disabled={isDownloaded || !!downloading}
+              aria-label={isDownloaded ? t.player.downloaded : t.player.download}
+              title={
+                isDownloaded
+                  ? t.player.downloaded
+                  : downloading
+                    ? `${Math.round(
+                        downloading.total
+                          ? (downloading.received / downloading.total) * 100
+                          : 0,
+                      )}%`
+                    : t.player.download
+              }
+              className={cn(
+                "rounded-[var(--radius-control)] p-1 transition-colors duration-[var(--motion-fast)]",
+                isDownloaded
+                  ? "text-brand"
+                  : "text-muted-foreground hover:text-foreground",
+                downloading && "animate-pulse",
+              )}
+            >
+              <Download className="h-4 w-4" />
+            </button>
+            <LikeButton track={track} />
+          </div>
+
           <span className="readout type-caption tabular-nums text-muted-foreground">
             {formatDuration(track.duration)}
           </span>

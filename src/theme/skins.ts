@@ -39,18 +39,6 @@ export interface Skin {
    * them, which is what a skin that is only form should say. See `theme/layout`.
    */
   layouts?: LayoutId[];
-  /**
-   * Whether this skin draws playback as the thread — the track's waveform along
-   * the top edge of the window — instead of a seek bar in the player.
-   *
-   * A property of the skin rather than a setting, because it is not two ways of
-   * showing the same thing: the thread replaces the seek bar, carries the marks
-   * and takes a row of the window frame. A skin that has not been drawn around
-   * that would get both, which is the app disagreeing with itself about where
-   * time lives. The skin's own stylesheet is what hides `[data-seekbar]`, and
-   * this is what stops the strip being mounted at all.
-   */
-  thread?: boolean;
 }
 
 const SANS =
@@ -183,9 +171,6 @@ export const SKINS: Record<SkinId, Skin> = {
     // a playlist index inside it, which is a different architecture rather than
     // a wider version of the same one, and this look has no drawing for it.
     layouts: ["rail", "top"],
-    // The look the thread was drawn for, and the only one that gives up its seek
-    // bar for it.
-    thread: true,
   },
 
   /** Flat, high-contrast, typographic. Rules instead of shadows. */

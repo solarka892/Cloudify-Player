@@ -6,6 +6,7 @@
     "reload": "Reload"
   },
   "nav": {
+    "diary": "Diary",
     "home": "Home",
     "search": "Search",
     "library": "Library",
@@ -528,8 +529,9 @@
   },
   "messages": {
     "title": "Messages",
+    "readOnly": "Read-only: sending does not work",
     "empty": "No conversations yet",
-    "hint": "Open someone's profile and press Message to start one.",
+    "hint": "Conversations from SoundCloud. This client can read them, not answer them.",
     "placeholder": "Write a message",
     "send": "Send",
     "sending": "Sending…",
@@ -547,7 +549,8 @@
     "newMessage": "New message",
     "searchPeople": "Search conversations",
     "attachedTrack": "Shared a track",
-    "refresh": "Refresh"
+    "refresh": "Refresh",
+    "readOnly": "Read-only: sending does not work"
   },
   "notifications": {
     "title": "Notifications",

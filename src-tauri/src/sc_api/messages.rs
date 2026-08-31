@@ -258,31 +258,6 @@ pub async fn thread(
     Ok(messages)
 }
 
-#[derive(Serialize)]
-struct SendBody<'a> {
-    content: &'a str,
-}
-
-/// Send a message. Creates the thread if there isn't one yet.
-///
-/// ⚠️ The request body is the unverified part — `POST` to the conversation is
-/// confirmed to be the right route, but whether it wants `{"content": …}` is
-/// not. A 422 here means this struct is wrong, nothing else.
-pub async fn send(token: &str, me: u64, other: u64, content: &str) -> Result<(), ScApiError> {
-    let cid = client_id::get(false).await?;
-    let client = http_client()?;
-
-    client
-        .post(format!("{API_V2}/users/{me}/conversations/{other}"))
-        .query(&[("client_id", cid.as_str())])
-        .header("Authorization", format!("OAuth {token}"))
-        .json(&SendBody { content })
-        .send()
-        .await?
-        .error_for_status()?;
-    Ok(())
-}
-
 /// Mark a thread read (or unread — soundcloud.com offers both).
 pub async fn set_read(token: &str, me: u64, other: u64, read: bool) -> Result<(), ScApiError> {
     let cid = client_id::get(false).await?;

@@ -12,7 +12,11 @@ import {
   type Density,
   type ThemeMode,
 } from "@/theme/apply";
-import { accentFromArtwork, desaturate } from "@/theme/artwork";
+import {
+  accentFromArtwork,
+  desaturate,
+  paletteFromArtwork,
+} from "@/theme/artwork";
 import {
   applyAudio,
   DEFAULT_AUDIO,
@@ -250,6 +254,15 @@ interface SettingsState {
 
   /** Accent sampled from the current cover. Runtime only — never persisted. */
   artworkAccent: { brand: string; brand2: string } | null;
+  /**
+   * Every colour worth naming on the current cover, most prominent first.
+   *
+   * Beside the accent rather than derived from it: the accent is one colour
+   * the interface is painted with, and this is the sleeve's own spread, which
+   * only the full-screen player's glow wants. Runtime only, like the accent —
+   * it belongs to whatever is playing, not to the user's settings.
+   */
+  artworkPalette: string[] | null;
   /** URL of the cover currently driving the backdrop. Runtime only. */
   artworkUrl: string | null;
 
@@ -368,6 +381,7 @@ export const useSettingsStore = create<SettingsState>()(
         nit: { ...DEFAULT_NIT, shortcuts: { ...DEFAULT_SHORTCUTS } },
 
         artworkAccent: null,
+        artworkPalette: null,
         artworkUrl: null,
 
         setLayout: (layout) => set({ layout }),
@@ -430,15 +444,19 @@ export const useSettingsStore = create<SettingsState>()(
 
           if (!get().theme.accentFromArtwork) return;
           if (!url) {
-            set({ artworkAccent: null });
+            set({ artworkAccent: null, artworkPalette: null });
             sync();
             return;
           }
-          const accent = await accentFromArtwork(url);
+          // One decode, both answers — see `rankedHues`.
+          const [accent, palette] = await Promise.all([
+            accentFromArtwork(url),
+            paletteFromArtwork(url),
+          ]);
           // A greyscale or unreadable cover leaves the previous accent alone.
           if (!accent) return;
           if (get().artworkUrl !== url) return; // superseded while sampling
-          set({ artworkAccent: accent });
+          set({ artworkAccent: accent, artworkPalette: palette });
           sync();
         },
 

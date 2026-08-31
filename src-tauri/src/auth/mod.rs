@@ -21,6 +21,7 @@
 //! We never log the token.
 
 use serde::{Serialize, Serializer};
+use std::sync::RwLock;
 
 #[cfg(not(target_os = "android"))]
 pub mod browser;
@@ -106,9 +107,33 @@ impl Serialize for AuthError {
     }
 }
 
+/// The token, once the store has been asked for it.
+///
+/// `None` means "not asked yet"; `Some(None)` means "asked, and nobody is
+/// logged in". The distinction matters — without it every request on a signed
+/// out app would go back to the store to be told the same thing again.
+///
+/// It exists because reaching the store is not free on macOS: the keychain
+/// prompts for the login password whenever the binary asking is not one it
+/// already trusts, and every command that carries a token was asking. Loading
+/// likes, a search, opening a playlist, one tap on a heart — each was a trip to
+/// the keychain, so the prompt came back over and over inside a single session.
+/// Read once per process and the prompt is a once-per-launch thing at worst.
+///
+/// (The *other* half of that annoyance is not fixable here: a development build
+/// is unsigned and changes identity every time it is compiled, so the keychain
+/// treats each rebuild as a different application. Only signing fixes that.)
+///
+/// Memory only, and deliberately: the token is already held as a `String` for
+/// the length of every request that sends it, so keeping one more copy for the
+/// life of the process changes nothing about what could read it. What it must
+/// not become is a copy that outlives the process — see CLAUDE.md.
+static CACHED: RwLock<Option<Option<String>>> = RwLock::new(None);
+
 /// Persist the OAuth token in the platform's secure store.
 pub fn save_token(token: &str) -> Result<(), AuthError> {
     store::set(token)?;
+    remember(Some(token.to_string()));
     // A different token may be a different account, and anything cached about
     // "who I am" is now a guess.
     crate::sc_api::actions::forget_self_id();
@@ -117,13 +142,36 @@ pub fn save_token(token: &str) -> Result<(), AuthError> {
 
 /// Load the stored token, or `None` if the user is not logged in.
 pub fn load_token() -> Result<Option<String>, AuthError> {
-    store::get()
+    // Two locks rather than one held across the store call: the store can block
+    // on a system dialog, and a write lock held while the user reads a password
+    // prompt would stall every other command behind it.
+    if let Ok(guard) = CACHED.read() {
+        if let Some(token) = guard.as_ref() {
+            return Ok(token.clone());
+        }
+    }
+
+    let token = store::get()?;
+    remember(token.clone());
+    Ok(token)
 }
 
 /// Remove the stored token (logout). No-op if nothing is stored.
 pub fn clear_token() -> Result<(), AuthError> {
     crate::sc_api::actions::forget_self_id();
+    remember(None);
     store::delete()
+}
+
+/// Replace what the process believes the token is.
+///
+/// A poisoned lock is ignored rather than propagated: the worst it costs is a
+/// stale belief that the next `load_token` corrects, and the alternative is
+/// failing a sign-in over a lock.
+fn remember(token: Option<String>) {
+    if let Ok(mut guard) = CACHED.write() {
+        *guard = Some(token);
+    }
 }
 
 /// Open the embedded SoundCloud sign-in window and wait until the OAuth token

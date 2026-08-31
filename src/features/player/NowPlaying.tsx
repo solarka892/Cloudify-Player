@@ -4,7 +4,7 @@ import {
   Download,
   ListMusic,
   Mic2,
-  Moon,
+  MoreHorizontal,
   Radio,
 } from "lucide-react";
 import type { Track } from "@/lib/tauri";
@@ -73,13 +73,24 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
   const visualizerOn = useSettingsStore((s) => s.audio.visualizer);
   const setAudio = useSettingsStore((s) => s.setAudio);
   const [side, setSide] = useState<Side>("none");
-  const [showSleep, setShowSleep] = useState(false);
+  const [showMore, setShowMore] = useState(false);
   const compact = useCompact();
   const sideBySide = useMediaQuery(SIDE_BY_SIDE);
+  /**
+   * Lyrics open *beside* the cover rather than in the side panel the queue uses.
+   *
+   * The arrangement the Apple shell had, and the reason it was worth keeping
+   * when that shell went: words are the one thing here that wants the width. In
+   * a 26rem column every line wraps two or three times and the song reads as a
+   * paragraph; given the room to the left of the cover, a line is a line. The
+   * queue is a list of short rows and is perfectly happy in the column.
+   */
+  const lyricsBeside = sideBySide && side === "lyrics";
   const toggleSide = (which: Exclude<Side, "none">) =>
     setSide(side === which ? "none" : which);
 
   const art = useArtwork(current, "t500x500");
+  const palette = useSettingsStore((s) => s.artworkPalette);
 
   if (!current) return null;
 
@@ -96,15 +107,13 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
         leaving ? "view-exit" : "view-enter",
       )}
     >
-      {/* The cover, blown up and blurred, is the room's lighting. */}
-      {art && (
-        <div
-          aria-hidden
-          className="artwork art-frame pointer-events-none absolute inset-0 scale-125 bg-cover bg-center opacity-40 blur-3xl"
-          style={{ backgroundImage: `url("${art}")` }}
-        />
-      )}
-      <div className="pointer-events-none absolute inset-0 bg-background/70" aria-hidden />
+      {/* Nothing here. The lighting used to be the cover blown up to fill the
+          window, blurred, at 40% behind a 70% scrim — a wash of the record's
+          colour over every pixel, which lit the corners as brightly as the
+          middle and left the cover sitting *in* a field of itself.
+
+          It is a glow off the cover now instead (below), and this stays dark so
+          there is something for that glow to fall on. */}
 
       <header className="relative z-10 flex items-center gap-2 p-4">
         <button
@@ -142,7 +151,38 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
         )}
       </header>
 
-      <div className="relative z-10 flex min-h-0 flex-1 justify-center gap-6 px-6 pb-4">
+      <div
+        className={cn(
+          "relative z-10 flex min-h-0 flex-1 gap-6 px-6 pb-4",
+          // Centred while the player is alone; spread, with more air between
+          // them, once the words are sharing the window.
+          lyricsBeside ? "gap-12" : "justify-center",
+        )}
+      >
+        {lyricsBeside && (
+          <div className="pop-in relative flex min-h-0 min-w-0 flex-1 flex-col justify-center">
+            {/* The words fade out at both ends rather than being cut by one.
+
+                A scrolling column has to stop somewhere, and stopping at a
+                straight edge under the header reads as text hidden behind
+                something — the eye takes the cut for an object. Fading it out
+                says the same thing the cut was trying to: there is more, and it
+                is on its way in.
+
+                Both ends, because a fade at only the top would make the bottom
+                edge the odd one. `currentColor` faded with `color-mix` again:
+                a mask reads alpha, so no colour is named. */}
+            <div
+              className="no-scrollbar min-h-0 overflow-y-auto"
+              style={{
+                maskImage: "linear-gradient(to bottom, transparent 0%, color-mix(in srgb, currentColor 35%, transparent) 4%, currentColor 12%, currentColor 88%, color-mix(in srgb, currentColor 35%, transparent) 96%, transparent 100%)",
+                WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, color-mix(in srgb, currentColor 35%, transparent) 4%, currentColor 12%, currentColor 88%, color-mix(in srgb, currentColor 35%, transparent) 96%, transparent 100%)",
+              }}
+            >
+              <LyricsPanel track={current} large />
+            </div>
+          </div>
+        )}
         {/*
           The player column, laid out the way Apple mode lays it out — the
           arrangement and the sizes, not the look. Everything inside is still
@@ -154,8 +194,71 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
           (`44vh`), because a width-capped square in a wide window came out
           small with dead space above and below it.
         */}
-        <div className="flex min-h-0 w-full max-w-[34rem] shrink-0 flex-col justify-center gap-6">
-          <div className="mx-auto w-full max-w-[min(30rem,44vh)]">
+        <div className="flex min-h-0 w-full max-w-[40rem] shrink-0 flex-col justify-center gap-5">
+          <div className="relative mx-auto w-full max-w-[min(38rem,54vh)]">
+            {/* The same picture, behind the picture: scaled well past its own
+                edges and blurred until it is no longer an image, only the light
+                one would give off. Saturated on the way, because blur averages
+                colour toward grey and a glow that has gone grey reads as a
+                shadow rather than a light.
+
+                Wider than the window, and that is the point. A tight halo
+                has an outline whatever its blur, and an outline is what gives
+                away that this is a rectangle behind a square rather than light
+                in a room. Past the edges there is no edge left to find.
+
+                Saturated a little further with every widening: spreading light
+                over more area dilutes it toward grey, and each time this got
+                wider it also got flatter until the colour was pushed back.
+
+                The mask is what makes it a glow rather than a blurred square,
+                and it has six stops rather than two on purpose: a straight ramp
+                from opaque to nothing still reads as a ring, because the eye
+                finds the edge of a linear falloff. Easing it out over a long
+                tail leaves nothing to find.
+                Blur alone softens an edge; it does not remove one, so the light
+                still ended on four sides at the same distance and the corners
+                reached furthest — which is the shape of a rectangle, not of
+                something shining. Radial falloff takes it to nothing evenly in
+                every direction.
+
+                `currentColor` rather than a colour: a mask reads alpha and
+                ignores hue, so this only has to be opaque, and naming a colour
+                here would be a colour in the source that paints nothing. */}
+            {/* Under the glow, the sleeve's colours as lights of their own.
+
+                A blurred cover glows with whatever the cover *is*, which fails
+                on the ones that are nearly black: the light is black too, and
+                the screen goes flat with the cover sitting in nothing. So there
+                is always this underneath, built from what the sampler found on
+                the sleeve — and on a black one it still finds the one thing
+                there with any colour in it.
+
+                All of them, not just the first. One colour behind a four-colour
+                cover reads as a lamp someone pointed at it; several, set apart
+                and overlapping, read as the picture giving light off. They are
+                placed rather than centred for the same reason — light from a
+                flat thing does not come from its middle.
+
+                A cover with colour in it drowns this out with its own; a black
+                one is left with a halo instead of a void. */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 -z-20 scale-[5] opacity-55"
+              style={{ background: glowFrom(palette) }}
+            />
+            {art && (
+              <img
+                src={art}
+                alt=""
+                aria-hidden
+                className="pointer-events-none absolute inset-0 -z-10 h-full w-full scale-[3.8] object-cover opacity-90 blur-[120px] saturate-[1.9]"
+                style={{
+                  maskImage: "radial-gradient(closest-side, currentColor 8%, color-mix(in srgb, currentColor 72%, transparent) 26%, color-mix(in srgb, currentColor 42%, transparent) 44%, color-mix(in srgb, currentColor 20%, transparent) 62%, color-mix(in srgb, currentColor 8%, transparent) 80%, transparent 100%)",
+                  WebkitMaskImage: "radial-gradient(closest-side, currentColor 8%, color-mix(in srgb, currentColor 72%, transparent) 26%, color-mix(in srgb, currentColor 42%, transparent) 44%, color-mix(in srgb, currentColor 20%, transparent) 62%, color-mix(in srgb, currentColor 8%, transparent) 80%, transparent 100%)",
+                }}
+              />
+            )}
             {art ? (
               <span className="art-frame block aspect-square w-full rounded-[var(--radius-hero)] shadow-[var(--shadow-2)]">
                 <img
@@ -173,29 +276,23 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
             )}
           </div>
 
-          {/* Title left, the track's own three actions right — a centred title
-              with the actions in the row below left the eye no fixed edge to
-              read down, and the actions sat among controls they have nothing to
-              do with. */}
-          <div className="flex items-start gap-3">
-            <div className="min-w-0 flex-1">
-              <h2
-                className="truncate text-[1.375rem] font-bold leading-tight tracking-[-0.02em]"
-                style={{ fontFamily: "var(--font-display)" }}
-              >
-                {current.title}
-              </h2>
-              {current.artist && (
-                <p className="truncate text-[1.0625rem] leading-snug text-muted-foreground">
-                  {current.artist}
-                </p>
-              )}
-            </div>
-            <div className="flex shrink-0 items-center gap-1 pt-0.5">
-              <LikeButton track={current} size="md" />
-              <RepostButton track={current} size="md" />
-              <ShareButton url={current.permalink_url} size="md" />
-            </div>
+          {/* Centred, under a centred cover, above a centred transport. It was
+              left-aligned to give the eye a fixed edge to read down — which was
+              the right call while three action buttons sat opposite it on the
+              same line. They moved to the row below, and a lone left-aligned
+              title under a centred column is just the one thing out of line. */}
+          <div className="min-w-0 text-center">
+            <h2
+              className="truncate text-[1.375rem] font-bold leading-tight tracking-[-0.02em]"
+              style={{ fontFamily: "var(--font-display)" }}
+            >
+              {current.title}
+            </h2>
+            {current.artist && (
+              <p className="truncate text-[1.0625rem] leading-snug text-muted-foreground">
+                {current.artist}
+              </p>
+            )}
           </div>
 
           {visualizerOn && (
@@ -212,8 +309,152 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
             <RepeatButton />
           </div>
 
-          <div className="flex justify-center">
-            <VolumeControl />
+          {/* The last row, and the three things that were scattered.
+
+              Liking, reposting and sharing sat up beside the title, where they
+              competed with the one thing on this screen that is set in display
+              type. Volume had a centred row of its own with nothing else in it.
+              The overflow button had another. Three rows for three controls, on
+              a screen whose whole argument is the cover.
+
+              One row instead, and the overflow button in the middle of it —
+              not the middle of the group, the middle of the *window*. Three
+              columns with equal sides put it on the same axis the play button
+              above stands on, whatever is either side of it: liking a track
+              changes no width, but the volume slider and a running sleep timer
+              both do, and a centred group would have drifted with them. */}
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+            <div className="flex items-center justify-end gap-1">
+              <LikeButton track={current} size="md" />
+              <RepostButton track={current} size="md" />
+              <ShareButton url={current.permalink_url} size="md" />
+            </div>
+
+            {/* The long tail, behind one button.
+
+                Six controls of six different widths — visualiser, radio,
+                download, five speed chips, a sleep timer — wrapped onto two rows
+                and read as a pile of tags stuck under a player. Not one of them
+                is reached for often, and together they were the loudest thing on
+                the screen after the cover. One button now, and a menu behind it.
+
+                The button says something when the menu is shut: a sleep timer
+                that is running is the one setting in here that the app is doing
+                something about, so it lights. */}
+            <div className="relative shrink-0">
+              <button
+                onClick={() => setShowMore((v) => !v)}
+                aria-expanded={showMore}
+                aria-label={t.player.more}
+                title={t.player.more}
+                className={cn(
+                  // No label and no frame. It was a bordered chip with a word
+                  // in it beside three bare glyphs — the widest thing in the
+                  // row and the one saying least, drawn as the most important.
+                  "flex items-center gap-1.5 rounded-[var(--radius-control)] p-1.5 text-xs transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground",
+                  sleepAt
+                    ? "text-brand"
+                    : showMore
+                      ? "text-foreground"
+                      : "text-muted-foreground",
+                )}
+              >
+                <MoreHorizontal className="h-4 w-4" />
+                {/* The one thing still worth words here: a sleep timer counting
+                    down is the app doing something rather than offering to. */}
+                {sleepAt
+                  ? `${Math.max(0, Math.round((sleepAt - Date.now()) / 60000))}${t.player.minutesShort}`
+                  : null}
+              </button>
+
+              {showMore && (
+                <div className="panel pop-in absolute bottom-full right-0 mb-2 flex w-60 flex-col gap-0.5 p-1.5">
+                  {/* A switch, not a one-way door. It was only drawn while the
+                      visualiser was off — which turned it on and then removed the
+                      only thing that could turn it off again. The row stays and
+                      says which way it is by its colour, like every other state
+                      in this app. */}
+                  <MenuRow
+                    icon={<AudioLines className="h-4 w-4" />}
+                    label={t.audio.visualizer}
+                    active={visualizerOn}
+                    onClick={() => setAudio({ visualizer: !visualizerOn })}
+                  />
+
+                  <MenuRow
+                    icon={<Radio className="h-4 w-4" />}
+                    label={t.player.radio}
+                    disabled={radioLoading}
+                    onClick={() => {
+                      void startRadio(current);
+                      setShowMore(false);
+                    }}
+                  />
+
+                  <MenuRow
+                    icon={<Download className="h-4 w-4" />}
+                    label={
+                      isDownloaded
+                        ? t.player.downloaded
+                        : downloading
+                          ? `${Math.round(
+                              downloading.total
+                                ? (downloading.received / downloading.total) * 100
+                                : 0,
+                            )}%`
+                          : t.player.download
+                    }
+                    disabled={isDownloaded || !!downloading}
+                    active={isDownloaded}
+                    onClick={() => void startDownload(current)}
+                  />
+
+                  <MenuGroup label={t.player.speed}>
+                    {RATES.map((r) => (
+                      <Chip key={r} active={rate === r} onClick={() => setRate(r)}>
+                        {r}×
+                      </Chip>
+                    ))}
+                  </MenuGroup>
+
+                  <MenuGroup label={t.player.sleep}>
+                    {SLEEP_OPTIONS.map((min) => (
+                      <Chip
+                        key={min}
+                        onClick={() => {
+                          setSleep(min);
+                          setShowMore(false);
+                        }}
+                      >
+                        {min}
+                      </Chip>
+                    ))}
+                    {sleepAt && (
+                      <Chip
+                        onClick={() => {
+                          setSleep(null);
+                          setShowMore(false);
+                        }}
+                        className="text-destructive"
+                      >
+                        ×
+                      </Chip>
+                    )}
+                  </MenuGroup>
+                </div>
+              )}
+            </div>
+            {/* Narrower here, and with its own trailing padding dropped.
+
+                Both are about balance rather than the slider. The row reads as
+                a line with the overflow button at its centre, and the eye wants
+                the same amount of it on either side — three glyphs to the left
+                against an icon and a slider to the right. At the player bar's
+                width that slider ran half again as long as the glyphs, and the
+                row looked hung off its own middle. */}
+            <div className="flex justify-start">
+              <VolumeControl className="w-24 pr-0" />
+            </div>
           </div>
 
           {/* The two panels, where the thumb is. Full-width rows rather than
@@ -238,111 +479,6 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
             </div>
           )}
 
-          {/* Everything else: the long tail, on its own line. */}
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            {!visualizerOn && (
-              <button
-                onClick={() => setAudio({ visualizer: true })}
-                className="flex items-center gap-1.5 rounded-[var(--radius-control)] border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground"
-              >
-                <AudioLines className="h-3.5 w-3.5" />
-                {t.player.enableVisualizer}
-              </button>
-            )}
-
-            <button
-              onClick={() => void startRadio(current)}
-              disabled={radioLoading}
-              title={t.player.radio}
-              className="flex items-center gap-1.5 rounded-[var(--radius-control)] border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground disabled:opacity-50"
-            >
-              <Radio className="h-3.5 w-3.5" />
-              {t.player.radio}
-            </button>
-
-            <button
-              onClick={() => void startDownload(current)}
-              disabled={isDownloaded || !!downloading}
-              title={t.player.download}
-              className={cn(
-                "flex items-center gap-1.5 rounded-[var(--radius-control)] border border-border px-2.5 py-1 text-xs transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground disabled:opacity-60",
-                isDownloaded ? "text-brand" : "text-muted-foreground",
-              )}
-            >
-              <Download className="h-3.5 w-3.5" />
-              {isDownloaded
-                ? t.player.downloaded
-                : downloading
-                  ? `${Math.round(
-                      downloading.total
-                        ? (downloading.received / downloading.total) * 100
-                        : 0,
-                    )}%`
-                  : t.player.download}
-            </button>
-
-            {/* Playback speed */}
-            <div className="flex items-center gap-1 rounded-[var(--radius-control)] border border-border p-0.5">
-              {RATES.map((r) => (
-                <button
-                  key={r}
-                  onClick={() => setRate(r)}
-                  className={cn(
-                    "rounded-[calc(var(--radius-control)*0.8)] px-1.5 py-0.5 font-mono text-[11px] transition-colors duration-[var(--motion-fast)]",
-                    rate === r
-                      ? "bg-secondary text-secondary-foreground"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {r}×
-                </button>
-              ))}
-            </div>
-
-            {/* Sleep timer */}
-            <div className="relative">
-              <button
-                onClick={() => setShowSleep((v) => !v)}
-                title={t.player.sleep}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-[var(--radius-control)] border border-border px-2.5 py-1 text-xs transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground",
-                  sleepAt ? "text-brand" : "text-muted-foreground",
-                )}
-              >
-                <Moon className="h-3.5 w-3.5" />
-                {sleepAt
-                  ? `${Math.max(0, Math.round((sleepAt - Date.now()) / 60000))}${t.player.minutesShort}`
-                  : t.player.sleep}
-              </button>
-              {showSleep && (
-                <div className="panel absolute bottom-full left-0 mb-2 flex flex-col p-1">
-                  {SLEEP_OPTIONS.map((min) => (
-                    <button
-                      key={min}
-                      onClick={() => {
-                        setSleep(min);
-                        setShowSleep(false);
-                      }}
-                      className="whitespace-nowrap rounded-[var(--radius-control)] px-3 py-1.5 text-left text-xs transition-colors duration-[var(--motion-fast)] hover:bg-accent"
-                    >
-                      {min} {t.player.minutes}
-                    </button>
-                  ))}
-                  {sleepAt && (
-                    <button
-                      onClick={() => {
-                        setSleep(null);
-                        setShowSleep(false);
-                      }}
-                      className="whitespace-nowrap rounded-[var(--radius-control)] px-3 py-1.5 text-left text-xs text-destructive transition-colors duration-[var(--motion-fast)] hover:bg-accent"
-                    >
-                      {t.player.sleepCancel}
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
         </div>
 
         {/*
@@ -356,6 +492,7 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
           both buttons did nothing at all.
         */}
         {side !== "none" &&
+          !lyricsBeside &&
           (sideBySide ? (
             <aside className="panel pop-in flex w-[26rem] shrink-0 flex-col overflow-hidden">
               {side === "queue" ? (
@@ -408,6 +545,110 @@ function LyricsSurface({ track }: { track: Track }) {
 }
 
 /** A full-width toggle for one of the panels. Compact layout only. */
+/**
+ * A row in the overflow menu: an icon, a label, and the whole width as target.
+ *
+ * Deliberately not a chip. These were chips, side by side, and six chips of six
+ * widths is a shape the eye has to parse before it can read any of them; a
+ * column of rows is read top to bottom without being looked at.
+ */
+
+/** Where each of the sleeve's colours is hung, in order of prominence. */
+const GLOW_SPOTS = ["50% 46%", "28% 30%", "73% 34%", "46% 74%"] as const;
+
+/**
+ * The colours, as overlapping lights.
+ *
+ * Falls back to the accent when the sampler found nothing — a greyscale sleeve,
+ * or a cover the CDN would not let us read. One light is still better than a
+ * flat rectangle, and `--brand` is never empty.
+ */
+function glowFrom(palette: string[] | null): string {
+  const colours = palette?.length ? palette : ["var(--brand)"];
+  return colours
+    .slice(0, GLOW_SPOTS.length)
+    .map(
+      (colour, i) =>
+        `radial-gradient(circle at ${GLOW_SPOTS[i]}, ${colour} 0%, ` +
+        `color-mix(in srgb, ${colour} 34%, transparent) 38%, transparent 78%)`,
+    )
+    .join(", ");
+}
+
+function MenuRow({
+  icon,
+  label,
+  onClick,
+  disabled,
+  active,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  active?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "flex items-center gap-2.5 rounded-[var(--radius-control)] px-2 py-1.5 text-left text-xs transition-colors duration-[var(--motion-fast)] hover:bg-accent disabled:opacity-50",
+        active ? "text-brand" : "text-foreground",
+      )}
+    >
+      <span className="shrink-0 text-muted-foreground">{icon}</span>
+      <span className="truncate">{label}</span>
+    </button>
+  );
+}
+
+/** A named row of choices — speed, sleep — under a caption. */
+function MenuGroup({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="px-2 pb-1 pt-2">
+      <div className="label pb-1 text-[0.625rem] text-muted-foreground">
+        {label}
+      </div>
+      <div className="flex flex-wrap items-center gap-1">{children}</div>
+    </div>
+  );
+}
+
+/** One choice inside a [[MenuGroup]]. Numbers, so `.readout`. */
+function Chip({
+  active,
+  onClick,
+  className,
+  children,
+}: {
+  active?: boolean;
+  onClick: () => void;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "readout rounded-[var(--radius-control)] border border-border px-1.5 py-0.5 text-[11px] transition-colors duration-[var(--motion-fast)] hover:bg-accent",
+        active
+          ? "bg-secondary text-secondary-foreground"
+          : "text-muted-foreground hover:text-foreground",
+        className,
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
 function PanelButton({
   active,
   label,

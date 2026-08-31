@@ -783,18 +783,6 @@ pub async fn sc_conversation(
         .map_err(bridge::failure)
 }
 
-/// Send a message. Requires login.
-#[tauri::command]
-pub async fn sc_send_message(user_id: u64, content: String) -> Result<(), bridge::Failure> {
-    let (token, me) = me_id().await?;
-    let content = content.trim();
-    if content.is_empty() {
-        return Err(bridge::stated("empty-input", "empty message"));
-    }
-    sc_api::messages::send(&token, me, user_id, content)
-        .await
-        .map_err(bridge::failure)
-}
 
 /// Mark a thread read or unread. Requires login.
 #[tauri::command]
@@ -991,24 +979,6 @@ pub fn cache_sync_tracks(
     cache::sync_tracks(&app, &tracks).map_err(bridge::failure)
 }
 
-/// Report that these tracks were asked for and not returned. Returns the ones
-/// that crossed into being tombstoned — three separate misses, never one.
-#[tauri::command]
-pub fn cache_mark_missing(
-    app: tauri::AppHandle,
-    ids: Vec<u64>,
-) -> Result<Vec<String>, bridge::Failure> {
-    cache::mark_missing(&app, &ids).map_err(bridge::failure)
-}
-
-/// Everything the store believes has been removed from SoundCloud.
-#[tauri::command]
-pub fn cache_gone_tracks(
-    app: tauri::AppHandle,
-) -> Result<Vec<cache::StoredTrack>, bridge::Failure> {
-    cache::gone_tracks(&app).map_err(bridge::failure)
-}
-
 /// The local snapshot of one track, tombstone or not.
 #[tauri::command]
 pub fn cache_track(
@@ -1026,78 +996,6 @@ pub fn cache_search(
     limit: Option<u32>,
 ) -> Result<Vec<cache::SearchHit>, bridge::Failure> {
     cache::search(&app, &query, limit.unwrap_or(50)).map_err(bridge::failure)
-}
-
-#[tauri::command]
-pub fn marks_list(
-    app: tauri::AppHandle,
-    track_id: u64,
-) -> Result<Vec<cache::Mark>, bridge::Failure> {
-    cache::marks_list(&app, track_id).map_err(bridge::failure)
-}
-
-/// Every mark there is, with whatever the store knows about its track.
-#[tauri::command]
-pub fn marks_all(
-    app: tauri::AppHandle,
-    limit: Option<u32>,
-) -> Result<Vec<(cache::Mark, Option<cache::StoredTrack>)>, bridge::Failure> {
-    cache::marks_all(&app, limit.unwrap_or(500)).map_err(bridge::failure)
-}
-
-#[tauri::command]
-pub fn marks_add(
-    app: tauri::AppHandle,
-    track_id: u64,
-    position_ms: i64,
-    note: Option<String>,
-) -> Result<cache::Mark, bridge::Failure> {
-    cache::marks_add(&app, track_id, position_ms, note).map_err(bridge::failure)
-}
-
-#[tauri::command]
-pub fn marks_update(
-    app: tauri::AppHandle,
-    id: i64,
-    note: Option<String>,
-    position_ms: Option<i64>,
-) -> Result<(), bridge::Failure> {
-    cache::marks_update(&app, id, note, position_ms).map_err(bridge::failure)
-}
-
-#[tauri::command]
-pub fn marks_delete(app: tauri::AppHandle, id: i64) -> Result<(), bridge::Failure> {
-    cache::marks_delete(&app, id).map_err(bridge::failure)
-}
-
-/// Every mark as readable text, for the file the user asked for.
-#[tauri::command]
-pub fn marks_export(app: tauri::AppHandle) -> Result<String, bridge::Failure> {
-    cache::marks_export(&app).map_err(bridge::failure)
-}
-
-#[tauri::command]
-pub fn later_list(app: tauri::AppHandle) -> Result<Vec<cache::LaterItem>, bridge::Failure> {
-    cache::later_list(&app).map_err(bridge::failure)
-}
-
-#[tauri::command]
-pub fn later_add(
-    app: tauri::AppHandle,
-    track: Track,
-    source: String,
-) -> Result<(), bridge::Failure> {
-    cache::later_add(&app, &track, &source).map_err(bridge::failure)
-}
-
-#[tauri::command]
-pub fn later_remove(app: tauri::AppHandle, track_id: u64) -> Result<(), bridge::Failure> {
-    cache::later_remove(&app, track_id).map_err(bridge::failure)
-}
-
-#[tauri::command]
-pub fn later_keep(app: tauri::AppHandle, track_id: u64) -> Result<(), bridge::Failure> {
-    cache::later_keep(&app, track_id).map_err(bridge::failure)
 }
 
 /// Open a diary entry. The id comes back so the player can close it with what
@@ -1149,34 +1047,6 @@ pub fn loudness_set(
     cache::loudness_set(&app, track_id, level_db).map_err(bridge::failure)
 }
 
-/// The waveform for the thread: the local copy if there is one, SoundCloud's
-/// CDN if there is not, cached either way.
-///
-/// A missing waveform is not a fault the interface can act on — the thread draws
-/// its own shape and seeking works regardless — so a failure comes back as
-/// "nothing", not as an error.
-#[tauri::command]
-pub async fn thread_waveform(
-    app: tauri::AppHandle,
-    track_id: u64,
-    waveform_url: Option<String>,
-) -> Result<Option<cache::CachedWaveform>, bridge::Failure> {
-    if let Some(cached) = cache::waveform_get(&app, track_id).map_err(bridge::failure)? {
-        return Ok(Some(cached));
-    }
-    let Some(url) = waveform_url else {
-        return Ok(None);
-    };
-    let Ok(wave) = sc_api::tracks::waveform(&url).await else {
-        return Ok(None);
-    };
-    cache::waveform_put(&app, track_id, &wave.samples, wave.height).map_err(bridge::failure)?;
-    Ok(Some(cache::CachedWaveform {
-        samples: wave.samples,
-        height: wave.height,
-    }))
-}
-
 /// Has the user already said no to this link? Only a hash of it is stored.
 #[tauri::command]
 pub fn link_declined(app: tauri::AppHandle, url: String) -> Result<bool, bridge::Failure> {
@@ -1199,28 +1069,6 @@ pub fn kv_set(app: tauri::AppHandle, key: String, value: String) -> Result<(), b
 }
 
 #[tauri::command]
-pub fn dupes_find(app: tauri::AppHandle) -> Result<Vec<cache::DuplicateGroup>, bridge::Failure> {
-    cache::duplicates(&app).map_err(bridge::failure)
-}
-
-/// Hide duplicates locally. Nothing is unliked or deleted on SoundCloud.
-#[tauri::command]
-pub fn dupes_hide(app: tauri::AppHandle, ids: Vec<u64>) -> Result<(), bridge::Failure> {
-    cache::hide_tracks(&app, &ids).map_err(bridge::failure)
-}
-
-/// The undo the interface promises: everything hidden comes back.
-#[tauri::command]
-pub fn dupes_undo(app: tauri::AppHandle) -> Result<usize, bridge::Failure> {
-    cache::unhide_all(&app).map_err(bridge::failure)
-}
-
-#[tauri::command]
-pub fn dupes_hidden(app: tauri::AppHandle) -> Result<Vec<u64>, bridge::Failure> {
-    cache::hidden_ids(&app).map_err(bridge::failure)
-}
-
-#[tauri::command]
 pub fn storage_report(app: tauri::AppHandle) -> Result<cache::StorageReport, bridge::Failure> {
     cache::storage_report(&app).map_err(bridge::failure)
 }
@@ -1230,8 +1078,3 @@ pub fn storage_erase(app: tauri::AppHandle, id: String) -> Result<(), bridge::Fa
     cache::storage_erase(&app, &id).map_err(bridge::failure)
 }
 
-/// Marks-per-track and tombstones, for a list that is about to render.
-#[tauri::command]
-pub fn cache_row_facts(app: tauri::AppHandle) -> Result<cache::RowFacts, bridge::Failure> {
-    cache::row_facts(&app).map_err(bridge::failure)
-}

@@ -56,13 +56,22 @@ function hueOf(r: number, g: number, b: number): number {
   return ((h * 60) % 360 + 360) % 360;
 }
 
+/** A hue bin that survived the filters, with the index it came from. */
+interface Ranked {
+  bin: Bin;
+  index: number;
+}
+
 /**
- * Extract a two-colour accent from an image URL: the most prominent vibrant
- * hue, plus the most distant other hue as its gradient partner.
+ * The cover's hues, ranked by how much vivid area each covers.
+ *
+ * Split out because two callers want different amounts of the same work: the
+ * accent needs two colours, the full-screen player's glow wants as many as the
+ * sleeve has. Sampling twice would mean decoding the image twice for one
+ * screen — this way the ranking is the shared part and taking from it is the
+ * cheap part.
  */
-export async function accentFromArtwork(
-  url: string,
-): Promise<{ brand: string; brand2: string } | null> {
+async function rankedHues(url: string): Promise<Ranked[] | null> {
   let pixels: Uint8ClampedArray;
   try {
     const img = await loadImage(url);
@@ -111,22 +120,65 @@ export async function accentFromArtwork(
     .filter(({ bin }) => bin.n > 0)
     .sort((a, b) => b.bin.weight - a.bin.weight);
 
-  const top = ranked[0];
-  if (!top) return null; // A greyscale cover — leave the accent alone.
+  return ranked.length > 0 ? ranked : null;
+}
+
+/** The average colour of a bin, as CSS. */
+function css({ bin }: Ranked): string {
+  return `rgb(${Math.round(bin.r / bin.n)} ${Math.round(bin.g / bin.n)} ${Math.round(bin.b / bin.n)})`;
+}
+
+/** Whether two bins are far enough apart in hue to read as different colours. */
+function apart(a: number, b: number): boolean {
+  const d = Math.abs(a - b);
+  return Math.min(d, HUE_BINS - d) >= 2;
+}
+
+/**
+ * Extract a two-colour accent from an image URL: the most prominent vibrant
+ * hue, plus the most distant other hue as its gradient partner.
+ */
+export async function accentFromArtwork(
+  url: string,
+): Promise<{ brand: string; brand2: string } | null> {
+  const ranked = await rankedHues(url);
+  const top = ranked?.[0];
+  if (!ranked || !top) return null; // A greyscale cover — leave the accent alone.
 
   // Prefer a partner hue that is visibly different, so the gradient reads.
   const partner =
-    ranked
-      .slice(1)
-      .find(({ index }) => {
-        const d = Math.abs(index - top.index);
-        return Math.min(d, HUE_BINS - d) >= 2;
-      }) ?? top;
-
-  const css = ({ bin }: { bin: Bin }) =>
-    `rgb(${Math.round(bin.r / bin.n)} ${Math.round(bin.g / bin.n)} ${Math.round(bin.b / bin.n)})`;
+    ranked.slice(1).find(({ index }) => apart(index, top.index)) ?? top;
 
   return { brand: css(top), brand2: css(partner) };
+}
+
+/**
+ * As many of the cover's colours as it actually has, most prominent first.
+ *
+ * The accent above answers "what colour is this record"; this answers "what
+ * colours are on this sleeve", which is a different question and the one a
+ * glow wants — light off a picture is not one hue, and a single-colour wash
+ * behind a four-colour cover reads as a lamp someone pointed at it.
+ *
+ * Hues that sit within two bins of one already taken are skipped: they would
+ * add a second lamp of the same colour, which is brightness rather than
+ * colour. So a two-tone sleeve returns two, and only a busy one returns four.
+ */
+export async function paletteFromArtwork(
+  url: string,
+  max = 4,
+): Promise<string[] | null> {
+  const ranked = await rankedHues(url);
+  if (!ranked) return null;
+
+  const picked: Ranked[] = [];
+  for (const candidate of ranked) {
+    if (picked.length >= max) break;
+    if (picked.every(({ index }) => apart(index, candidate.index))) {
+      picked.push(candidate);
+    }
+  }
+  return picked.map(css);
 }
 
 /** Rec. 709 luma of an `rgb(r g b)` string, 0..255, or `null` if unparseable. */

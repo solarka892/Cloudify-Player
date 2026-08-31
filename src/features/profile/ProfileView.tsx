@@ -3,7 +3,6 @@ import {
   BadgeCheck,
   ExternalLink,
   MapPin,
-  MessageSquare,
   Radio,
   User as UserIcon,
 } from "lucide-react";
@@ -30,7 +29,6 @@ import { UserList } from "@/components/UserList";
 import { DownloadAllButton } from "@/components/DownloadAllButton";
 import { ShareButton } from "@/components/ShareButton";
 import { useLibraryStore } from "@/stores/useLibraryStore";
-import { useNavStore } from "@/stores/useNavStore";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { toast } from "@/stores/useToastStore";
 import { toastFailure } from "@/lib/notify";
@@ -114,7 +112,6 @@ export function ProfileView({
 
   const following = useLibraryStore((s) => s.followingIds.has(userId));
   const toggleFollow = useLibraryStore((s) => s.toggleFollow);
-  const openThread = useNavStore((s) => s.openThread);
   const playTrack = usePlayerStore((s) => s.playTrack);
   const [stationBusy, setStationBusy] = useState(false);
 
@@ -362,24 +359,6 @@ export function ProfileView({
                 <Radio className="h-4 w-4" />
               </button>
 
-              {!isSelf && (
-                <button
-                  onClick={() =>
-                    openThread({
-                      id: profile.id,
-                      username: profile.username,
-                      avatar_url: profile.avatar_url,
-                      permalink_url: profile.permalink_url,
-                      followers_count: profile.followers_count,
-                      track_count: profile.track_count,
-                    })
-                  }
-                  className="flex h-9 shrink-0 items-center gap-1.5 rounded-[var(--radius-control)] border border-border px-3 text-sm font-medium transition-colors duration-[var(--motion-fast)] hover:bg-accent"
-                >
-                  <MessageSquare className="h-4 w-4" />
-                  {t.profile.message}
-                </button>
-              )}
             </div>
           )}
 

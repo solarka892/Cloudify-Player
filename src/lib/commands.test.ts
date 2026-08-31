@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCommands, commandMatches } from "./commands";
+import { buildCommands, commandMatches, type Command } from "./commands";
 
 /**
  * The registry, checked where it is cheapest to break.
@@ -41,8 +41,23 @@ describe("matching what was typed", () => {
     expect(commandMatches(buildCommands()[0]!, "")).toBe(true);
   });
 
+  /**
+   * The matcher, against a command written here rather than fished out of the
+   * catalogue.
+   *
+   * It used to reach for `marks.add`, which had keywords, and went down with it
+   * when marks were removed — a test of "can a command be found by a word it
+   * does not say" has no business depending on which commands exist.
+   */
   it("matches on keywords a label does not contain", () => {
-    const mark = buildCommands().find((c) => c.id === "marks.add")!;
-    expect(commandMatches(mark, "метка")).toBe(true);
+    const command: Command = {
+      id: "test",
+      group: "commands",
+      label: "Toggle theme",
+      keywords: "тема",
+      run: () => {},
+    };
+    expect(commandMatches(command, "тема")).toBe(true);
+    expect(commandMatches(command, "theme")).toBe(true);
   });
 });

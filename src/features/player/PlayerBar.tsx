@@ -1,14 +1,13 @@
 import { useState } from "react";
-import { PlayerReadout } from "./PlayerReadout";
 import { ChevronUp, Download, ListMusic, Mic2 } from "lucide-react";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useDownloadsStore } from "@/stores/useDownloadsStore";
 import { useNavStore } from "@/stores/useNavStore";
 import { LikeButton } from "@/components/LikeButton";
-import { OfflineBadge } from "@/components/OfflineBadge";
 import { RepostButton } from "@/components/RepostButton";
 import { ShareButton } from "@/components/ShareButton";
 import { Ambient } from "@/components/Ambient";
+import { Marquee } from "@/components/Marquee";
 import { NowPlaying } from "./NowPlaying";
 import { QueuePanel } from "./QueuePanel";
 import { LyricsPanel } from "./Lyrics";
@@ -86,14 +85,22 @@ export function PlayerBar() {
           </div>
         )}
 
-        <footer className="player-bar panel panel-liquid panel-chrome flex h-20 w-full items-center gap-4 rounded-none border-x-0 border-b-0 px-4">
-          {/* Track.
-              Wider than it looks like it needs to be, and wider still on a big
-              window: the four action buttons live in here, and at 16rem they
-              left the title about 60px — every track rendered as "Ale…". The
-              actions drop out below `lg`, where that space is genuinely scarce
-              and the full-screen player is a click away. */}
-          <div className="flex w-52 min-w-0 items-center gap-3 lg:w-72 xl:w-96">
+        <footer className="player-bar panel panel-liquid panel-chrome flex h-20 w-full items-center gap-4 rounded-none border-0 px-4">
+          {/* Track. Fixed width, and the row cannot have it both ways.
+
+              Sized to its contents, the transport starts wherever the title
+              ends — so it lands somewhere new on every track, and the most-hit
+              control in the app is never twice in the same place. Fixed, it
+              stands still and a short title leaves a little air before the
+              buttons. Air is the cheaper of the two: you do not aim at it.
+
+              208px: it was 288 when four action buttons lived in here beside
+              the title, and they are on the right now. The narrower it is the
+              further left the transport starts, and the less air a short title
+              leaves in front of it — the floor is the artwork plus something
+              readable, and a title too long for what is left scrolls rather
+              than truncating. See `Marquee`. */}
+          <div className="flex w-52 min-w-0 items-center gap-3">
             <button
               onClick={() => setExpanded(true)}
               aria-label={t.player.expand}
@@ -121,8 +128,7 @@ export function PlayerBar() {
 
             <div className="flex min-w-0 flex-1 flex-col">
               <span className="flex min-w-0 items-center gap-1.5">
-                <span className="truncate text-sm font-medium">{current.title}</span>
-                <OfflineBadge />
+                <Marquee className="text-sm font-medium">{current.title}</Marquee>
               </span>
               {current.artist && (
                 <span className="truncate text-xs text-muted-foreground">
@@ -131,6 +137,29 @@ export function PlayerBar() {
               )}
             </div>
 
+          </div>
+
+          {/* Transport */}
+          <div className="flex shrink-0 items-center gap-1">
+            <ShuffleButton />
+            <PrevButton />
+            <PlayPauseButton />
+            <NextButton />
+            <RepeatButton />
+          </div>
+
+          {/* The one skin with a thread along the top edge of the window hides
+              this: two progress bars disagreeing about where time lives is
+              worse than either alone. What takes its place is `PlayerReadout`,
+              which is a reading rather than a control. */}
+          <div data-seekbar className="min-w-0 flex-1">
+            <SeekBar />
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1">
+            {/* What this does to the track, then what it opens. Hidden below
+                `lg`, where the row genuinely runs out of width and the
+                full-screen player is one click away. */}
             <div className="hidden shrink-0 items-center lg:flex">
               <LikeButton track={current} />
               <RepostButton track={current} />
@@ -163,27 +192,7 @@ export function PlayerBar() {
                 )}
               </button>
             </div>
-          </div>
 
-          {/* Transport */}
-          <div className="flex shrink-0 items-center gap-1">
-            <ShuffleButton />
-            <PrevButton />
-            <PlayPauseButton />
-            <NextButton />
-            <RepeatButton />
-          </div>
-
-          {/* The one skin with a thread along the top edge of the window hides
-              this: two progress bars disagreeing about where time lives is
-              worse than either alone. What takes its place is `PlayerReadout`,
-              which is a reading rather than a control. */}
-          <div data-seekbar className="min-w-0 flex-1">
-            <SeekBar />
-          </div>
-          <PlayerReadout />
-
-          <div className="flex shrink-0 items-center gap-1">
             <PanelToggle
               active={panel === "lyrics"}
               label={t.player.lyrics}
@@ -256,8 +265,7 @@ function CompactBar({ track, onExpand }: { track: Track; onExpand: () => void })
           )}
           <span className="flex min-w-0 flex-col">
             <span className="flex min-w-0 items-center gap-1.5">
-              <span className="truncate text-sm font-medium">{track.title}</span>
-              <OfflineBadge />
+              <Marquee className="text-sm font-medium">{track.title}</Marquee>
             </span>
             {track.artist && (
               <span className="truncate text-xs text-muted-foreground">

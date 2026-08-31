@@ -10,7 +10,6 @@ import {
   Palette as PaletteIcon,
   SlidersHorizontal,
   Sun,
-  Flag,
   HardDrive,
   Trash2,
   Upload,
@@ -19,7 +18,6 @@ import {
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { AudioSettings } from "./AudioSettings";
-import { NitSettings } from "./NitSettings";
 import { StorageSettings } from "./StorageSettings";
 
 import {
@@ -431,8 +429,6 @@ export function SettingsView() {
 
       </>)}
 
-      {section === "nit" && <NitSettings />}
-
       {section === "storage" && <StorageSettings />}
 
       {section === "backdrop" && (<>
@@ -646,7 +642,6 @@ const COLOUR_SLOTS: { token: string; label: string }[] = [
 
 type SectionId =
   | "appearance"
-  | "nit"
   | "backdrop"
   | "audio"
   | "playback"
@@ -687,7 +682,6 @@ const LUCIDE_GLYPHS: GlyphSet = {
   system: Monitor,
   sections: {
     appearance: PaletteIcon,
-    nit: Flag,
     backdrop: Wallpaper,
     audio: Volume2,
     playback: SlidersHorizontal,
@@ -709,9 +703,6 @@ function useGlyphs(): GlyphSet {
 const SECTIONS: { id: SectionId; label: string }[] = [
   { id: "appearance", get label() {
     return t.settings.secAppearance;
-  } },
-  { id: "nit", get label() {
-    return t.settings.secNit;
   } },
   { id: "backdrop", get label() {
     return t.settings.backdrop;

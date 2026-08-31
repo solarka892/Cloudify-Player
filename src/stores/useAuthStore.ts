@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { asFailure, isOffline, type Failure } from "@/lib/failure";
+import { asFailure, type Failure } from "@/lib/failure";
 import { scGetMe, scIsLoggedIn, scLogout, type Me } from "@/lib/tauri";
 
 /**
@@ -84,8 +84,25 @@ export const useAuthStore = create<AuthState>()(
             set({ session: { state: "expired" }, lastMe: null });
             return;
           }
-          if (isOffline(failure)) {
-            set({ session: { state: "offline", me: get().lastMe } });
+          // Everything that is not that one answer is a failure to *ask*, and
+          // the rule at the top of this file says so — but the code used to
+          // apply it only to the failure that says "offline" on the tin.
+          //
+          // Starting the app with no network does not reliably produce that
+          // one. `/me` needs a `client_id`, the key is fetched from
+          // soundcloud.com, and a cold start with nothing cached fails at that
+          // step instead — a different kind, `error`, and the sign-in screen.
+          // Which made the offline library useless in the only situation it
+          // exists for: no network, downloaded tracks on disk, and the app
+          // asking the user to sign in to reach them.
+          //
+          // So: a remembered user means the app stays usable, whatever went
+          // wrong, unless the token itself was refused. It costs telling a
+          // genuine breakage apart from a dropped connection — both read as
+          // "offline" now — and that is the cheaper mistake by a distance.
+          const remembered = get().lastMe;
+          if (remembered) {
+            set({ session: { state: "offline", me: remembered } });
             return;
           }
           set({ session: { state: "error", failure } });

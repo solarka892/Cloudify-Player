@@ -86,97 +86,15 @@ export function cacheSyncTracks(tracks: Track[]): Promise<number> {
   return invoke<number>("cache_sync_tracks", { tracks });
 }
 
-/**
- * Report tracks the API was asked for and did not return.
- *
- * Returns the URNs that became tombstones on this call, which is never on the
- * first report — see `MISSES_BEFORE_GONE`.
- */
-export function cacheMarkMissing(ids: number[]): Promise<string[]> {
-  return invoke<string[]>("cache_mark_missing", { ids });
-}
-
-export function cacheGoneTracks(): Promise<StoredTrack[]> {
-  return invoke<StoredTrack[]>("cache_gone_tracks");
-}
 
 export function cacheTrack(trackId: number): Promise<StoredTrack | null> {
   return invoke<StoredTrack | null>("cache_track", { trackId });
 }
 
-/** Marks-per-track and tombstones, keyed by track id. One query, one call. */
-export interface RowFacts {
-  marks: Record<string, number>;
-  gone: Record<string, number>;
-}
-
-export function cacheRowFacts(): Promise<RowFacts> {
-  return invoke<RowFacts>("cache_row_facts");
-}
 
 /** Search the mirror: offline, transliterated, notes included. */
 export function cacheSearch(query: string, limit = 50): Promise<SearchHit[]> {
   return invoke<SearchHit[]>("cache_search", { query, limit });
-}
-
-// ──────────────────────────────────────────────────────────────── marks ────
-
-export function marksList(trackId: number): Promise<Mark[]> {
-  return invoke<Mark[]>("marks_list", { trackId });
-}
-
-export function marksAll(limit = 500): Promise<[Mark, StoredTrack | null][]> {
-  return invoke<[Mark, StoredTrack | null][]>("marks_all", { limit });
-}
-
-export function marksAdd(
-  trackId: number,
-  positionMs: number,
-  note?: string | null,
-): Promise<Mark> {
-  return invoke<Mark>("marks_add", {
-    trackId,
-    positionMs: Math.round(positionMs),
-    note: note ?? null,
-  });
-}
-
-export function marksUpdate(
-  id: number,
-  note: string | null,
-  positionMs?: number,
-): Promise<void> {
-  return invoke<void>("marks_update", { id, note, positionMs });
-}
-
-export function marksDelete(id: number): Promise<void> {
-  return invoke<void>("marks_delete", { id });
-}
-
-export function marksExport(): Promise<string> {
-  return invoke<string>("marks_export");
-}
-
-// ──────────────────────────────────────────────────────────────── later ────
-
-export function laterList(): Promise<LaterItem[]> {
-  return invoke<LaterItem[]>("later_list");
-}
-
-export function laterAdd(
-  track: Track,
-  source: "manual" | "trap" | "search",
-): Promise<void> {
-  return invoke<void>("later_add", { track, source });
-}
-
-export function laterRemove(trackId: number): Promise<void> {
-  return invoke<void>("later_remove", { trackId });
-}
-
-/** "Yes, still want this" — pushes the question further out. */
-export function laterKeep(trackId: number): Promise<void> {
-  return invoke<void>("later_keep", { trackId });
 }
 
 // ──────────────────────────────────────────────────────────────── diary ────
@@ -220,19 +138,6 @@ export function loudnessSet(trackId: number, levelDb: number): Promise<void> {
   return invoke<void>("loudness_set", { trackId, levelDb });
 }
 
-// ─────────────────────────────────────────────────────────────── thread ────
-
-/** The waveform behind the thread: local copy, else the CDN, else nothing. */
-export function threadWaveform(
-  trackId: number,
-  waveformUrl?: string | null,
-): Promise<CachedWaveform | null> {
-  return invoke<CachedWaveform | null>("thread_waveform", {
-    trackId,
-    waveformUrl: waveformUrl ?? null,
-  });
-}
-
 // ───────────────────────────────────────────────────────────────── trap ────
 
 export function linkDeclined(url: string): Promise<boolean> {
@@ -251,25 +156,6 @@ export function kvGet(key: string): Promise<string | null> {
 
 export function kvSet(key: string, value: string): Promise<void> {
   return invoke<void>("kv_set", { key, value });
-}
-
-// ─────────────────────────────────────────────────────────── duplicates ────
-
-export function dupesFind(): Promise<DuplicateGroup[]> {
-  return invoke<DuplicateGroup[]>("dupes_find");
-}
-
-/** Hide locally. Nothing is unliked or deleted on SoundCloud, ever. */
-export function dupesHide(ids: number[]): Promise<void> {
-  return invoke<void>("dupes_hide", { ids });
-}
-
-export function dupesUndo(): Promise<number> {
-  return invoke<number>("dupes_undo");
-}
-
-export function dupesHidden(): Promise<number[]> {
-  return invoke<number[]>("dupes_hidden");
 }
 
 // ────────────────────────────────────────────────────────────── storage ────

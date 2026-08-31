@@ -107,12 +107,39 @@ fn split_origin(
         // track inside it, which is why every "X liked" row used to end there,
         // with no title and nothing to click. A follow's origin holds only a
         // user, which the top-level `user` already covers, so it stays empty.
-        _ => (
-            nested_track(&value, "track"),
-            nested_playlist(&value, "playlist"),
-            None,
-            None,
-        ),
+        //
+        // But not every row wraps. Some arrive as the target itself with no
+        // `kind` to announce it, and looking inside those for a `track` key
+        // finds nothing — which is the same dead end wearing a different shape:
+        // "liked" with no title, and the row saying "something of yours".
+        //
+        // So the wrapper is tried first and the blob itself second. The
+        // fallback only runs when the first found nothing, so a row that
+        // already worked cannot be changed by it. Track before set, and only
+        // one of the two: an abbreviated track and an abbreviated playlist are
+        // the same two required fields, so a blob will happily read as either
+        // and the first answer has to win.
+        _ => {
+            let track = nested_track(&value, "track");
+            let playlist = nested_playlist(&value, "playlist");
+            if track.is_some() || playlist.is_some() {
+                return (track, playlist, None, None);
+            }
+            match serde_json::from_value::<RawTrack>(value.clone())
+                .ok()
+                .map(Track::from)
+            {
+                Some(track) => (Some(track), None, None, None),
+                None => (
+                    None,
+                    serde_json::from_value::<RawPlaylist>(value)
+                        .ok()
+                        .map(Playlist::from),
+                    None,
+                    None,
+                ),
+            }
+        }
     }
 }
 
@@ -151,4 +178,50 @@ pub async fn list(token: &str, max: u32) -> Result<Vec<Activity>, ScApiError> {
             }
         })
         .collect())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::split_origin;
+    use serde_json::json;
+
+    /// The shape that already worked: a like object with the track inside it.
+    #[test]
+    fn a_wrapped_track_is_found() {
+        let (track, playlist, _, _) = split_origin(Some(json!({
+            "kind": "like",
+            "track": { "id": 7, "title": "Пасмурно" },
+        })));
+        assert_eq!(track.map(|t| t.title).as_deref(), Some("Пасмурно"));
+        assert!(playlist.is_none());
+    }
+
+    /// The shape that did not: the target itself, with nothing announcing it.
+    /// This is what left rows reading "liked something of yours".
+    #[test]
+    fn a_bare_track_is_found_too() {
+        let (track, playlist, _, _) =
+            split_origin(Some(json!({ "id": 7, "title": "Пасмурно" })));
+        assert_eq!(track.map(|t| t.title).as_deref(), Some("Пасмурно"));
+        assert!(playlist.is_none());
+    }
+
+    /// A follow carries a user and no target at all. It must stay empty rather
+    /// than being read as some other kind of thing.
+    #[test]
+    fn a_follow_has_no_target() {
+        let (track, playlist, _, _) = split_origin(Some(json!({
+            "kind": "user",
+            "id": 3,
+            "username": "chabik",
+        })));
+        assert!(track.is_none());
+        assert!(playlist.is_none());
+    }
+
+    #[test]
+    fn no_origin_is_no_target() {
+        let (track, playlist, body, at) = split_origin(None);
+        assert!(track.is_none() && playlist.is_none() && body.is_none() && at.is_none());
+    }
 }

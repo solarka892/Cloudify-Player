@@ -1,11 +1,7 @@
 import { t } from "@/i18n";
-import { markHere } from "@/hooks/useHotkeys";
 import { useNavStore } from "@/stores/useNavStore";
-import { useNitStore } from "@/stores/useNitStore";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
-import { marksExport } from "@/lib/store";
-import { toast } from "@/stores/useToastStore";
 
 /**
  * Everything the command palette can run.
@@ -62,31 +58,6 @@ export function buildCommands(): Command[] {
       run: () => usePlayerStore.getState().toggleShuffle(),
     },
     {
-      id: "marks.add",
-      group: "commands",
-      label: t.marks.add,
-      keywords: "mark метка m",
-      run: () => void markHere(),
-    },
-    {
-      id: "marks.export",
-      group: "commands",
-      label: t.marks.export,
-      run: () => {
-        void marksExport().then((text) => {
-          const url = URL.createObjectURL(
-            new Blob([text], { type: "text/markdown" }),
-          );
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = "cloudify-marks.md";
-          a.click();
-          URL.revokeObjectURL(url);
-          toast(t.marks.exported, "success");
-        });
-      },
-    },
-    {
       id: "theme.mode",
       group: "commands",
       label: settings.theme.mode === "dark" ? t.settings.themeLight : t.settings.themeDark,
@@ -95,15 +66,6 @@ export function buildCommands(): Command[] {
         useSettingsStore
           .getState()
           .setTheme({ mode: settings.theme.mode === "dark" ? "light" : "dark" }),
-    },
-    {
-      id: "dupes.scan",
-      group: "commands",
-      label: t.dupes.scan,
-      run: () => {
-        useNavStore.getState().setView("nit");
-        void useNitStore.getState().loadDupes();
-      },
     },
   ];
 

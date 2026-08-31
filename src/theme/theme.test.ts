@@ -97,15 +97,6 @@ describe("what a skin is drawn for", () => {
     }
   });
 
-  it("gives the thread to exactly the skin that gives up its seek bar", () => {
-    // Both halves matter. A skin with the thread *and* a seek bar is the app
-    // disagreeing with itself about where time lives; a skin with neither has
-    // no progress at all.
-    expect(SKINS.nit.thread).toBe(true);
-    for (const skin of SKIN_IDS.filter((id) => id !== "nit")) {
-      expect(SKINS[skin].thread, skin).toBeFalsy();
-    }
-  });
 });
 
 describe("every skin", () => {

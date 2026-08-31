@@ -58,7 +58,7 @@ export function NavRail({ view, onNavigate }: NavProps) {
     <div data-rail-slot className="nav-in-x relative h-full w-14 shrink-0">
       <nav
         data-rail
-        className="group/rail panel absolute inset-y-0 left-0 z-20 flex w-14 flex-col gap-1 overflow-hidden rounded-none border-y-0 border-l-0 p-2 pt-[calc(0.5rem+var(--titlebar-inset))] transition-[width] duration-[var(--motion-slow)] hover:w-48"
+        className="group/rail panel absolute inset-y-0 left-0 z-20 flex w-14 flex-col gap-1 overflow-hidden rounded-none border-0 p-2 pt-[calc(0.5rem+var(--titlebar-inset))] shadow-none transition-[width] duration-[var(--motion-slow)] hover:w-48"
       >
         <BrandMark compact />
         {NAV_ITEMS.map((item) => (

@@ -25,10 +25,8 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SkinLight } from "@/components/Ambient";
 import { LogoMark } from "@/components/Logo";
 import { HotkeyHelp } from "@/components/HotkeyHelp";
-import { Thread } from "@/features/nit/Thread";
-import { CommandPalette } from "@/features/nit/CommandPalette";
-import { NitView } from "@/features/nit/NitView";
-import { useNitSession } from "@/features/nit/useNitSession";
+import { CommandPalette } from "@/features/palette/CommandPalette";
+import { usePlaybackSession } from "@/features/player/usePlaybackSession";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import { useArtwork } from "@/hooks/useArtwork";
 import { useBackGesture } from "@/hooks/useBackGesture";
@@ -39,6 +37,7 @@ import { SearchView } from "@/features/search/SearchView";
 import { ProfileView } from "@/features/profile/ProfileView";
 import { SettingsView } from "@/features/settings/SettingsView";
 import { DetailView } from "@/features/detail/DetailView";
+import { DiaryView } from "@/features/diary/DiaryView";
 import { MessagesView } from "@/features/messages/MessagesView";
 import { NotificationsView } from "@/features/notifications/NotificationsView";
 import { PlayerBar } from "@/features/player/PlayerBar";
@@ -48,7 +47,6 @@ import { useMessagesStore } from "@/stores/useMessagesStore";
 import { useNotificationsStore } from "@/stores/useNotificationsStore";
 import { useRepostStore } from "@/stores/useRepostStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
-import { SKINS } from "@/theme/skins";
 import { t } from "@/i18n";
 
 function App() {
@@ -226,9 +224,8 @@ function App() {
       <ConfirmHost />
       {showHelp && <HotkeyHelp onClose={() => setShowHelp(false)} />}
       {showPalette && <CommandPalette onClose={() => setShowPalette(false)} />}
-      {/* The marks, the diary, the resume point and the waveform of whatever is
-          playing. Renders nothing. */}
-      <NitSession />
+      {/* The resume point and the loudness measurement. Renders nothing. */}
+      <Session />
 
       {/* Keyed so a tab change remounts and replays the entry animation. */}
       <div key={detail ? `detail-${detail.kind}-${detail.id}` : view} className="view-enter">
@@ -239,11 +236,11 @@ function App() {
       ) : (
         <>
           {view === "home" && (
-            <HomeView userId={me.id} onNavigate={(next) => setView(next)} />
+            <HomeView userId={me.id} />
           )}
           {view === "search" && <SearchView />}
           {view === "library" && <LibraryView userId={me.id} />}
-          {view === "nit" && <NitView />}
+          {view === "diary" && <DiaryView />}
           {view === "messages" && <MessagesView />}
           {view === "notifications" && <NotificationsView />}
           {view === "profile" && <ProfileView userId={me.id} isSelf />}
@@ -294,13 +291,6 @@ function App() {
  * whatever chrome is last. See `globals.css`. All of it is 0px off Android.
  */
 function Chrome({ children }: { children: React.ReactNode }) {
-  // The thread belongs to the look that was drawn around it: it replaces the
-  // player's seek bar, carries the marks and takes a row of the window frame.
-  // Under a skin that keeps its seek bar it would be a second, disagreeing
-  // answer to "how far through am I", so it is simply not mounted.
-  const skin = useSettingsStore((s) => s.theme.skin);
-  const thread = SKINS[skin]?.thread;
-
   return (
     <div className="app-frame relative flex h-full w-full flex-col overflow-hidden">
       {/* The band macOS floats its window buttons in.
@@ -322,16 +312,6 @@ function Chrome({ children }: { children: React.ReactNode }) {
         aria-hidden
         className="absolute inset-x-0 top-0 z-30 h-[var(--titlebar-inset)]"
       />
-      {/* The thread is the window's top edge: the playing track's waveform,
-          filling as it plays, with a rule through it for every mark.
-
-          A row of its own rather than an overlay on the chrome that used to be
-          here. As an overlay it had to steal from the drag region and from the
-          top of the window buttons, and could never be taller than what it
-          stole; as a row it owns its height and nothing overlaps. It keeps that
-          height with nothing playing, so starting a track does not push the
-          window down. */}
-      {thread && <Thread />}
       <div className="relative min-h-0 flex-1">
         {children}
         {/* What is left of the frame: eight invisible strips that resize an
@@ -355,8 +335,8 @@ function Chrome({ children }: { children: React.ReactNode }) {
  * notification. The reposts feed is what every repost button reads its state
  * from, and it is persisted, so this is a refresh rather than a cold load.
  */
-function NitSession() {
-  useNitSession();
+function Session() {
+  usePlaybackSession();
   return null;
 }
 

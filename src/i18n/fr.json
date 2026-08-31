@@ -6,6 +6,7 @@
     "reload": "Recharger"
   },
   "nav": {
+    "diary": "Journal",
     "home": "Accueil",
     "search": "Recherche",
     "library": "Bibliothèque",

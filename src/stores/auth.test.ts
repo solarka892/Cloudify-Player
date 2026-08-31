@@ -20,7 +20,7 @@ vi.mock("@/lib/tauri", () => ({
   scLogout: () => scLogout(),
 }));
 
-const { useAuthStore, hasSession } = await import("./useAuthStore");
+const { useAuthStore, hasSession, sessionUser } = await import("./useAuthStore");
 
 const ME = {
   id: 7,
@@ -77,10 +77,18 @@ describe("refresh", () => {
 
   /**
    * The three that used to sign people out, because `classify` called every
-   * refusal a stale key and `sc_get_me` deleted the token on it.
+   * refusal a stale key and `sc_get_me` deleted the token on it — plus the two
+   * a cold start with no network actually produces.
+   *
+   * They used to assert `error`, which is not being signed out but is not being
+   * let in either: `hasSession` is false for it, so the app rendered the
+   * sign-in screen anyway. That is the same bug wearing the state's name, and
+   * it is what made the downloaded-tracks library unreachable offline. The
+   * assertion is now the thing that actually matters — the app is usable and
+   * knows who it belongs to.
    */
-  it.each(["bot-filtered", "refused", "rate-limited"])(
-    "does not sign out on %s",
+  it.each(["bot-filtered", "refused", "rate-limited", "offline", "client-id"])(
+    "keeps a remembered user through %s",
     async (kind) => {
       scGetMe.mockResolvedValueOnce(ME);
       await useAuthStore.getState().refresh();
@@ -89,12 +97,23 @@ describe("refresh", () => {
       await useAuthStore.getState().refresh();
 
       const { session, lastMe } = useAuthStore.getState();
-      expect(session.state).toBe("error");
-      // Not signed out, and the user is still remembered for the next attempt.
       expect(session.state).not.toBe("expired");
       expect(lastMe).toEqual(ME);
+      // The part the sign-in screen keys off.
+      expect(hasSession(session)).toBe(true);
+      expect(sessionUser(session)).toEqual(ME);
     },
   );
+
+  /** With nobody remembered there is nothing to keep, and a failure is a failure. */
+  it("still reports a failure when there is no remembered user", async () => {
+    scGetMe.mockRejectedValue(failure("client-id"));
+    await useAuthStore.getState().refresh();
+
+    const { session } = useAuthStore.getState();
+    expect(session.state).toBe("error");
+    expect(hasSession(session)).toBe(false);
+  });
 
   it("reports no token as signed out, not as a failure", async () => {
     scIsLoggedIn.mockResolvedValue(false);

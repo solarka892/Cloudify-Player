@@ -250,6 +250,47 @@
     }
   }
 
+  /* The now-playing title, when it does not fit. See `components/Marquee`.
+
+     `alternate` rather than a loop back to the start: a title that snaps back
+     to its beginning reads as a glitch, and one that scrolls out and in reads
+     as a line being shown to you. The holds are keyframe stops rather than an
+     animation delay, because a delay applies once and these have to happen at
+     both ends of every pass. */
+  [data-marquee="1"] {
+    animation: marquee-shift var(--marquee-dur) ease-in-out infinite alternate;
+  }
+  @keyframes marquee-shift {
+    0%,
+    14% {
+      transform: translateX(0);
+    }
+    86%,
+    100% {
+      transform: translateX(var(--marquee-shift));
+    }
+  }
+  /* Motion that repeats forever is the first thing to go. The title still
+     truncates on its own — `overflow: hidden` is on the box, not the
+     animation. */
+  @media (prefers-reduced-motion: reduce) {
+    [data-marquee="1"] {
+      animation: none;
+    }
+  }
+
+  /* For a column whose scrolling is not the point.
+     The app's scrollbar is a thin light bar against the window, which is right
+     for a list you drag through and wrong beside a song's words: there it is a
+     vertical line down the middle of the screen with nothing on either side of
+     it to explain itself. The column still scrolls, by wheel and by keyboard. */
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
   ::-webkit-scrollbar {
     width: 10px;
     height: 10px;
@@ -744,41 +785,6 @@
   .bg-row {
     background: var(--card);
     background: color-mix(in srgb, var(--card) var(--row-alpha), transparent);
-  }
-
-  /* ── The thread ───────────────────────────────────────────────────────────
-   *
-   * The playing track's waveform along the top edge of the window, filling as it
-   * plays, with a rule through it for every mark. A row in the window frame
-   * rather than an overlay on the title bar — see the component for why.
-   *
-   * Not skin-specific: the marks are on it in every skin, and every value here
-   * is a token, so a skin that wants a different weight says so.
-   *
-   * ## Why the bars are drawn twice
-   *
-   * The unplayed shape and the played shape are the same set of bars in two
-   * colours, the second clipped to the playhead. The alternative — recolouring
-   * each bar as the playhead passes it — is two hundred style writes per tick
-   * instead of one, for a result nobody can tell apart.
-   */
-  .thread {
-    --thread-height: 1.375rem;
-    --thread-gap: 1px;
-    position: relative;
-    height: var(--thread-height);
-    flex-shrink: 0;
-    /* The strip is the page, so the bars' contrast is the palette's and not
-       whatever the wallpaper leaves under the title bar. */
-    background: var(--background);
-    border-bottom: var(--border-width) solid var(--border);
-    cursor: pointer;
-    /* Deliberately *not* `overflow: hidden`. Nothing inside can overflow — both
-       bar sets are `inset: 0` and shrink to zero width rather than push — and
-       the popover hangs below the strip, which clipping would eat. */
-    /* A scrub is a horizontal gesture on a 22px-tall strip; on a touchscreen
-       that has to not be read as the start of a page scroll. */
-    touch-action: none;
   }
 
   /* On a phone the gaps would be most of the strip — two hundred bars at 0.8px
@@ -1670,12 +1676,6 @@
   border-top: var(--border-width) solid var(--border);
   box-shadow: none;
 }
-:root[data-skin="nit"] [data-seekbar] {
-  display: none;
-}
-:root[data-skin="nit"] .player-readout {
-  display: flex;
-}
 /* The play button is the one solid fill in the interface. */
 :root[data-skin="nit"] [data-transport="play"] {
   width: 40px;
@@ -2087,6 +2087,11 @@ button.pill-readout:hover {
  * every skin, to be hidden again in three of them. The handle goes; the whole
  * strip is the target, which is what the native input already gives us.
  */
+:root[data-skin="obsidian"] .volume-track {
+  /* This skin paints the level onto the input itself, as twelve segments. The
+     painted track underneath would only show through the gaps between them. */
+  display: none;
+}
 :root[data-skin="obsidian"] .volume-slider {
   appearance: none;
   height: 13px;
