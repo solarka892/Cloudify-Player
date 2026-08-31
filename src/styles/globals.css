@@ -6,6 +6,88 @@
   --titlebar-inset: 1.75rem;
 }
 
+/* ── Colours the app can cross-fade ─────────────────────────────────────────
+ *
+ * A custom property is a string to the browser, and there is no halfway point
+ * between two strings — which is why the accent used to snap from one track's
+ * colour to the next in a single frame. Declared like this it is a *colour*,
+ * the browser knows how to find the middle of two, and the change becomes an
+ * ordinary animation.
+ *
+ * `inherits: true` because everything below `:root` reads these, and an
+ * initial value is required once a syntax is given — these are the palette's
+ * own defaults, replaced the moment the theme engine runs.
+ */
+@property --brand {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: oklch(0.75 0.17 55);
+}
+@property --brand-2 {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: oklch(0.68 0.22 12);
+}
+@property --brand-foreground {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: rgb(255 255 255);
+}
+
+/* The full-screen player's lights, one per colour found on the sleeve.
+ *
+ * They are variables rather than colours written into the gradient for the
+ * same reason: a gradient is a string too, so swapping the whole thing cannot
+ * be animated, while swapping the colours inside a constant one can. */
+@property --glow-1 {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: transparent;
+}
+@property --glow-2 {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: transparent;
+}
+@property --glow-3 {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: transparent;
+}
+@property --glow-4 {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: transparent;
+}
+
+:root {
+  /* Long enough to read as a change of light rather than a repaint, short
+     enough that it has settled before anyone looks for what is playing. */
+  transition:
+    --brand var(--motion-slow) ease,
+    --brand-2 var(--motion-slow) ease,
+    --brand-foreground var(--motion-slow) ease;
+}
+
+/* The lights are set on the glow layer itself, not on the root, so this is
+   where their transition has to live: a property animates on the element whose
+   value changed. */
+.glow-lights {
+  transition:
+    --glow-1 var(--motion-slow) ease,
+    --glow-2 var(--motion-slow) ease,
+    --glow-3 var(--motion-slow) ease,
+    --glow-4 var(--motion-slow) ease;
+}
+
+/* Nothing animates for anyone who asked for that. */
+@media (prefers-reduced-motion: reduce) {
+  :root,
+  .glow-lights {
+    transition: none;
+  }
+}
+
 /* Enable class-based dark mode (the <html> element carries `.dark`). */
 @custom-variant dark (&:is(.dark *));
 
@@ -248,6 +330,21 @@
     .app-glow-arc {
       animation: none !important;
     }
+  }
+
+  /* The player bar, when the blur is what lights the app.
+
+     `.panel` fills it with the card colour, which is right when the bar is the
+     app's floor and wrong when the wallpaper is its light: a solid strip across
+     the bottom is where that light stops dead. Translucent with a blur of its
+     own, the bar reads as the last of the room rather than a lid on it.
+
+     Its own blur, not the wallpaper's showing through: what is behind the bar
+     is the *list*, and letting a track title read through the transport is not
+     the effect. This blurs what it covers. */
+  .player-bar-see-through {
+    background: color-mix(in srgb, var(--card) 62%, transparent);
+    backdrop-filter: blur(28px) saturate(1.4);
   }
 
   /* The now-playing title, when it does not fit. See `components/Marquee`.

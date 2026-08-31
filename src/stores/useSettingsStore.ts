@@ -60,6 +60,30 @@ export interface BackdropState {
   dim: number;
   /** Saturation multiplier, 0..2. */
   saturate: number;
+  /**
+   * How the full-screen player is lit.
+   *
+   * `glow` reads the cover's colours and hangs them as separate lights behind
+   * it, on an otherwise dark screen. `blur` is the older answer: the cover
+   * itself, enlarged and blurred across the whole window.
+   *
+   * A choice rather than a decision, because it is one: the glow is a room with
+   * a lit object in it, the blur is a wash of the record's colour over
+   * everything. Neither is wrong and this was tuned by eye four times trying to
+   * find the version that was.
+   */
+  playerLight: "glow" | "blur";
+  /** How much of it, 0..1. Scales whichever of the two is on. */
+  playerLightStrength: number;
+  /**
+   * How bright the light itself is, 0.5..2.
+   *
+   * Not the same knob as the one above, though they look alike at a glance:
+   * strength is how much of the light reaches the screen, brightness is how
+   * lit the thing giving it off is. A dark sleeve at full strength is still a
+   * dark glow — this is what lifts it.
+   */
+  playerLightBrightness: number;
 }
 
 export interface ThemeState {
@@ -160,6 +184,11 @@ const DEFAULT_BACKDROP: BackdropState = {
   blur: 40,
   dim: 0.55,
   saturate: 1.2,
+  playerLight: "glow",
+  // Short of full: at 1 the glow reaches the far corners, and light everywhere
+  // is a tint rather than a source.
+  playerLightStrength: 0.7,
+  playerLightBrightness: 1,
 };
 
 /** Where the HUD appears, as a screen corner. */

@@ -24,6 +24,7 @@ import { useCompact } from "@/hooks/useCompact";
 import type { Track } from "@/lib/tauri";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
+import { useSettingsStore } from "@/stores/useSettingsStore";
 import { useArtwork } from "@/hooks/useArtwork";
 import { ArtFallback } from "@/components/ArtFallback";
 
@@ -36,6 +37,10 @@ export function PlayerBar() {
   const expanded = useNavStore((s) => s.nowPlaying);
   const setExpanded = useNavStore((s) => s.setNowPlaying);
   const compact = useCompact();
+  // The bar answers to the same setting the full-screen player does: with the
+  // blur chosen, the wallpaper is the app's lighting, and a solid slab across
+  // the bottom is the one place it stops.
+  const light = useSettingsStore((s) => s.backdrop.playerLight);
 
   const downloadedIds = useDownloadsStore((s) => s.ids);
   const active = useDownloadsStore((s) => s.active);
@@ -85,7 +90,12 @@ export function PlayerBar() {
           </div>
         )}
 
-        <footer className="player-bar panel panel-liquid panel-chrome flex h-20 w-full items-center gap-4 rounded-none border-0 px-4">
+        <footer
+          className={cn(
+            "player-bar panel panel-liquid panel-chrome flex h-20 w-full items-center gap-4 rounded-none border-0 px-4",
+            light === "blur" && "player-bar-see-through",
+          )}
+        >
           {/* Track. Fixed width, and the row cannot have it both ways.
 
               Sized to its contents, the transport starts wherever the title

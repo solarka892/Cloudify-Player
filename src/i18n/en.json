@@ -274,6 +274,13 @@
     "playingOffline": "Playing from your downloads"
   },
   "settings": {
+    "playerLight": "Now playing light",
+    "playerLightHint": "What lights the full-screen player",
+    "playerLightMode": "Lighting",
+    "playerLightGlow": "Glow",
+    "playerLightBlur": "Blur",
+    "playerLightStrength": "Strength",
+    "playerLightBrightness": "Brightness",
     "layout": "Layout",
     "layoutHint": "How navigation and content are arranged",
     "layoutRail": "Rail",

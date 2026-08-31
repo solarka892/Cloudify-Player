@@ -274,6 +274,13 @@
     "playingOffline": "Играет из загрузок"
   },
   "settings": {
+    "playerLight": "Свет на плеере",
+    "playerLightHint": "Чем освещён полноэкранный плеер",
+    "playerLightMode": "Освещение",
+    "playerLightGlow": "Свечение",
+    "playerLightBlur": "Размытие",
+    "playerLightStrength": "Сила",
+    "playerLightBrightness": "Яркость",
     "layout": "Раскладка",
     "layoutHint": "Как расположены навигация и контент",
     "layoutRail": "Рельс",

@@ -91,6 +91,11 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
 
   const art = useArtwork(current, "t500x500");
   const palette = useSettingsStore((s) => s.artworkPalette);
+  const light = useSettingsStore((s) => s.backdrop.playerLight);
+  const lightStrength = useSettingsStore((s) => s.backdrop.playerLightStrength);
+  const lightBrightness = useSettingsStore(
+    (s) => s.backdrop.playerLightBrightness,
+  );
 
   if (!current) return null;
 
@@ -107,13 +112,32 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
         leaving ? "view-exit" : "view-enter",
       )}
     >
-      {/* Nothing here. The lighting used to be the cover blown up to fill the
-          window, blurred, at 40% behind a 70% scrim — a wash of the record's
-          colour over every pixel, which lit the corners as brightly as the
-          middle and left the cover sitting *in* a field of itself.
+      {/* The older lighting, kept as a choice: the cover blown up to fill the
+          window and blurred. A wash of the record's colour over every pixel,
+          which lights the corners as brightly as the middle and leaves the
+          cover sitting *in* a field of itself — which is either the wrong thing
+          entirely or exactly what someone wants, and there is no arguing that
+          from here.
 
-          It is a glow off the cover now instead (below), and this stays dark so
-          there is something for that glow to fall on. */}
+          The other setting draws nothing at all up here, so the glow further
+          down has a dark room to fall into. */}
+      {light === "blur" && art && (
+        <>
+          <div
+            aria-hidden
+            className="artwork art-frame pointer-events-none absolute inset-0 scale-125 bg-cover bg-center"
+            style={{
+              backgroundImage: `url("${art}")`,
+              opacity: 0.55 * lightStrength,
+              filter: `blur(64px) brightness(${lightBrightness})`,
+            }}
+          />
+          <div
+            className="pointer-events-none absolute inset-0 bg-background/70"
+            aria-hidden
+          />
+        </>
+      )}
 
       <header className="relative z-10 flex items-center gap-2 p-4">
         <button
@@ -202,14 +226,16 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
                 colour toward grey and a glow that has gone grey reads as a
                 shadow rather than a light.
 
-                Wider than the window, and that is the point. A tight halo
-                has an outline whatever its blur, and an outline is what gives
-                away that this is a rectangle behind a square rather than light
-                in a room. Past the edges there is no edge left to find.
+                Wide, but short of the whole window. A tight halo has an
+                outline whatever its blur, and an outline is what gives away
+                that this is a rectangle behind a square rather than light in a
+                room — so it has to reach well past the cover. Reaching the far
+                corners is the other failure: light everywhere is a tint, and a
+                tinted screen has no source. Somewhere between, and this is it.
 
-                Saturated a little further with every widening: spreading light
-                over more area dilutes it toward grey, and each time this got
-                wider it also got flatter until the colour was pushed back.
+                Saturation is raised because blur dilutes colour toward grey,
+                and dimming it dilutes it again. Both of those were tuned by
+                eye, several times, in both directions.
 
                 The mask is what makes it a glow rather than a blurred square,
                 and it has six stops rather than two on purpose: a straight ramp
@@ -242,18 +268,38 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
 
                 A cover with colour in it drowns this out with its own; a black
                 one is left with a halo instead of a void. */}
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-0 -z-20 scale-[5] opacity-55"
-              style={{ background: glowFrom(palette) }}
-            />
-            {art && (
+            {light === "glow" && (
+              <div
+                aria-hidden
+                className="glow-lights pointer-events-none absolute inset-0 -z-20 scale-[4]"
+                style={{
+                  ...glowVars(palette),
+                  background: GLOW,
+                  filter: `brightness(${lightBrightness})`,
+                  // The layer is a rectangle, and its lights do not all fade to
+                  // nothing before they reach its sides — a spot placed near one
+                  // edge still has colour left when the element stops, and where
+                  // it stops is a straight line. Most visible with the lyrics
+                  // open, which pushes the cover right and leaves that line down
+                  // the middle of the screen. This dissolves the layer's own
+                  // edges, so there is no boundary for the light to end at.
+                  maskImage: "radial-gradient(closest-side, currentColor 40%, color-mix(in srgb, currentColor 45%, transparent) 66%, color-mix(in srgb, currentColor 15%, transparent) 84%, transparent 100%)",
+                  WebkitMaskImage: "radial-gradient(closest-side, currentColor 40%, color-mix(in srgb, currentColor 45%, transparent) 66%, color-mix(in srgb, currentColor 15%, transparent) 84%, transparent 100%)",
+                  // Weaker than the cover's own light above it: this is the
+                  // colour underneath rather than the source.
+                  opacity: 0.55 * lightStrength,
+                }}
+              />
+            )}
+            {light === "glow" && art && (
               <img
                 src={art}
                 alt=""
                 aria-hidden
-                className="pointer-events-none absolute inset-0 -z-10 h-full w-full scale-[3.8] object-cover opacity-90 blur-[120px] saturate-[1.9]"
+                className="pointer-events-none absolute inset-0 -z-10 h-full w-full scale-[3] object-cover"
                 style={{
+                  opacity: lightStrength,
+                  filter: `blur(110px) saturate(1.8) brightness(${lightBrightness})`,
                   maskImage: "radial-gradient(closest-side, currentColor 8%, color-mix(in srgb, currentColor 72%, transparent) 26%, color-mix(in srgb, currentColor 42%, transparent) 44%, color-mix(in srgb, currentColor 20%, transparent) 62%, color-mix(in srgb, currentColor 8%, transparent) 80%, transparent 100%)",
                   WebkitMaskImage: "radial-gradient(closest-side, currentColor 8%, color-mix(in srgb, currentColor 72%, transparent) 26%, color-mix(in srgb, currentColor 42%, transparent) 44%, color-mix(in srgb, currentColor 20%, transparent) 62%, color-mix(in srgb, currentColor 8%, transparent) 80%, transparent 100%)",
                 }}
@@ -557,22 +603,35 @@ function LyricsSurface({ track }: { track: Track }) {
 const GLOW_SPOTS = ["50% 46%", "28% 30%", "73% 34%", "46% 74%"] as const;
 
 /**
- * The colours, as overlapping lights.
+ * The lights, as one gradient that never changes.
+ *
+ * Every colour is `var(--glow-N)` rather than the colour itself, and that is
+ * the whole trick: a gradient is a string, and swapping one string for another
+ * cannot be animated — there is no halfway between them. Keep the string and
+ * change what the names point at, and the browser cross-fades each colour on
+ * its own. See the `@property` block in `globals.css`.
+ */
+const GLOW = GLOW_SPOTS.map(
+  (spot, i) =>
+    `radial-gradient(circle at ${spot}, var(--glow-${i + 1}) 0%, ` +
+    `color-mix(in srgb, var(--glow-${i + 1}) 30%, transparent) 34%, transparent 70%)`,
+).join(", ");
+
+/**
+ * The sleeve's colours, as the variables the gradient above reads.
  *
  * Falls back to the accent when the sampler found nothing — a greyscale sleeve,
- * or a cover the CDN would not let us read. One light is still better than a
- * flat rectangle, and `--brand` is never empty.
+ * or a cover the CDN would not let us read. Spots with no colour to put in them
+ * are set transparent rather than left alone: an unset one would keep the
+ * previous track's colour and the glow would accumulate sleeves.
  */
-function glowFrom(palette: string[] | null): string {
+function glowVars(palette: string[] | null): React.CSSProperties {
   const colours = palette?.length ? palette : ["var(--brand)"];
-  return colours
-    .slice(0, GLOW_SPOTS.length)
-    .map(
-      (colour, i) =>
-        `radial-gradient(circle at ${GLOW_SPOTS[i]}, ${colour} 0%, ` +
-        `color-mix(in srgb, ${colour} 34%, transparent) 38%, transparent 78%)`,
-    )
-    .join(", ");
+  const vars: Record<string, string> = {};
+  GLOW_SPOTS.forEach((_, i) => {
+    vars[`--glow-${i + 1}`] = colours[i] ?? "transparent";
+  });
+  return vars as React.CSSProperties;
 }
 
 function MenuRow({

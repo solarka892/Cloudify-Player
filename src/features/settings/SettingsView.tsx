@@ -524,6 +524,60 @@ export function SettingsView() {
         </Row>
       </Group>
 
+      {/* ── The full-screen player's lighting ─────────────────────────────── */}
+      <Group
+        title={t.settings.playerLight}
+        hint={t.settings.playerLightHint}
+        onReset={() =>
+          setBackdrop({
+            playerLight: "glow",
+            playerLightStrength: 0.7,
+            playerLightBrightness: 1,
+          })
+        }
+      >
+        <Row label={t.settings.playerLightMode}>
+          <Segmented
+            value={backdrop.playerLight}
+            onChange={(mode) =>
+              setBackdrop({
+                playerLight: mode as typeof backdrop.playerLight,
+              })
+            }
+            options={[
+              { id: "glow", get label() {
+    return t.settings.playerLightGlow;
+  } },
+              { id: "blur", get label() {
+    return t.settings.playerLightBlur;
+  } },
+            ]}
+          />
+        </Row>
+
+        <Row label={t.settings.playerLightStrength}>
+          <Slider
+            value={Math.round(backdrop.playerLightStrength * 100)}
+            min={0}
+            max={100}
+            step={5}
+            suffix="%"
+            onChange={(v) => setBackdrop({ playerLightStrength: v / 100 })}
+          />
+        </Row>
+
+        <Row label={t.settings.playerLightBrightness}>
+          <Slider
+            value={Math.round(backdrop.playerLightBrightness * 100)}
+            min={50}
+            max={200}
+            step={10}
+            suffix="%"
+            onChange={(v) => setBackdrop({ playerLightBrightness: v / 100 })}
+          />
+        </Row>
+      </Group>
+
       {/* ── Ambient effects ───────────────────────────────────────────────── */}
       <Group
         title={t.settings.effects}
