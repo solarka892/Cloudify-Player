@@ -23,6 +23,7 @@ beforeEach(() => {
     past: [],
     future: [],
     nowPlaying: false,
+    pendingLibrarySection: null,
   });
 });
 
@@ -92,5 +93,39 @@ describe("forward", () => {
 
     expect(useNavStore.getState().future).toHaveLength(0);
     expect(useNavStore.getState().forward()).toBe(false);
+  });
+});
+
+describe("a link that names a library tab", () => {
+  /**
+   * The library opens on whichever tab you last left it on, so a link meaning
+   * "the history, specifically" has nowhere to say that — which is why every
+   * "see all" on the home screen used to land on likes, whatever it was
+   * written under.
+   */
+  it("carries the tab it meant", () => {
+    useNavStore.getState().openLibrary("history");
+
+    expect(useNavStore.getState().view).toBe("library");
+    expect(useNavStore.getState().pendingLibrarySection).toBe("history");
+  });
+
+  /**
+   * The half that is easy to leave out: the library consumes this on arrival.
+   * Left set, coming back later would land on the tab a link sent you to once
+   * rather than the one you actually left.
+   */
+  it("stops meaning anything once it has been honoured", () => {
+    useNavStore.getState().openLibrary("playlists");
+    useNavStore.getState().clearPendingLibrarySection();
+
+    expect(useNavStore.getState().pendingLibrarySection).toBeNull();
+  });
+
+  it("is a step back like any other route", () => {
+    useNavStore.getState().openLibrary("history");
+
+    expect(useNavStore.getState().back()).toBe(true);
+    expect(useNavStore.getState().view).toBe("home");
   });
 });
