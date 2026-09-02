@@ -156,11 +156,25 @@ const TrackRow = memo(function TrackRow({
           Role and key handling put back by hand what `<button>` was giving for
           free — that is the price of the fix, and it is cheaper than an
           arrangement where half the controls in a list cannot be touched
-          without disturbing the player. */}
+          without disturbing the player.
+
+          Unnesting them was not enough on its own, though, so the handler below
+          also asks where the click landed. Every inner control stops the event
+          from travelling up and it kept arriving anyway; rather than keep
+          guessing by what route, the row simply declines any click that started
+          inside something clickable. That holds however the engine delivers it —
+          bubbled, retargeted, or dispatched at the row directly — which is the
+          property worth having in a list where a stray play is a track cut off
+          mid-word. */}
       <div
         role="button"
         tabIndex={0}
-        onClick={() => void playTrack(track, queue)}
+        onClick={(e) => {
+          // The heart, the download, repost, share, queue, the overflow menu:
+          // each does its own thing, and none of them means "play this".
+          if ((e.target as HTMLElement).closest("button, a")) return;
+          void playTrack(track, queue);
+        }}
         onKeyDown={(e) => {
           if (e.key !== "Enter" && e.key !== " ") return;
           // Space scrolls the list by default, which is the opposite of what
