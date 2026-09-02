@@ -43,6 +43,26 @@ pub fn find_token() -> Option<String> {
     find_cookie("oauth_token")
 }
 
+/// Whether a path is a file this process can actually open and read.
+///
+/// `is_file` was the test, and on macOS it is not one. Safari's jar exists on
+/// every Mac and is unreadable without Full Disk Access, so the check written to
+/// say "this route cannot work here" answered "it can" on exactly the machine it
+/// was written for: the app opened a browser, the user signed in properly, and
+/// then waited out a three-minute timeout that was certain from the first
+/// second.
+///
+/// Opening it is the only honest answer — permissions, sandbox containers and
+/// macOS privacy protection all decide at `open`, not at `stat`. The handle is
+/// dropped immediately; nothing is read here, and reading is what the callers do
+/// later on their own terms.
+///
+/// `is_file` stays in front of it because a directory opens perfectly well on
+/// Unix and fails only when something tries to read it.
+fn readable(path: &Path) -> bool {
+    path.is_file() && std::fs::File::open(path).is_ok()
+}
+
 /// Whether there is any cookie store on this machine this build can read.
 ///
 /// Asked *before* opening the browser, so the flow can decline instead of
@@ -90,7 +110,9 @@ fn find_cookie(name: &str) -> Option<String> {
 /// Safari actually writes), then the legacy location.
 ///
 /// Both live under macOS privacy protection, so reading them requires the app to
-/// have Full Disk Access. Without it the files simply appear unreadable.
+/// have Full Disk Access. Without it the files are there and cannot be opened,
+/// which is why the filter below opens them rather than asking whether they
+/// exist.
 #[cfg(target_os = "macos")]
 fn safari_jars() -> Vec<PathBuf> {
     let Some(home) = std::env::var_os("HOME").map(PathBuf::from) else {
@@ -102,7 +124,7 @@ fn safari_jars() -> Vec<PathBuf> {
     ]
     .iter()
     .map(|rel| home.join(rel))
-    .filter(|p| p.is_file())
+    .filter(|p| readable(p))
     .collect()
 }
 
@@ -171,7 +193,7 @@ fn cookie_dbs() -> Vec<PathBuf> {
         };
         for entry in entries.flatten() {
             let db = entry.path().join("cookies.sqlite");
-            if db.is_file() {
+            if readable(&db) {
                 dbs.push(db);
             }
         }
@@ -324,7 +346,58 @@ mod safari {
 
 #[cfg(test)]
 mod tests {
-    use super::safari;
+    use super::{readable, safari};
+    use std::path::PathBuf;
+
+    /// A path nobody can open is not a cookie store, however much it exists.
+    ///
+    /// This is the whole bug: the check that decides whether the browser flow
+    /// can work at all used to ask only whether the file was there, and Safari's
+    /// jar is there on every Mac — locked behind Full Disk Access. The answer
+    /// was "yes, this will work" on the one machine where it could not.
+    #[test]
+    fn a_file_that_will_not_open_is_not_a_store() {
+        let dir = std::env::temp_dir().join(format!(
+            "cloudify-readable-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_nanos())
+                .unwrap_or_default()
+        ));
+        std::fs::create_dir_all(&dir).expect("temp dir");
+        let file = dir.join("cookies.sqlite");
+        std::fs::write(&file, b"not really a database").expect("write");
+
+        // Readable to start with, or the rest of this proves nothing.
+        assert!(readable(&file));
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o000)).expect("chmod");
+
+            // Root ignores the mode bits, so there is nothing to assert there.
+            if std::fs::File::open(&file).is_err() {
+                assert!(!readable(&file));
+            }
+
+            std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o600))
+                .expect("chmod back");
+        }
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// The two ways a path can fail to be a file at all.
+    #[test]
+    fn a_missing_path_and_a_directory_are_not_stores() {
+        assert!(!readable(&PathBuf::from(
+            "/definitely/not/here/cookies.sqlite"
+        )));
+        // A directory opens fine on Unix and fails only when read, which is why
+        // `readable` keeps the `is_file` test in front of the open.
+        assert!(!readable(&std::env::temp_dir()));
+    }
 
     /// Build a one-page, one-cookie file exactly as Safari lays it out.
     fn binarycookies(url: &str, name: &str, value: &str) -> Vec<u8> {
