@@ -26,17 +26,27 @@ _Coming soon._
 
 ## What works
 
-- **Your likes** — the full liked-tracks list, paginated in the background and
-  cached for the session.
-- **Search** — find tracks across SoundCloud.
+- **Your library** — eight sections, each with its own filter: likes, playlists,
+  albums, reposts, followings, stations, history and downloads.
+- **Search** — tracks, playlists, albums and people, or all of them at once.
 - **Player** — play/pause, seek, volume, and a queue: whatever list you played
-  from becomes the queue, with autoplay, skip and a jump-to-track panel.
-- **Appearance** — four skins, fourteen palettes, three layouts, and a window
-  frame the app draws itself. See [Looks](#looks).
+  from becomes the queue, with autoplay, skip and a jump-to-track panel. Tracks
+  SoundCloud serves only as HLS play like any other.
+- **Sound** — a ten-band equaliser with presets, preamp, balance, crossfade and
+  loudness levelling.
+- **Offline** — download tracks and play them with no network at all; the app
+  stays usable signed in and disconnected.
+- **A full-screen player** — cover, lyrics (from LRCLIB), and lighting you
+  choose: a glow lifted off the sleeve's own colours, or the cover blurred
+  across the window.
+- **Diary** — what you played, folded by day.
+- **Appearance** — five skins, seventeen palettes, three layouts, ten languages,
+  and a window frame the app draws itself. See [Looks](#looks).
+- **A command palette** (Cmd/Ctrl-K) and hotkeys throughout.
 - **Sign-in** — reuses your existing SoundCloud web session (see below).
 
-Not there yet: playlists, followings, downloads, HLS-only tracks, users and
-playlists in search results.
+Messages and notifications are there to read. Sending a message is not: the
+endpoint for it is not one an unofficial client gets to call.
 
 ## Looks
 
@@ -44,13 +54,14 @@ Appearance is three independent axes, and every combination of them is valid:
 
 - **Layout** — icon rail, top tabs or a wide sidebar.
 - **Skin** — form only: corner radius, blur, shadows, type and motion.
-- **Palette** — colour only, fourteen of them, dark and light variants each.
+- **Palette** — colour only, seventeen of them, dark and light variants each.
 
-Four skins ship:
+Five skins ship:
 
 | Skin | |
 |------|--|
-| **Aurora Glass** | Glass, blur and a soft glow. The default. |
+| **One** | One typeface, soft corners, quiet depth. The default. |
+| **Nit** | Two inks, square cards, round controls. |
 | **Editorial** | Large type, hard lines, no shadows. |
 | **Studio** | Tactile controls, careful depth, a waveform. |
 | **Obsidian** | Black glass, hairlines, hard edges. |
@@ -126,10 +137,22 @@ Service provider (`gnome-keyring`, KWallet's bridge, …) has to be running.
 SoundCloud closed app registration in 2015, so there is no OAuth flow to
 implement. Instead the app reuses the session you already have:
 
-1. **Via your browser** — it opens soundcloud.com in your real browser (where
-   the anti-bot captcha behaves) and reads the `oauth_token` cookie once you're
-   logged in. Firefox-family browsers only for now.
-2. **By pasting a token** — copy `oauth_token` from your browser's DevTools.
+1. **In a window cloudify opens itself** — SoundCloud's real sign-in page, in a
+   window whose cookies belong to the app. No browser profile is touched. A
+   captcha may appear once; answering one is a thing a person can do. **This is
+   the first offer on macOS**, where it runs on WKWebView — Safari's own engine.
+2. **Via your browser** — it opens soundcloud.com in the browser you already use
+   and reads the `oauth_token` cookie back out of it once you are signed in.
+   That works for Firefox, Zen, LibreWolf and Waterfox, and for Safari only if
+   cloudify has been given Full Disk Access — the app offers a button that opens
+   the right settings pane. Chromium-family browsers encrypt their cookies with
+   a key in the OS keychain, so they are out. **The first offer everywhere but
+   macOS**, since it asks the least of you.
+3. **By pasting a token** — copy `oauth_token` from your browser's DevTools. It
+   always works and it is the fallback, not an equal option.
+
+The app says up front when a route cannot work on your machine, rather than
+opening a browser and timing out three minutes later.
 
 The token is stored in your OS keyring, never in a file, and never logged.
 Nothing is sent anywhere except to SoundCloud itself: there is no backend, no
@@ -157,9 +180,9 @@ when the API shifts there is exactly one place to fix.
 
 ## Roadmap
 
-Playlists and followings · track downloads · Last.fm scrobbling · Discord Rich
-Presence · equaliser · mini-player and global media keys · custom themes ·
-Android and iOS builds.
+Last.fm scrobbling · Discord Rich Presence · a mini-player and global media keys
+(the ones that work while another window has focus) · themes as files you can
+share · repairing the mangled titles reuploads come with · an iOS build.
 
 ## License
 
