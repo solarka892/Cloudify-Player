@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  openFullDiskAccess,
   scGetMe,
   scLogin,
   scLoginBrowser,
@@ -13,7 +14,9 @@ import {
   useAuthStore,
   type Session,
 } from "@/stores/useAuthStore";
-import { isAndroid } from "@/lib/platform";
+import { isAndroid, isMac } from "@/lib/platform";
+import { asFailure } from "@/lib/failure";
+import { toast } from "@/stores/useToastStore";
 import { useNativeMediaSession } from "@/hooks/useNativeMediaSession";
 import { AppShell } from "@/components/shell/AppShell";
 import { WindowControls } from "@/components/shell/WindowControls";
@@ -357,18 +360,27 @@ function SocialSeed({ userId }: { userId: number }) {
 /**
  * Pre-auth screen. One primary path and, on the desktop, two fallbacks.
  *
- * The order is deliberate and is the answer to task 3. Signing in through the
- * real browser stays first because it is the one that asks least of the user —
- * they are probably already signed in there. But it only works where this build
- * can read the browser's cookies, which is the Firefox family plus Safari with
- * Full Disk Access; a Chromium default browser (the common case on macOS) leaves
- * it with nothing to read, which is what "sign-in does not work on macOS" was.
+ * Two routes, and which one leads depends on the platform.
  *
- * `onAppLogin` is the route with no browser in it at all: a SoundCloud window
- * inside cloudify, whose cookies belong to us. It was written, it works, and
- * until now nothing on the desktop reached it — the button existed only on
- * Android. A captcha may appear in it; answering one is a thing a person can do,
- * unlike finding a token in devtools.
+ * Through the **real browser**: the user is probably already signed in there,
+ * so it asks the least of them — but it finishes only where this build can read
+ * the browser's cookies, which is the Firefox family plus a Safari that has been
+ * given Full Disk Access. It leads everywhere except macOS.
+ *
+ * Through a **window cloudify opens itself**, whose cookies belong to us: no
+ * browser profile is touched and the platform stops mattering. A captcha may
+ * appear in it, and answering one is a thing a person can do, unlike finding a
+ * token in devtools.
+ *
+ * On macOS the second one leads, because the first one usually cannot work
+ * there and now says so immediately: the default Mac has no Firefox, and
+ * Safari's jar is present but locked. Meanwhile the window we open runs on
+ * WKWebView — Safari's own engine — so SoundCloud's anti-bot check sees an
+ * ordinary Safari. Leading with a button that refuses on the spot is how
+ * "sign-in does not work on macOS" started.
+ *
+ * The manual token stays a link rather than a button. It always works and it is
+ * a wall: devtools, storage inspector, a cookie copied by hand.
  */
 function LoginView({
   status,
@@ -385,6 +397,34 @@ function LoginView({
   const [showManual, setShowManual] = useState(false);
   const [token, setToken] = useState("");
   const busy = status.state === "loggingIn";
+
+  /**
+   * The routes on offer, best first. The first one is the filled button.
+   *
+   * Built as a list rather than written twice so that the order is one line to
+   * read and one line to change — the platform decides it, and the platform is
+   * the only reason there is more than one of these.
+   */
+  const browserRoute = {
+    id: "browser",
+    onClick: onLogin,
+    label: t.auth.login,
+    busyLabel: isAndroid ? t.auth.loggingInApp : t.auth.loggingIn,
+    // Android has one route and no choice to explain; the hint exists to tell
+    // two routes apart.
+    hint: onAppLogin ? t.auth.loginBrowserHint : undefined,
+  };
+  const appRoute = onAppLogin && {
+    id: "app",
+    onClick: onAppLogin,
+    label: t.auth.loginInApp,
+    busyLabel: t.auth.loggingInApp,
+    hint: t.auth.loginInAppHint,
+  };
+  const routes = (isMac && appRoute
+    ? [appRoute, browserRoute]
+    : [browserRoute, appRoute]
+  ).filter((r) => !!r);
 
   return (
     <div className="relative flex h-full w-full items-center justify-center bg-background p-8 text-foreground">
@@ -404,32 +444,35 @@ function LoginView({
           <p className="text-sm text-muted-foreground">{t.app.tagline}</p>
         </div>
 
-        <button
-          onClick={onLogin}
-          disabled={busy}
-          className="brand-gradient w-full rounded-[var(--radius-control)] px-5 py-2.5 text-sm font-semibold text-brand-foreground transition-opacity duration-[var(--motion-fast)] hover:opacity-90 disabled:opacity-50"
-        >
-          {busy
-            ? isAndroid
-              ? t.auth.loggingInApp
-              : t.auth.loggingIn
-            : t.auth.login}
-        </button>
+        {/* One shape for both, the first one filled. The label under each says
+            what it will actually do — which browsers it can read the sign-in
+            back from, or that this one needs no browser at all — because the
+            difference between the two routes is the whole reason a person has
+            to choose, and the buttons alone do not carry it.
 
-        {onAppLogin && (
-          <div className="flex w-full flex-col items-center gap-1">
+            Only the leading route says it is working: the two cannot run at
+            once, and "signing in…" under a button nobody pressed reads as the
+            app doing something of its own. */}
+        {routes.map((route, i) => (
+          <div key={route.id} className="flex w-full flex-col items-center gap-1">
             <button
-              onClick={onAppLogin}
+              onClick={route.onClick}
               disabled={busy}
-              className="w-full rounded-[var(--radius-control)] border border-border bg-secondary px-5 py-2 text-sm transition-colors duration-[var(--motion-fast)] hover:bg-accent disabled:opacity-50"
+              className={
+                i === 0
+                  ? "brand-gradient w-full rounded-[var(--radius-control)] px-5 py-2.5 text-sm font-semibold text-brand-foreground transition-opacity duration-[var(--motion-fast)] hover:opacity-90 disabled:opacity-50"
+                  : "w-full rounded-[var(--radius-control)] border border-border bg-secondary px-5 py-2 text-sm transition-colors duration-[var(--motion-fast)] hover:bg-accent disabled:opacity-50"
+              }
             >
-              {t.auth.loginInApp}
+              {busy && i === 0 ? route.busyLabel : route.label}
             </button>
-            <p className="text-center text-xs text-muted-foreground">
-              {t.auth.loginInAppHint}
-            </p>
+            {route.hint && (
+              <p className="text-center text-xs text-muted-foreground">
+                {route.hint}
+              </p>
+            )}
           </div>
-        )}
+        ))}
 
         <button
           onClick={() => setShowManual((v) => !v)}
@@ -478,6 +521,33 @@ function LoginView({
             print. `cancelled` — the user closing the window themselves — is
             silent, and `FailureNotice` knows that. */}
         {status.state === "error" && <FailureNotice error={status.failure} />}
+
+        {/* The one failure with a switch behind it. "No browser here can hand
+            over the sign-in" on a Mac almost always means Safari's jar is
+            present and locked, and the pane that unlocks it is not one anybody
+            finds by description — so the app opens it rather than describing
+            where it is. Only here, and only after the failure that it answers:
+            a button for a permission nobody needs yet is noise on a sign-in
+            screen. */}
+        {isMac &&
+          status.state === "error" &&
+          asFailure(status.failure).kind === "no-readable-browser" && (
+            <div className="flex w-full flex-col items-center gap-1">
+              <button
+                onClick={() => {
+                  void openFullDiskAccess().catch(() =>
+                    toast(t.auth.loginFailed, "error"),
+                  );
+                }}
+                className="w-full rounded-[var(--radius-control)] border border-border bg-secondary px-5 py-2 text-sm transition-colors duration-[var(--motion-fast)] hover:bg-accent"
+              >
+                {t.auth.fullDiskAccess}
+              </button>
+              <p className="text-center text-xs text-muted-foreground">
+                {t.auth.fullDiskAccessHint}
+              </p>
+            </div>
+          )}
 
         {/* Reachable when there is a token but no user was ever remembered — a
             first launch that never got through. Says what is wrong rather than

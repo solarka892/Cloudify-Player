@@ -122,6 +122,17 @@ export interface SearchPage<T> {
   total: number | null;
 }
 
+/**
+ * Open the macOS pane that grants Full Disk Access.
+ *
+ * Offered when the browser route has just said it can read nothing: on a Mac
+ * that usually means Safari's cookie jar is there and locked, and this is the
+ * switch that unlocks it. Rejects off macOS, where there is no such pane.
+ */
+export function openFullDiskAccess(): Promise<void> {
+  return invoke<void>("open_full_disk_access");
+}
+
 /** Fetch the given user's liked tracks (all pages). Requires login. */
 export function scGetLikes(userId: number, limit?: number): Promise<Track[]> {
   return invoke<Track[]>("sc_get_likes", { userId, limit });

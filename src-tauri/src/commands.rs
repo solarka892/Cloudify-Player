@@ -1076,3 +1076,35 @@ pub fn storage_report(app: tauri::AppHandle) -> Result<cache::StorageReport, bri
 pub fn storage_erase(app: tauri::AppHandle, id: String) -> Result<(), bridge::Failure> {
     cache::storage_erase(&app, &id).map_err(bridge::failure)
 }
+
+/// Open the macOS pane that grants Full Disk Access, and nothing else.
+///
+/// The route through the real browser can read Safari's cookie jar only if
+/// cloudify has been given Full Disk Access, and that is granted in a System
+/// Settings pane nobody finds by description. macOS addresses its panes by URL,
+/// so the app can simply open the right one — a button instead of a paragraph
+/// of instructions.
+///
+/// A command of its own rather than a general "open this URL" reachable from
+/// the frontend: this is one fixed address on one platform, and widening the
+/// opener's scope to custom schemes to reach it would hand the web layer a way
+/// to open anything the OS knows how to handle.
+///
+/// Elsewhere it says so rather than not existing: a command missing from the
+/// build is an "unknown command" crash in the web layer, which is the house
+/// rule the other platform-specific commands here follow.
+#[tauri::command]
+pub fn open_full_disk_access() -> Result<(), bridge::Failure> {
+    #[cfg(target_os = "macos")]
+    {
+        open::that("x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")
+            .map_err(|e| bridge::stated("open-failed", format!("could not open settings: {e}")))
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        Err(bridge::stated(
+            "not-applicable",
+            "only macOS keeps the cookie jar behind a permission",
+        ))
+    }
+}

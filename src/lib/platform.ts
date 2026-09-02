@@ -23,6 +23,21 @@ export const isApplePlatform = /mac|iphone|ipad|ipod/i.test(
 );
 
 /**
+ * macOS specifically, as opposed to any Apple platform.
+ *
+ * Asked by the sign-in screen, which offers a different first route there: the
+ * window cloudify opens itself runs on WKWebView — Safari's engine — so
+ * SoundCloud's anti-bot check sees an ordinary Safari and usually lets it
+ * through, while the route through the real browser can read cookies only from
+ * the Firefox family or from a Safari that has been given Full Disk Access.
+ * The default Mac has neither.
+ *
+ * Not [[isApplePlatform]], which is about fonts and deliberately counts iOS.
+ */
+export const isMac =
+  /mac/i.test(navigator.userAgent) && !/iphone|ipad|ipod/i.test(navigator.userAgent);
+
+/**
  * Whether to lay out for a phone.
  *
  * Deliberately not the same question as [[isAndroid]]: a narrow desktop window

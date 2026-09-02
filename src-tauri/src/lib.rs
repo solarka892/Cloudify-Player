@@ -151,7 +151,8 @@ pub fn run() {
             commands::kv_get,
             commands::kv_set,
             commands::storage_report,
-            commands::storage_erase
+            commands::storage_erase,
+            commands::open_full_disk_access
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
