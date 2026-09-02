@@ -142,8 +142,32 @@ const TrackRow = memo(function TrackRow({
       style={{ top, height }}
       className="absolute inset-x-0"
     >
-      <button
+      {/* A div that behaves like a button, rather than a `<button>`.
+
+          The row is one big "play this" target and reads like a button, but it
+          also *contains* buttons — the heart, the download, repost, share, queue
+          — and a button inside a button is not allowed. It half worked for a
+          long time because each inner handler stops the event from travelling
+          up. What that cannot stop is WebKit, which in this case runs the outer
+          button's activation as well, as its own dispatch rather than a bubbled
+          one: on macOS, liking a track paused the one that was playing. Nothing
+          to stop propagating, so nothing to fix from the inside.
+
+          Role and key handling put back by hand what `<button>` was giving for
+          free — that is the price of the fix, and it is cheaper than an
+          arrangement where half the controls in a list cannot be touched
+          without disturbing the player. */}
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => void playTrack(track, queue)}
+        onKeyDown={(e) => {
+          if (e.key !== "Enter" && e.key !== " ") return;
+          // Space scrolls the list by default, which is the opposite of what
+          // pressing a row should do.
+          e.preventDefault();
+          void playTrack(track, queue);
+        }}
         // A hook rather than a style: Obsidian marks the playing row with a 2px
         // bar at its left edge instead of a fill, and `bg-accent` is a utility a
         // stylesheet cannot sensibly select on.
@@ -324,7 +348,7 @@ const TrackRow = memo(function TrackRow({
             {formatDuration(track.duration)}
           </span>
         </div>
-      </button>
+      </div>
     </div>
   );
 });
