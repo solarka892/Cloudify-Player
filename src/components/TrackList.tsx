@@ -168,60 +168,6 @@ const TrackRow = memo(function TrackRow({
           {String(index).padStart(2, "0")}
         </span>
 
-        {/* What this library says about the track: whether you have a copy, and
-            whether you like it.
-
-            First in the row, before the cover. They used to sit last, hard
-            against the duration, for a good reason — they must land in the same
-            place on every line, and the actions beside them come and go with
-            hover and with whether a track is reposted, which moved them about
-            as the pointer travelled down the list. The left edge answers that
-            better than the right one does: nothing before them ever changes
-            width, and the eye running down a list of 1300 finds a column rather
-            than a place after a title.
-
-            Both are always drawn, and the state is the colour rather than the
-            presence: muted means no copy on disk and one click makes one, the
-            accent means there already is one. Same rule the heart has always
-            followed, and for the same reason — a row that shows nothing cannot
-            be told from a row where the button does not exist, and finding out
-            costs a trip with the pointer over every line.
-
-            (Download was hover-only for a version. It reads calmer on a long
-            list, and it was wrong: the one question worth answering at a glance
-            on a library that size is which of them you actually have.) */}
-        <div className="flex shrink-0 items-center gap-0.5">
-          <LikeButton track={track} />
-          <button
-            onClick={(e) => {
-              // The whole row is a play button; this must not reach it.
-              e.stopPropagation();
-              void startDownload(track);
-            }}
-            disabled={isDownloaded || !!downloading}
-            aria-label={isDownloaded ? t.player.downloaded : t.player.download}
-            title={
-              isDownloaded
-                ? t.player.downloaded
-                : downloading
-                  ? `${Math.round(
-                      downloading.total
-                        ? (downloading.received / downloading.total) * 100
-                        : 0,
-                    )}%`
-                  : t.player.download
-            }
-            className={cn(
-              "rounded-[var(--radius-control)] p-1 transition-colors duration-[var(--motion-fast)]",
-              isDownloaded
-                ? "text-brand"
-                : "text-muted-foreground hover:text-foreground",
-              downloading && "animate-pulse",
-            )}
-          >
-            <Download className="h-4 w-4" />
-          </button>
-        </div>
 
         <div className="relative h-12 w-12 shrink-0">
           {art ? (
@@ -317,6 +263,63 @@ const TrackRow = memo(function TrackRow({
               />
             </>
           )}
+          {/* What this library says about the track: whether you have a copy,
+              and whether you like it. Last in the row, hard against the
+              duration, so they land in the same place on every line — the
+              actions before them come and go with hover and with whether a
+              track is reposted, and anything sharing a row with those moved
+              about as the pointer travelled down the list.
+
+              They were moved to the head of the row once, on the argument that
+              the left edge holds a column better still. It does, and it was
+              wrong anyway: put first, they are the first thing the eye meets on
+              every line, and a library is read by its titles. Looked at and
+              sent back on 2026-09-02. Leave them here.
+
+              Both are always drawn, and the state is the colour rather than
+              the presence: muted means no copy on disk and one click makes one,
+              the accent means there already is one. Same rule the heart has
+              always followed, and for the same reason — a row that shows
+              nothing cannot be told from a row where the button does not exist,
+              and finding out costs a trip with the pointer over every line.
+
+              (Download was hover-only for a version. It reads better on a long
+              list, and it was wrong: the one question worth answering at a
+              glance on a library of 1300 tracks is which of them you actually
+              have.) */}
+          <div className="flex shrink-0 items-center gap-0.5">
+            <button
+              onClick={(e) => {
+                // The whole row is a play button; this must not reach it.
+                e.stopPropagation();
+                void startDownload(track);
+              }}
+              disabled={isDownloaded || !!downloading}
+              aria-label={isDownloaded ? t.player.downloaded : t.player.download}
+              title={
+                isDownloaded
+                  ? t.player.downloaded
+                  : downloading
+                    ? `${Math.round(
+                        downloading.total
+                          ? (downloading.received / downloading.total) * 100
+                          : 0,
+                      )}%`
+                    : t.player.download
+              }
+              className={cn(
+                "rounded-[var(--radius-control)] p-1 transition-colors duration-[var(--motion-fast)]",
+                isDownloaded
+                  ? "text-brand"
+                  : "text-muted-foreground hover:text-foreground",
+                downloading && "animate-pulse",
+              )}
+            >
+              <Download className="h-4 w-4" />
+            </button>
+            <LikeButton track={track} />
+          </div>
+
           <span className="readout type-caption tabular-nums text-muted-foreground">
             {formatDuration(track.duration)}
           </span>
