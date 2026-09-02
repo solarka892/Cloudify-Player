@@ -21,7 +21,7 @@
 //! We never log the token.
 
 use serde::{Serialize, Serializer};
-use std::sync::RwLock;
+use std::sync::{Mutex, RwLock};
 
 #[cfg(not(target_os = "android"))]
 pub mod browser;
@@ -130,6 +130,22 @@ impl Serialize for AuthError {
 /// not become is a copy that outlives the process — see CLAUDE.md.
 static CACHED: RwLock<Option<Option<String>>> = RwLock::new(None);
 
+/// The right to be the one who asks the store.
+///
+/// The cache above turns many trips into one, but only for threads that arrive
+/// after that one has finished. At launch they arrive together — the app asks
+/// whether there is a session at the same moment as it loads what is
+/// downloaded — and every command that missed an empty cache walked into the
+/// keychain on its own. On macOS that is two password prompts stacked on top of
+/// each other, which is the complaint this whole cache exists to answer.
+///
+/// Held *across* the store call, which is the one thing the cache's own lock
+/// must never do: a reader waiting here waits for a prompt it would otherwise
+/// have raised a second copy of, whereas a reader blocked on `CACHED` would be
+/// waiting for a prompt that has nothing to do with it. It guards nothing but a
+/// turn, so there is no value to leave inconsistent.
+static ASKING: Mutex<()> = Mutex::new(());
+
 /// Persist the OAuth token in the platform's secure store.
 pub fn save_token(token: &str) -> Result<(), AuthError> {
     store::set(token)?;
@@ -142,18 +158,35 @@ pub fn save_token(token: &str) -> Result<(), AuthError> {
 
 /// Load the stored token, or `None` if the user is not logged in.
 pub fn load_token() -> Result<Option<String>, AuthError> {
-    // Two locks rather than one held across the store call: the store can block
-    // on a system dialog, and a write lock held while the user reads a password
-    // prompt would stall every other command behind it.
-    if let Ok(guard) = CACHED.read() {
-        if let Some(token) = guard.as_ref() {
-            return Ok(token.clone());
-        }
+    // The cache is read and released, never held across the store call: the
+    // store can block on a system dialog, and a write lock held while the user
+    // reads a password prompt would stall every command that only wanted the
+    // answer already in memory.
+    if let Some(token) = cached() {
+        return Ok(token);
+    }
+
+    // Poisoning is meaningless for a lock over `()`: a thread that panicked
+    // inside the store left no half-written value behind it, only an unfinished
+    // question, and the next thread through asks it again.
+    let _turn = ASKING
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+
+    // Whoever held the turn has answered it by now, and the answer is the one
+    // this thread was queueing for.
+    if let Some(token) = cached() {
+        return Ok(token);
     }
 
     let token = store::get()?;
     remember(token.clone());
     Ok(token)
+}
+
+/// What the process believes the token is, or `None` if it has not asked yet.
+fn cached() -> Option<Option<String>> {
+    CACHED.read().ok().and_then(|guard| guard.clone())
 }
 
 /// Remove the stored token (logout). No-op if nothing is stored.
