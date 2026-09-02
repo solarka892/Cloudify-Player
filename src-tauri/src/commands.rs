@@ -783,7 +783,6 @@ pub async fn sc_conversation(
         .map_err(bridge::failure)
 }
 
-
 /// Mark a thread read or unread. Requires login.
 #[tauri::command]
 pub async fn sc_mark_conversation(user_id: u64, read: bool) -> Result<(), bridge::Failure> {
@@ -1077,4 +1076,3 @@ pub fn storage_report(app: tauri::AppHandle) -> Result<cache::StorageReport, bri
 pub fn storage_erase(app: tauri::AppHandle, id: String) -> Result<(), bridge::Failure> {
     cache::storage_erase(&app, &id).map_err(bridge::failure)
 }
-

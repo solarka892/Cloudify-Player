@@ -200,8 +200,7 @@ mod tests {
     /// This is what left rows reading "liked something of yours".
     #[test]
     fn a_bare_track_is_found_too() {
-        let (track, playlist, _, _) =
-            split_origin(Some(json!({ "id": 7, "title": "Пасмурно" })));
+        let (track, playlist, _, _) = split_origin(Some(json!({ "id": 7, "title": "Пасмурно" })));
         assert_eq!(track.map(|t| t.title).as_deref(), Some("Пасмурно"));
         assert!(playlist.is_none());
     }

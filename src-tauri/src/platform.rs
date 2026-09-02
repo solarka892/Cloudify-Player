@@ -28,15 +28,16 @@ pub fn prepare() {
 /// and a full-window CPU repaint here. Measured on this laptop with the
 /// Obsidian light drifting, the web process's main thread sat at 98–100% of a
 /// core for as long as the window was visible; with the drift stopped, 0%.
+///
+/// Linux only, like the problem. It used to answer everywhere — `false` off
+/// Linux — for a caller that has never existed: the one call site is inside a
+/// `#[cfg(target_os = "linux")]` block, so on macOS and Windows this was a
+/// function nobody could reach, and `cargo clippy -- -D warnings` said so and
+/// stopped there. Which meant the check the project requires before a commit
+/// could not run at all on a Mac. CI builds on Ubuntu and never saw it.
+#[cfg(target_os = "linux")]
 pub fn is_software_rendering() -> bool {
-    #[cfg(target_os = "linux")]
-    {
-        std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_some()
-    }
-    #[cfg(not(target_os = "linux"))]
-    {
-        false
-    }
+    std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_some()
 }
 
 /// Turn off WebKitGTK's own wheel-scroll animation.
