@@ -50,12 +50,12 @@ export function RepostButton({
       // State, published for a skin to style — see `LikeButton`.
       data-on={on ? "true" : undefined}
       className={cn(
-        "shrink-0 rounded-[var(--radius-round)] p-1.5 transition-[color,transform] duration-[var(--motion-fast)] hover:scale-110 active:scale-90",
+        "press shrink-0 rounded-[var(--radius-round)] p-1.5 transition-colors duration-[var(--motion-fast)]",
         on ? "text-brand" : "text-muted-foreground hover:text-foreground",
         className,
       )}
     >
-      <Icon className={icon} />
+      <Icon className={cn("press-glyph", icon)} />
     </button>
   );
 }

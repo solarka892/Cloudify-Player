@@ -66,12 +66,19 @@ export function LikeButton({
         // misfire changes the account — a stray tap beside the artist's name
         // silently liked the track. `p-1` is a 24px target around a 16px heart,
         // which is small on purpose.
-        "shrink-0 rounded-[var(--radius-round)] p-1 transition-[color,transform] duration-[var(--motion-fast)] hover:scale-110 active:scale-90",
+        "press shrink-0 rounded-[var(--radius-round)] p-1 transition-colors duration-[var(--motion-fast)]",
         liked ? "text-brand" : "text-muted-foreground hover:text-foreground",
         className,
       )}
     >
-      <Icon className={cn(icon, liked && "fill-current", popping && "heart-pop")} />
+      <Icon
+        className={cn(
+          "press-glyph",
+          icon,
+          liked && "fill-current",
+          popping && "heart-pop",
+        )}
+      />
     </button>
   );
 }

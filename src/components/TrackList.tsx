@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { Download, ListPlus, MoreVertical, Pause, Play } from "lucide-react";
 import type { Track } from "@/lib/tauri";
 import { usePlayerStore } from "@/stores/usePlayerStore";
@@ -6,6 +6,7 @@ import { useDownloadsStore } from "@/stores/useDownloadsStore";
 import { toast } from "@/stores/useToastStore";
 import { TrackContextMenu, type MenuTarget } from "./TrackContextMenu";
 import { AddToPlaylistDialog } from "./AddToPlaylistDialog";
+import { DownloadRing } from "./DownloadRing";
 import { LikeButton } from "./LikeButton";
 import { RepostButton } from "./RepostButton";
 import { ShareButton } from "./ShareButton";
@@ -49,6 +50,15 @@ function formatDuration(ms: number): string {
  * costs the same as one of thirty. Right-clicking a row opens the same actions
  * the player bar offers.
  */
+/**
+ * How long a row that has left the list stays on screen, in ms.
+ *
+ * Must match `--row-leave` in `globals.css`: the class runs the fade, this
+ * number decides when the row is dropped from the markup. Too short and the
+ * row disappears mid-fade; too long and the list holds a hole where it was.
+ */
+const ROW_LEAVE_MS = 240;
+
 export function TrackList({ tracks }: { tracks: Track[] }) {
   const [menu, setMenu] = useState<MenuTarget | null>(null);
   const [addTo, setAddTo] = useState<Track | null>(null);
@@ -56,6 +66,55 @@ export function TrackList({ tracks }: { tracks: Track[] }) {
   const { ref, start, end } = useVirtual(tracks.length, rowHeight);
   // One subscription for the whole list rather than one per row.
   const compact = useCompact();
+
+  /**
+   * Rows the list no longer has, still on screen while they fade.
+   *
+   * Unliking a track is the one moment a list is worth animating: the user did
+   * something and the list is answering. Without this the row vanished between
+   * two frames and everything under it jumped up by its height, which reads as
+   * a glitch rather than as a track leaving. Held with the position it had, so
+   * it fades where it stood rather than where its index would now put it.
+   */
+  const [leaving, setLeaving] = useState<{ track: Track; top: number }[]>([]);
+  /** The list as it was last render, to see what changed. */
+  const previous = useRef<Track[]>(tracks);
+  /** Ids that have just arrived, so they can fade in rather than appear. */
+  const [entered, setEntered] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    const before = previous.current;
+    previous.current = tracks;
+    if (before === tracks) return;
+
+    const now = new Set(tracks.map((track) => track.id));
+    const gone = before
+      .map((track, index) => ({ track, top: index * rowHeight }))
+      .filter(({ track }) => !now.has(track.id));
+
+    const had = new Set(before.map((track) => track.id));
+    const fresh = new Set(
+      tracks.filter((track) => !had.has(track.id)).map((track) => track.id),
+    );
+
+    // A whole list arriving is not a list changing: opening a tab, a search
+    // answering, a filter narrowing. Animating those would fade in forty rows
+    // at once, which is a screen flickering rather than a row appearing.
+    const swapped = gone.length > 3 || fresh.size > 3;
+    if (swapped || (!gone.length && !fresh.size)) {
+      setLeaving([]);
+      setEntered(new Set());
+      return;
+    }
+
+    setLeaving(gone);
+    setEntered(fresh);
+    const timer = setTimeout(() => {
+      setLeaving([]);
+      setEntered(new Set());
+    }, ROW_LEAVE_MS);
+    return () => clearTimeout(timer);
+  }, [tracks, rowHeight]);
 
   const visible = tracks.slice(start, end);
 
@@ -72,6 +131,21 @@ export function TrackList({ tracks }: { tracks: Track[] }) {
         // The full height is reserved up front so the scrollbar is honest.
         style={{ height: tracks.length * rowHeight }}
       >
+        {leaving.map(({ track, top }) => (
+          <TrackRow
+            key={`leaving-${track.id}`}
+            track={track}
+            queue={tracks}
+            index={0}
+            compact={compact}
+            top={top}
+            height={rowHeight}
+            leaving
+            onContextMenu={(e) => e.preventDefault()}
+            onMenu={() => {}}
+          />
+        ))}
+
         {visible.map((track, index) => (
           <TrackRow
             key={track.id}
@@ -81,6 +155,7 @@ export function TrackList({ tracks }: { tracks: Track[] }) {
             compact={compact}
             top={(start + index) * rowHeight}
             height={rowHeight}
+            entering={entered.has(track.id)}
             onContextMenu={(e) => {
               e.preventDefault();
               setMenu({ track, x: e.clientX, y: e.clientY });
@@ -112,6 +187,8 @@ const TrackRow = memo(function TrackRow({
   compact,
   top,
   height,
+  entering,
+  leaving,
   onContextMenu,
   onMenu,
 }: {
@@ -123,6 +200,10 @@ const TrackRow = memo(function TrackRow({
   compact: boolean;
   top: number;
   height: number;
+  /** Just arrived in the list, so it fades in instead of appearing. */
+  entering?: boolean;
+  /** Already out of the list, on screen only until its fade finishes. */
+  leaving?: boolean;
   onContextMenu: (e: React.MouseEvent) => void;
   onMenu: (x: number, y: number, align?: MenuTarget["align"]) => void;
 }) {
@@ -134,13 +215,32 @@ const TrackRow = memo(function TrackRow({
   const isDownloaded = useDownloadsStore((s) => s.ids.has(track.id));
   const downloading = useDownloadsStore((s) => s.active[track.id]);
   const startDownload = useDownloadsStore((s) => s.start);
+  const removeDownload = useDownloadsStore((s) => s.remove);
+  const setPausedDownload = useDownloadsStore((s) => s.setPaused);
   const reposted = useRepostStore((s) => s.trackIds.has(track.id));
+  /**
+   * Whether the press that is about to become a click began on a control.
+   *
+   * Asking where the *click* landed is not enough. A control that moves while
+   * it is held — every one of them had `active:scale-90` — is no longer under
+   * the pointer when it is released, and the browser then delivers the click to
+   * the nearest common ancestor instead, which is this row, with this row as
+   * the target. So the row also has to remember where the press started. See
+   * `.press-glyph` in `globals.css` for the measurement.
+   */
+  const pressedControl = useRef(false);
 
   return (
     <div
       onContextMenu={onContextMenu}
       style={{ top, height }}
-      className="absolute inset-x-0"
+      className={cn(
+        // `row-slot` carries the row to its new place when one above it leaves,
+        // rather than letting it jump. See `globals.css`.
+        "row-slot absolute inset-x-0",
+        entering && "row-enter",
+        leaving && "row-leave",
+      )}
     >
       {/* A div that behaves like a button, rather than a `<button>`.
 
@@ -169,9 +269,18 @@ const TrackRow = memo(function TrackRow({
       <div
         role="button"
         tabIndex={0}
+        onPointerDown={(e) => {
+          pressedControl.current = !!(e.target as HTMLElement).closest(
+            "button, a",
+          );
+        }}
         onClick={(e) => {
           // The heart, the download, repost, share, queue, the overflow menu:
           // each does its own thing, and none of them means "play this".
+          if (pressedControl.current) {
+            pressedControl.current = false;
+            return;
+          }
           if ((e.target as HTMLElement).closest("button, a")) return;
           void playTrack(track, queue);
         }}
@@ -288,16 +397,16 @@ const TrackRow = memo(function TrackRow({
               >
                 <ListPlus className="h-4 w-4" />
               </button>
+              <ShareButton
+                url={track.permalink_url}
+                className="opacity-0 transition-opacity duration-[var(--motion-fast)] group-hover:opacity-100"
+              />
               <RepostButton
                 track={track}
                 className={cn(
                   "transition-opacity duration-[var(--motion-fast)] group-hover:opacity-100",
                   reposted ? "opacity-100" : "opacity-0",
                 )}
-              />
-              <ShareButton
-                url={track.permalink_url}
-                className="opacity-0 transition-opacity duration-[var(--motion-fast)] group-hover:opacity-100"
               />
             </>
           )}
@@ -326,35 +435,46 @@ const TrackRow = memo(function TrackRow({
               glance on a library of 1300 tracks is which of them you actually
               have.) */}
           <div className="flex shrink-0 items-center gap-0.5">
+            {downloading ? (
+              /* While it runs, the button *is* the progress: a glyph that only
+                 pulsed said work was happening but never how much, and the
+                 percentage was a tooltip away. */
+              <DownloadRing
+                download={downloading}
+                onToggle={() =>
+                  void setPausedDownload(track.id, !downloading.paused)
+                }
+              />
+            ) : (
             <button
               onClick={(e) => {
                 // The whole row is a play button; this must not reach it.
                 e.stopPropagation();
-                void startDownload(track);
+                // On a track that already has a copy, this is how the copy
+                // goes: a list is where you notice you no longer want it, and
+                // the only other way out was the row of buttons under the
+                // downloads section, which cannot reach a track you are
+                // looking at anywhere else.
+                void (isDownloaded
+                  ? removeDownload(track.id)
+                  : startDownload(track));
               }}
-              disabled={isDownloaded || !!downloading}
-              aria-label={isDownloaded ? t.player.downloaded : t.player.download}
-              title={
-                isDownloaded
-                  ? t.player.downloaded
-                  : downloading
-                    ? `${Math.round(
-                        downloading.total
-                          ? (downloading.received / downloading.total) * 100
-                          : 0,
-                      )}%`
-                    : t.player.download
-              }
+              aria-label={isDownloaded ? t.downloads.remove : t.player.download}
+              title={isDownloaded ? t.downloads.remove : t.player.download}
               className={cn(
                 "rounded-[var(--radius-control)] p-1 transition-colors duration-[var(--motion-fast)]",
+                // Red on the way to a copy's deletion, the way the
+                // downloads section marks its own remove buttons: the glyph is
+                // the same one that fetched the track, so the colour is what
+                // says this press takes it away.
                 isDownloaded
-                  ? "text-brand"
+                  ? "text-brand hover:text-destructive"
                   : "text-muted-foreground hover:text-foreground",
-                downloading && "animate-pulse",
               )}
             >
               <Download className="h-4 w-4" />
             </button>
+            )}
             <LikeButton track={track} />
           </div>
 

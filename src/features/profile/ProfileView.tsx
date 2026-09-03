@@ -375,13 +375,18 @@ export function ProfileView({
                 }).catch(() => toast(t.profile.followFailed, "error"))
               }
               className={cn(
-                "h-9 shrink-0 self-start rounded-[var(--radius-control)] px-4 text-sm font-semibold transition-[opacity,transform] duration-[var(--motion-fast)] hover:opacity-90 active:scale-95",
+                // `press` rather than `active:scale-95` on the button: a
+                // button that shrinks under the press hands the click to
+                // whatever is behind it — see `.press-glyph`.
+                "press h-9 shrink-0 self-start rounded-[var(--radius-control)] px-4 text-sm font-semibold transition-opacity duration-[var(--motion-fast)] hover:opacity-90",
                 following
                   ? "border border-border bg-secondary text-secondary-foreground"
                   : "brand-gradient text-brand-foreground",
               )}
             >
-              {following ? t.profile.unfollow : t.profile.follow}
+              <span className="press-glyph [--press-hover:1] [--press-active:0.95]">
+                {following ? t.profile.unfollow : t.profile.follow}
+              </span>
             </button>
           )}
         </div>

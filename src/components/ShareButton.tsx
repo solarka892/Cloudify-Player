@@ -43,18 +43,18 @@ export function ShareButton({
       title={t.track.share}
       aria-label={t.track.share}
       className={cn(
-        "flex shrink-0 items-center gap-1.5 rounded-[var(--radius-control)] text-muted-foreground transition-[color,transform] duration-[var(--motion-fast)] hover:text-foreground active:scale-90",
+        "press flex shrink-0 items-center gap-1.5 rounded-[var(--radius-control)] text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:text-foreground",
         // The labelled form is only used in a profile header, next to the
         // station and message buttons — so it takes their height and their
         // type size rather than the smaller ones it had, which left the three
         // of them sitting at three different sizes in the same row.
         withLabel
           ? "h-9 border border-border px-3 text-sm hover:bg-accent"
-          : "p-1.5 hover:scale-110",
+          : "p-1.5",
         className,
       )}
     >
-      <Icon className={icon} />
+      <Icon className={cn("press-glyph", icon)} />
       {withLabel && t.track.share}
     </button>
   );

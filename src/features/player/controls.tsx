@@ -70,8 +70,10 @@ export function PlayPauseButton({
       aria-busy={isLoading}
       className={cn(
         "relative flex shrink-0 items-center justify-center rounded-[var(--radius-round)] transition-[opacity,transform,background-color] duration-[var(--motion-fast)] hover:opacity-90",
+        // The press lives on the glyph, so the button cannot shrink out from
+        // under the pointer and lose the click — see `.press-glyph`.
         plain
-          ? "h-11 w-11 text-foreground hover:bg-accent active:scale-90"
+          ? "press h-11 w-11 text-foreground hover:bg-accent"
           : "bg-primary text-primary-foreground hover:scale-105",
         !plain && (size === "lg" ? "h-14 w-14" : "h-10 w-10"),
       )}
@@ -84,7 +86,10 @@ export function PlayPauseButton({
           its `d` attribute — a remount is what lets the new one animate in.
           Without it the most-pressed control in the app is the only one that
           changes without moving. */}
-      <span key={wantsPlay ? "pause" : "play"} className="pop-in flex">
+      <span
+        key={wantsPlay ? "pause" : "play"}
+        className={cn("pop-in flex", plain && "press-glyph")}
+      >
         {wantsPlay ? (
           <PauseGlyph className={glyph} />
         ) : (
@@ -104,11 +109,13 @@ export function PrevButton({ size = "md" }: { size?: "md" | "lg" }) {
       data-transport="prev"
       aria-label={t.player.prev}
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-[var(--radius-round)] text-muted-foreground transition-[color,background-color,transform] duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground active:scale-90",
+        "press flex shrink-0 items-center justify-center rounded-[var(--radius-round)] text-muted-foreground transition-[color,background-color] duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground",
         size === "lg" ? "h-10 w-10" : "h-8 w-8",
       )}
     >
-      <PrevGlyph className={size === "lg" ? "h-5 w-5" : "h-4 w-4"} />
+      <PrevGlyph
+        className={cn("press-glyph", size === "lg" ? "h-5 w-5" : "h-4 w-4")}
+      />
     </button>
   );
 }
@@ -131,11 +138,13 @@ export function NextButton({ size = "md" }: { size?: "md" | "lg" }) {
       data-transport="next"
       aria-label={t.player.next}
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-[var(--radius-round)] text-muted-foreground transition-[color,background-color,transform] duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground active:scale-90 disabled:opacity-30 disabled:hover:bg-transparent",
+        "press flex shrink-0 items-center justify-center rounded-[var(--radius-round)] text-muted-foreground transition-[color,background-color] duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent",
         size === "lg" ? "h-10 w-10" : "h-8 w-8",
       )}
     >
-      <NextGlyph className={size === "lg" ? "h-5 w-5" : "h-4 w-4"} />
+      <NextGlyph
+        className={cn("press-glyph", size === "lg" ? "h-5 w-5" : "h-4 w-4")}
+      />
     </button>
   );
 }
