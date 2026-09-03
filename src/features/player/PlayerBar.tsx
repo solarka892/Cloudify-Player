@@ -24,7 +24,6 @@ import { useCompact } from "@/hooks/useCompact";
 import type { Track } from "@/lib/tauri";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
-import { useSettingsStore } from "@/stores/useSettingsStore";
 import { useArtwork } from "@/hooks/useArtwork";
 import { ArtFallback } from "@/components/ArtFallback";
 
@@ -37,14 +36,10 @@ export function PlayerBar() {
   const expanded = useNavStore((s) => s.nowPlaying);
   const setExpanded = useNavStore((s) => s.setNowPlaying);
   const compact = useCompact();
-  // The bar answers to the same setting the full-screen player does: with the
-  // blur chosen, the wallpaper is the app's lighting, and a solid slab across
-  // the bottom is the one place it stops.
-  const light = useSettingsStore((s) => s.backdrop.playerLight);
-
   const downloadedIds = useDownloadsStore((s) => s.ids);
   const active = useDownloadsStore((s) => s.active);
   const startDownload = useDownloadsStore((s) => s.start);
+  const removeDownload = useDownloadsStore((s) => s.remove);
 
   const art = useArtwork(current, "t120x120");
 
@@ -92,8 +87,15 @@ export function PlayerBar() {
 
         <footer
           className={cn(
-            "player-bar panel panel-liquid panel-chrome flex h-20 w-full items-center gap-4 rounded-none border-0 px-4",
-            light === "blur" && "player-bar-see-through",
+            // Translucency is the glass setting's business now, in CSS, where
+            // it can be written after the rule it has to beat — see
+            // `:root[data-glass="1"] .player-bar`. Asking the full-screen
+            // player's light setting for it here never worked: the class it
+            // added lost to the chrome rule every time.
+            // `border-x-0 border-b-0` rather than `border-0`: the hairline along the
+            // top is the edge of the chrome, and it is the same line the sidebar
+            // draws down its side. The other three are edges of the window.
+            "chrome player-bar panel panel-liquid panel-chrome flex h-20 w-full items-center gap-4 rounded-none border-x-0 border-b-0 px-4",
           )}
         >
           {/* Track. Fixed width, and the row cannot have it both ways.
@@ -176,12 +178,16 @@ export function PlayerBar() {
               <ShareButton url={current.permalink_url} />
 
               <button
-                onClick={() => void startDownload(current)}
-                disabled={isDownloaded || !!downloading}
-                aria-label={t.player.download}
+                onClick={() =>
+                  void (isDownloaded
+                    ? removeDownload(current.id)
+                    : startDownload(current))
+                }
+                disabled={!!downloading}
+                aria-label={isDownloaded ? t.downloads.remove : t.player.download}
                 title={
                   isDownloaded
-                    ? t.player.downloaded
+                    ? t.downloads.remove
                     : progress != null
                       ? `${Math.round(progress)}%`
                       : t.player.download
@@ -189,7 +195,7 @@ export function PlayerBar() {
                 className={cn(
                   "relative shrink-0 rounded-[var(--radius-control)] p-1.5 transition-colors duration-[var(--motion-fast)] hover:bg-accent",
                   isDownloaded
-                    ? "text-brand"
+                    ? "text-brand hover:text-destructive"
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >

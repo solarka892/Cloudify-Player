@@ -204,6 +204,7 @@
      style on the root and which no stylesheet rule could override anyway. */
   --backdrop-blur-scale: 1;
   --backdrop-dim-boost: 0;
+
   --backdrop-saturate-scale: 1;
 }
 
@@ -342,10 +343,6 @@
      Its own blur, not the wallpaper's showing through: what is behind the bar
      is the *list*, and letting a track title read through the transport is not
      the effect. This blurs what it covers. */
-  .player-bar-see-through {
-    background: color-mix(in srgb, var(--card) 62%, transparent);
-    backdrop-filter: blur(28px) saturate(1.4);
-  }
 
   /* The now-playing title, when it does not fit. See `components/Marquee`.
 
@@ -733,6 +730,68 @@
     );
   }
 
+  /* ── Chrome: the nav and the transport, one material ─────────────────
+   *
+   * The nav down the side and the transport along the bottom meet in the corner
+   * of the window, so any difference between them shows up there as a step in
+   * the shading. Getting them to match took four wrong turns, and each one is
+   * worth keeping:
+   *
+   * 1. The bar was an opaque `.panel` slab. Giving it no surface at all, scoped
+   *    to `[data-glass="1"]`, did nothing: that switch ships *off*.
+   * 2. Unscoped, at `:root .player-bar`, it lost to `:root[data-glass="0"]
+   *    .panel` — an attribute heavier — and the bar stayed opaque. Hence the
+   *    weights below, which beat every rule defining the surface they replace.
+   * 3. Made see-through, it still did not match, and that one was not the
+   *    cascade: a transparent strip shows the backdrop, the backdrop is a
+   *    picture (a wallpaper, or the blurred cover of what is playing), and a
+   *    picture is not one colour. Two strips at opposite edges of the window
+   *    look at different parts of it.
+   * 4. So both got a veil of their own — and the step at the corner *stayed*,
+   *    which is the clue that settled it. At the corner the two strips sample
+   *    the picture within a few pixels of each other, so a veil they share
+   *    cannot leave a seam there. Something else had to differ, and it did: the
+   *    nav on screen was the **rail**, which wears `.panel` (the card colour at
+   *    `--surface-alpha`, blurred by `--blur`), while the bar wore
+   *    `.panel-chrome` — deliberately more opaque and barely blurred. Different
+   *    material, hard edge between them. The app said so itself: a probe inside
+   *    the running window found no `nav.chrome` at all.
+   *
+   * So chrome is not a veil of its own any more. It is the panel material,
+   * exactly: same alpha, same blur, on the nav in either layout, on the header,
+   * on the bottom tabs and on the transport. Identical by construction rather
+   * than by two numbers someone has to keep in step.
+   *
+   * `.panel-chrome`'s reduced blur was a performance trade for chrome that sat
+   * *over* the scroll container, which the bar no longer does — it is a flex
+   * sibling of it, so what it blurs is the backdrop, and that only changes when
+   * the artwork does. */
+  .chrome {
+    background: var(--card);
+    background: color-mix(in srgb, var(--card) var(--surface-alpha), transparent);
+  }
+  :root[data-glass="1"] .chrome,
+  :root[data-glass] .chrome.panel,
+  :root[data-glass] .chrome.panel-chrome {
+    background: color-mix(in srgb, var(--card) var(--surface-alpha), transparent);
+  }
+  :root[data-glass="1"] .chrome,
+  :root[data-glass="1"] .chrome.panel-chrome {
+    backdrop-filter: blur(var(--blur));
+  }
+  :root[data-glass="0"] .chrome {
+    background: color-mix(in srgb, var(--card), var(--background) var(--surface-sink));
+  }
+  /* No shadow and no sheen: the chrome is a face of the window, not a card
+     laid on it. */
+  :root[data-glass] .chrome {
+    box-shadow: none;
+  }
+  :root[data-glass] .chrome.panel-liquid::before {
+    content: none;
+  }
+
+
   /* The settings section list, pinned while the page scrolls under it.
      `top` is not zero on purpose: it has to equal the scroller's own top
      padding, or the list drifts up by exactly that much before it catches —
@@ -1049,6 +1108,18 @@
     }
   }
 
+  /* The accent as a surface: a button, a filled bar, a progress track.
+
+     Worth knowing that this rule can go missing without looking broken. It was
+     deleted once, and the dozen elements wearing the class — the sign-in
+     button, "send" on a comment, the bulk-download bar, "follow", the fill on
+     the seek and volume sliders — were then painted by whatever happened to be
+     underneath. Flat, not obviously wrong: a `bg-secondary` track under an
+     unpainted fill still looks like a slider. It took building a new slider out
+     of the same two classes to notice.
+
+     Layered, so `obsidian`'s override further down still wins — that skin wants
+     one flat accent and says so unlayered. */
   .brand-gradient {
     background-image: linear-gradient(
       135deg,
@@ -1273,10 +1344,40 @@
       stroke var(--motion-fast) ease;
   }
 
-  /* Tactile press, everywhere. Disabled controls stay put. */
-  button:not(:disabled):active,
-  [role="button"]:not([aria-disabled="true"]):active {
+  /* Tactile press, everywhere. Disabled controls stay put.
+   *
+   * Except a control that *contains* controls, and that exception is not
+   * cosmetic. Scaling a container drags everything inside it towards the
+   * container's centre, so a button inside it moves out from under the pointer
+   * that is pressing it: the release lands elsewhere, and the browser hands the
+   * click to the container rather than to the button. The button never fires
+   * and the container fires instead.
+   *
+   * A track row is where this bit. The row is a `[role="button"]` about 900px
+   * wide, and the heart sits some 410px from its centre — where 3% is 12px,
+   * which is exactly the heart's own radius. So a press aimed at the middle of
+   * the heart still ended outside it, the heart did nothing, and the row played
+   * the track. Measured in a browser, both ways round; the numbers and the
+   * method are with `.press-glyph`.
+   *
+   * `.press` opts out for the same reason in miniature: those animate the glyph
+   * inside them, which is not a hit target. */
+  button:not(:disabled):not(.press):not(:has(button, a, [role="button"])):active,
+  [role="button"]:not([aria-disabled="true"]):not(
+      :has(button, a, [role="button"])
+    ):active {
     transform: scale(0.97);
+  }
+
+  /* A surface that holds controls answers a press by darkening instead, which
+     moves nothing. Rows are the ones the hand actually lands on.
+     An inset rather than a background: the row's own `hover:bg-accent` is a
+     utility, and utilities win over this layer, so a press expressed as a
+     background colour would be invisible under the pointer that is pressing
+     it — which is every press made with a mouse. */
+  .bg-row:active {
+    box-shadow: inset 0 0 0 100vmax
+      color-mix(in srgb, var(--foreground) 7%, transparent);
   }
 
   /* Sliders get a thumb that reacts too. */
@@ -1297,6 +1398,111 @@
   }
 }
 
+/* A row joining a list, and a row leaving it.
+ *
+ * Unliking a track took its row out of the likes list between two frames, and
+ * everything below it jumped up by its height — which is the one moment the
+ * list is worth animating, because it is the only one where the user did
+ * something and the list answered. The rows that stay slide to their new
+ * places (a transition on `top`, which is where the virtualiser puts them);
+ * the row that goes fades and slides out first, and only then leaves the
+ * markup.
+ *
+ * `--row-leave` is the length of the leave, and `TrackList` waits exactly this
+ * long before dropping the row — the two have to agree or the row either
+ * vanishes mid-fade or lingers as a hole in the list.
+ */
+:root {
+  --row-leave: 240ms;
+}
+@keyframes row-enter {
+  from {
+    opacity: 0;
+    translate: 0 -8px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+@keyframes row-leave {
+  from {
+    opacity: 1;
+    translate: 0 0;
+  }
+  to {
+    opacity: 0;
+    translate: 24px 0;
+  }
+}
+.row-enter {
+  animation: row-enter var(--motion-slow) cubic-bezier(0.22, 0.8, 0.3, 1);
+}
+.row-leave {
+  animation: row-leave var(--row-leave) cubic-bezier(0.4, 0, 1, 1) forwards;
+  /* It is on its way out; a click on it would land on a track that is no
+     longer in the list. */
+  pointer-events: none;
+}
+/* Rows are placed by `top`, so that is what carries them to their new place. */
+.row-slot {
+  transition: top var(--motion-slow) cubic-bezier(0.22, 0.8, 0.3, 1);
+}
+/* Nobody asked for a list that dances. */
+@media (prefers-reduced-motion: reduce) {
+  .row-enter,
+  .row-leave {
+    animation-duration: 1ms;
+  }
+  .row-slot {
+    transition: none;
+  }
+}
+
+/* The ring around a running download — see `components/DownloadRing`.
+ *
+ * A conic sweep with a hole punched in it: `mask` leaves a 2px band, so one
+ * element is the whole ring and there is no SVG to keep in step with the
+ * radius. The unfilled part is the border colour rather than nothing, or a
+ * download at 4% reads as a broken ring.
+ *
+ * Indeterminate downloads come in as a short arc that turns — see below. */
+.download-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-round);
+  background: conic-gradient(
+    var(--brand) var(--sweep),
+    color-mix(in srgb, var(--foreground) 22%, transparent) var(--sweep)
+  );
+  mask: radial-gradient(
+    farthest-side,
+    transparent calc(100% - 2px),
+    #000 calc(100% - 2px)
+  );
+  transition: background var(--motion-fast) linear;
+}
+/* No total yet — an HLS playlist before its first segment lands. A short arc
+   turning says "working on it"; the same arc standing still is a download
+   stuck at 12%. */
+@keyframes ring-turn {
+  to {
+    rotate: 360deg;
+  }
+}
+[data-download-ring][data-indeterminate] .download-ring {
+  /* Its own keyframes rather than Tailwind's `spin`: that one is only emitted
+     when the `animate-spin` utility appears somewhere in the source, which is
+     not a thing this rule can rely on. */
+  animation: ring-turn 1.6s linear infinite;
+}
+[data-download-ring][data-paused] .download-ring {
+  background: conic-gradient(
+    color-mix(in srgb, var(--foreground) 40%, transparent) var(--sweep),
+    color-mix(in srgb, var(--foreground) 14%, transparent) var(--sweep)
+  );
+}
+
 /* The heart, when it fills. */
 @keyframes heart-pop {
   0% {
@@ -1311,6 +1517,38 @@
 }
 .heart-pop {
   animation: heart-pop var(--motion-slow) cubic-bezier(0.22, 0.8, 0.3, 1);
+}
+
+/* ── Press feedback that does not eat the click ────────────────────────────
+ *
+ * A button that shrinks while it is held moves out from under the pointer.
+ * Press near its edge and the release lands on whatever is behind it, and the
+ * browser then hands the click to the nearest common ancestor of the press and
+ * the release — not to the button. The button's own handler never runs.
+ *
+ * Measured rather than guessed, on a 24px button with `active:scale-90` inside
+ * a parent that also listens for clicks: the centre delivered the click to the
+ * button, a point 1px inside its edge delivered it to the *parent*, with the
+ * parent as the target. A dead ring about 2px wide all the way round.
+ *
+ * In a track row that is worse than a lost click: the row is the play target,
+ * so a stray press on the heart played the track instead of liking it. That is
+ * what task 29 was chasing from the wrong end — nesting was real, but this is
+ * what made the heart pause the music.
+ *
+ * So the hit target never moves. `.press` marks the button; `.press-glyph`
+ * marks the one thing inside it that may move, which is the icon — and an icon
+ * is not a hit target. The amounts are tokens so a control can tune them
+ * (`[--press-hover:1.05]`) and a skin can turn the whole thing off.
+ */
+.press-glyph {
+  transition: transform var(--motion-fast);
+}
+.press:hover > .press-glyph {
+  transform: scale(var(--press-hover, 1.1));
+}
+.press:active:not(:disabled) > .press-glyph {
+  transform: scale(var(--press-active, 0.9));
 }
 
 /* ── Display cutouts and gesture bars ─────────────────────────────────────
@@ -2239,7 +2477,16 @@ button.pill-readout:hover {
 
 /* No lift and no press. `hover:-translate-y-0.5` on a tile and `active:scale`
    on every button are Aurora's idea of tactility; here the only thing that
-   changes under the pointer is brightness. */
+   changes under the pointer is brightness.
+
+   The icon buttons say it with the tokens, which is the only form that does not
+   move the hit target: cancelling a transform on `:active` shrinks the button
+   back out from under the pointer exactly like the transform it cancels, and
+   swallows the click the same way — see `.press-glyph`. */
+:root[data-skin="obsidian"] {
+  --press-hover: 1;
+  --press-active: 1;
+}
 :root[data-skin="obsidian"] button:not(:disabled):active,
 :root[data-skin="obsidian"] [role="button"]:not([aria-disabled="true"]):active {
   transform: none;

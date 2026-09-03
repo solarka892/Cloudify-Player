@@ -58,7 +58,10 @@ export function NavRail({ view, onNavigate }: NavProps) {
     <div data-rail-slot className="nav-in-x relative h-full w-14 shrink-0">
       <nav
         data-rail
-        className="group/rail panel absolute inset-y-0 left-0 z-20 flex w-14 flex-col gap-1 overflow-hidden rounded-none border-0 p-2 pt-[calc(0.5rem+var(--titlebar-inset))] shadow-none transition-[width] duration-[var(--motion-slow)] hover:w-48"
+        // `chrome` like every other piece of it. Safe here even though this one
+        // lies *over* the content when it widens: chrome is the panel material,
+        // which is what the rail already wore, so nothing gets thinner.
+        className="chrome group/rail panel absolute inset-y-0 left-0 z-20 flex w-14 flex-col gap-1 overflow-hidden rounded-none border-0 p-2 pt-[calc(0.5rem+var(--titlebar-inset))] shadow-none transition-[width] duration-[var(--motion-slow)] hover:w-48"
       >
         <BrandMark compact />
         {NAV_ITEMS.map((item) => (
@@ -129,7 +132,7 @@ function RailItem({
 /** Horizontal tabs across the top, closest to soundcloud.com. */
 export function NavTop({ view, onNavigate }: NavProps) {
   return (
-    <header className="nav-in-y flex h-[calc(3.5rem+var(--titlebar-inset))] shrink-0 items-center gap-1 border-b border-border px-4 pt-[var(--titlebar-inset)]">
+    <header className="chrome nav-in-y flex h-[calc(3.5rem+var(--titlebar-inset))] shrink-0 items-center gap-1 border-b border-border px-4 pt-[var(--titlebar-inset)]">
       <BrandMark />
       <div className="ml-4 flex items-center gap-1">
         {NAV_ITEMS.filter((i) => i.id !== "settings").map((item) => (
@@ -205,7 +208,7 @@ export function NavCompactHeader({ view, onNavigate }: NavProps) {
   const unreadNotifications = useBadge("notifications");
 
   return (
-    <header className="nav-in-y relative z-20 flex shrink-0 items-center gap-1 border-b border-border px-2 pt-[var(--titlebar-inset)]">
+    <header className="chrome nav-in-y relative z-20 flex shrink-0 items-center gap-1 border-b border-border px-2 pt-[var(--titlebar-inset)]">
       <BrandMark />
       <div className="ml-auto flex items-center gap-1">
         <HeaderIcon
@@ -285,7 +288,7 @@ function HeaderIcon({
  */
 export function NavBottom({ view, onNavigate }: NavProps) {
   return (
-    <nav className="nav-in-y panel panel-chrome pb-safe flex shrink-0 items-stretch rounded-none border-x-0 border-b-0">
+    <nav className="chrome nav-in-y panel panel-chrome pb-safe flex shrink-0 items-stretch rounded-none border-x-0 border-b-0">
       {COMPACT_NAV_ITEMS.map(({ id, label, Icon }) => (
         <button
           key={id}
@@ -316,7 +319,7 @@ export function NavSidebar({ view, onNavigate }: NavProps) {
   const all = [...playlists.items, ...liked.items];
 
   return (
-    <nav className="nav-in-x flex h-full w-60 shrink-0 flex-col gap-1 border-r border-border p-3 pt-[calc(0.75rem+var(--titlebar-inset))]">
+    <nav className="chrome nav-in-x flex h-full w-60 shrink-0 flex-col gap-1 border-r border-border p-3 pt-[calc(0.75rem+var(--titlebar-inset))]">
       <BrandMark />
       <div className="mt-2 flex flex-col gap-0.5">
         {NAV_ITEMS.map((item) => (
