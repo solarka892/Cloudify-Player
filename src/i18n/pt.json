@@ -343,7 +343,9 @@
     "stopped": "Parado após",
     "clearAll": "Limpar o armazenamento",
     "cleared": "Faixas removidas",
-    "dismiss": "Dispensar"
+    "dismiss": "Dispensar",
+    "pause": "Pausar o download",
+    "resume": "Retomar o download"
   },
   "audio": {
     "title": "Som",
@@ -413,5 +415,9 @@
     "share": "Compartilhar",
     "shareCopied": "Link copiado",
     "shareFailed": "Não foi possível copiar o link"
+  },
+  "common": {
+    "toBottom": "Ir para o fim",
+    "toTop": "Ir para o início"
   }
 }

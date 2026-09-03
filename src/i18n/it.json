@@ -343,7 +343,9 @@
     "stopped": "Fermato dopo",
     "clearAll": "Svuota la memoria",
     "cleared": "Brani rimossi",
-    "dismiss": "Nascondi"
+    "dismiss": "Nascondi",
+    "pause": "Metti in pausa il download",
+    "resume": "Riprendi il download"
   },
   "audio": {
     "title": "Audio",
@@ -413,5 +415,9 @@
     "share": "Condividi",
     "shareCopied": "Link copiato",
     "shareFailed": "Impossibile copiare il link"
+  },
+  "common": {
+    "toBottom": "Vai in fondo",
+    "toTop": "Vai in cima"
   }
 }

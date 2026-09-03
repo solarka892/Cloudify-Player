@@ -343,7 +343,9 @@
     "stopped": "Gestoppt nach",
     "clearAll": "Speicher leeren",
     "cleared": "Tracks entfernt",
-    "dismiss": "Ausblenden"
+    "dismiss": "Ausblenden",
+    "pause": "Download anhalten",
+    "resume": "Download fortsetzen"
   },
   "audio": {
     "title": "Klang",
@@ -413,5 +415,9 @@
     "share": "Teilen",
     "shareCopied": "Link kopiert",
     "shareFailed": "Link konnte nicht kopiert werden"
+  },
+  "common": {
+    "toBottom": "Nach unten springen",
+    "toTop": "Nach oben springen"
   }
 }

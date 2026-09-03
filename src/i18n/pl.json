@@ -343,7 +343,9 @@
     "stopped": "Zatrzymano po",
     "clearAll": "Wyczyść pamięć",
     "cleared": "Usunięto utwory",
-    "dismiss": "Ukryj"
+    "dismiss": "Ukryj",
+    "pause": "Wstrzymaj pobieranie",
+    "resume": "Wznów pobieranie"
   },
   "audio": {
     "title": "Dźwięk",
@@ -413,5 +415,9 @@
     "share": "Udostępnij",
     "shareCopied": "Link skopiowany",
     "shareFailed": "Nie udało się skopiować linku"
+  },
+  "common": {
+    "toBottom": "Na koniec",
+    "toTop": "Na początek"
   }
 }

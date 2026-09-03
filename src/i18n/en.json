@@ -423,7 +423,9 @@
     "stopped": "Stopped after",
     "clearAll": "Clear storage",
     "cleared": "Tracks removed",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "pause": "Pause download",
+    "resume": "Resume download"
   },
   "audio": {
     "title": "Sound",
@@ -559,8 +561,7 @@
     "newMessage": "New message",
     "searchPeople": "Search conversations",
     "attachedTrack": "Shared a track",
-    "refresh": "Refresh",
-    "readOnly": "Read-only: sending does not work"
+    "refresh": "Refresh"
   },
   "notifications": {
     "title": "Notifications",
@@ -752,6 +753,8 @@
   },
   "common": {
     "cancel": "Cancel",
-    "delete": "Delete"
+    "delete": "Delete",
+    "toBottom": "Jump to bottom",
+    "toTop": "Jump to top"
   }
 }

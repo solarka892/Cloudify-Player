@@ -343,7 +343,9 @@
     "stopped": "Şu süreden sonra durdu:",
     "clearAll": "Depolamayı temizle",
     "cleared": "Parça kaldırıldı",
-    "dismiss": "Gizle"
+    "dismiss": "Gizle",
+    "pause": "İndirmeyi duraklat",
+    "resume": "İndirmeye devam et"
   },
   "audio": {
     "title": "Ses",
@@ -413,5 +415,9 @@
     "share": "Paylaş",
     "shareCopied": "Bağlantı kopyalandı",
     "shareFailed": "Bağlantı kopyalanamadı"
+  },
+  "common": {
+    "toBottom": "En alta git",
+    "toTop": "En üste git"
   }
 }

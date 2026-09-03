@@ -343,7 +343,9 @@
     "stopped": "Detenido tras",
     "clearAll": "Vaciar el almacenamiento",
     "cleared": "Pistas eliminadas",
-    "dismiss": "Descartar"
+    "dismiss": "Descartar",
+    "pause": "Pausar la descarga",
+    "resume": "Reanudar la descarga"
   },
   "audio": {
     "title": "Sonido",
@@ -413,5 +415,9 @@
     "share": "Compartir",
     "shareCopied": "Enlace copiado",
     "shareFailed": "No se pudo copiar el enlace"
+  },
+  "common": {
+    "toBottom": "Ir al final",
+    "toTop": "Ir al principio"
   }
 }

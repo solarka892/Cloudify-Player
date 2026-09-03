@@ -343,7 +343,9 @@
     "stopped": "Arrêté après",
     "clearAll": "Vider le stockage",
     "cleared": "Titres supprimés",
-    "dismiss": "Masquer"
+    "dismiss": "Masquer",
+    "pause": "Suspendre le téléchargement",
+    "resume": "Reprendre le téléchargement"
   },
   "audio": {
     "title": "Son",
@@ -413,5 +415,9 @@
     "share": "Partager",
     "shareCopied": "Lien copié",
     "shareFailed": "Impossible de copier le lien"
+  },
+  "common": {
+    "toBottom": "Aller en bas",
+    "toTop": "Aller en haut"
   }
 }
