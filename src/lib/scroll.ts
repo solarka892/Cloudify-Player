@@ -19,3 +19,15 @@ export function scrollViewToTop(): void {
   // content, so animating it would only show the user a blur of the old page.
   scroller?.scrollTo({ top: 0, behavior: "instant" });
 }
+
+export function scrollViewToBottom(): void {
+  // Instant for the same reason as above, and for one more: a smooth run down a
+  // list of 1328 rows rebuilds the rendered window on every frame of the way
+  // there. The app has no `scroll-behavior: smooth` anywhere, on purpose.
+  scroller?.scrollTo({ top: scroller.scrollHeight, behavior: "instant" });
+}
+
+/** The element itself, for a component that has to watch it scroll. */
+export function getViewScroller(): HTMLElement | null {
+  return scroller;
+}

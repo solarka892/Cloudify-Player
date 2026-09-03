@@ -3,6 +3,7 @@ import { useSettingsStore } from "@/stores/useSettingsStore";
 import { resolveLayout } from "@/theme/layout";
 import { useNavStore } from "@/stores/useNavStore";
 import { setViewScroller, scrollViewToTop } from "@/lib/scroll";
+import { ScrollJump } from "@/components/ScrollJump";
 import { useWheelStep } from "@/hooks/useWheelStep";
 import { Ambient, SkinLight } from "@/components/Ambient";
 import { useCompact } from "@/hooks/useCompact";
@@ -74,6 +75,10 @@ export function AppShell({
       <div className="mx-auto w-full max-w-6xl px-4 py-4 pt-[calc(1rem+var(--titlebar-inset))] md:px-6 md:py-6 md:pt-[calc(1.5rem+var(--titlebar-inset))]">
         {children}
       </div>
+      {/* Inside the scroller, because that is what it sticks to — see
+          `ScrollJump`. One button for every view: the shell owns the only
+          scroll container in the app. */}
+      <ScrollJump scroller={scrollerEl} />
     </main>
   );
 
