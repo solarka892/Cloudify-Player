@@ -453,6 +453,16 @@ pub fn list_downloads(
     crate::downloads::list(&app).map_err(bridge::failure)
 }
 
+/// Hold or resume a download that is already running.
+///
+/// The loop checks between chunks, so a pause lands within a chunk rather than
+/// instantly — and it holds the connection open while it waits. See
+/// `downloads::set_paused` for what that means for a long one.
+#[tauri::command]
+pub fn pause_download(track_id: u64, paused: bool) {
+    crate::downloads::set_paused(track_id, paused);
+}
+
 /// Delete a downloaded track, file and index row.
 #[tauri::command]
 pub fn delete_download(app: tauri::AppHandle, track_id: u64) -> Result<(), bridge::Failure> {

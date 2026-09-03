@@ -109,6 +109,9 @@ export function TrackView({ trackId, meId }: { trackId: number; meId: number }) 
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const position = usePlayerStore((s) => s.position);
   const startDownload = useDownloadsStore((s) => s.start);
+  const removeDownload = useDownloadsStore((s) => s.remove);
+  const isDownloaded = useDownloadsStore((s) => s.ids.has(track.id));
+  const downloading = useDownloadsStore((s) => !!s.active[track.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -332,11 +335,25 @@ export function TrackView({ trackId, meId }: { trackId: number; meId: number }) 
                 <ListPlus className="h-5 w-5" />
               </button>
 
+              {/* Downloaded or not, this is the same button: the glyph
+                  says which track it is about, and the colour says whether
+                  there is a copy — accent for yes, and red under the pointer
+                  because the next press is what takes it away. */}
               <button
-                onClick={() => void startDownload(track)}
-                title={t.track.download}
-                aria-label={t.track.download}
-                className="rounded-[var(--radius-round)] p-1.5 text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:text-foreground"
+                onClick={() =>
+                  void (isDownloaded
+                    ? removeDownload(track.id)
+                    : startDownload(track))
+                }
+                disabled={downloading}
+                title={isDownloaded ? t.downloads.remove : t.track.download}
+                aria-label={isDownloaded ? t.downloads.remove : t.track.download}
+                className={cn(
+                  "rounded-[var(--radius-round)] p-1.5 transition-colors duration-[var(--motion-fast)]",
+                  isDownloaded
+                    ? "text-brand hover:text-destructive"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
               >
                 <Download className="h-5 w-5" />
               </button>

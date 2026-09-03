@@ -73,6 +73,8 @@ export function TrackContextMenu({
   const startRadio = usePlayerStore((s) => s.startRadio);
   const downloadedIds = useDownloadsStore((s) => s.ids);
   const startDownload = useDownloadsStore((s) => s.start);
+  const removeDownload = useDownloadsStore((s) => s.remove);
+  const downloading = useDownloadsStore((s) => !!s.active[track.id]);
   const toggleLike = useLibraryStore((s) => s.toggleLike);
   const liked = useLibraryStore((s) => s.likedIds.has(target.track.id));
   const toggleRepost = useRepostStore((s) => s.toggleTrack);
@@ -196,9 +198,15 @@ export function TrackContextMenu({
 
       <Item
         Icon={Download}
-        label={isDownloaded ? t.track.downloaded : t.track.download}
-        disabled={isDownloaded}
-        onClick={() => run(() => void startDownload(track))}
+        label={isDownloaded ? t.downloads.remove : t.track.download}
+        disabled={downloading}
+        onClick={() =>
+          run(() =>
+            void (isDownloaded
+              ? removeDownload(track.id)
+              : startDownload(track)),
+          )
+        }
       />
 
       {track.permalink_url && (

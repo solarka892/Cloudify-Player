@@ -343,6 +343,17 @@ export function deleteDownload(trackId: number): Promise<void> {
   return invoke<void>("delete_download", { trackId });
 }
 
+/**
+ * Hold or resume a download that is already running.
+ *
+ * Rust checks between chunks, so the hold lands within a chunk rather than on
+ * the instant — and the connection stays open while it waits, which a very
+ * long pause may lose. See `downloads::set_paused`.
+ */
+export function pauseDownload(trackId: number, paused: boolean): Promise<void> {
+  return invoke<void>("pause_download", { trackId, paused });
+}
+
 /** Subscribe to download progress. Returns an unsubscribe function. */
 export function onDownloadProgress(
   handler: (progress: DownloadProgress) => void,

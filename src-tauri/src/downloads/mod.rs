@@ -8,8 +8,11 @@
 //! Quality note: SoundCloud's `progressive` transcoding is 128 kbps — that is
 //! the ceiling for anything not explicitly marked downloadable by the artist.
 
+use std::collections::HashSet;
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::sync::{Mutex, OnceLock};
+use std::time::Duration;
 
 use rusqlite::Connection;
 use serde::Serialize;
@@ -123,11 +126,62 @@ fn now() -> i64 {
         .unwrap_or_default()
 }
 
+/// Track ids whose download is holding.
+///
+/// A set rather than a flag per download task: the task itself is spawned by
+/// Tauri per command and has nowhere to keep state the frontend can reach, so
+/// "is this one paused" lives here and the fetch loops ask between chunks.
+fn paused() -> &'static Mutex<HashSet<u64>> {
+    static PAUSED: OnceLock<Mutex<HashSet<u64>>> = OnceLock::new();
+    PAUSED.get_or_init(|| Mutex::new(HashSet::new()))
+}
+
+/// Hold or resume the download of one track.
+///
+/// What this is *not*: a pause that survives the app. The connection is held
+/// open while the loop waits, so a pause of minutes may end with SoundCloud
+/// hanging up — the download then fails like any other dropped connection and
+/// the track can be fetched again. A pause that resumes from the middle needs
+/// the partial file on disk and a ranged request, which is a bigger job than
+/// the button that started this.
+pub fn set_paused(track_id: u64, hold: bool) {
+    let mut set = paused().lock().expect("paused set poisoned");
+    if hold {
+        set.insert(track_id);
+    } else {
+        set.remove(&track_id);
+    }
+}
+
+/// Whether this track's download is holding right now.
+fn is_paused(track_id: u64) -> bool {
+    paused()
+        .lock()
+        .expect("paused set poisoned")
+        .contains(&track_id)
+}
+
+/// Wait here while the download is paused.
+///
+/// Polled rather than woken by a signal: a download that is paused is a
+/// download nobody is waiting on, so a check every 200ms costs nothing worth
+/// counting and needs no channel to keep in sync with the set above.
+async fn wait_while_paused(track_id: u64) {
+    while is_paused(track_id) {
+        tokio::time::sleep(Duration::from_millis(200)).await;
+    }
+}
+
 /// Download `track`, tag it, and add it to the local library.
 ///
 /// Re-downloading a track that is already present overwrites it, which is also
 /// how a failed or truncated earlier attempt gets repaired.
 pub async fn download(app: &AppHandle, track: Track) -> Result<DownloadedTrack, DownloadError> {
+    // Start unheld. A download that failed while paused — the connection went
+    // away, which is exactly what a long pause invites — would otherwise leave
+    // its id in the set and hold this attempt before its first chunk.
+    set_paused(track.id, false);
+
     let stream = sc_api::stream::get_stream_url(track.id).await?;
     let client = sc_api::http_client()?;
 
@@ -203,6 +257,9 @@ async fn fetch_whole(
 
     while let Some(chunk) = resp.chunk().await? {
         bytes.extend_from_slice(&chunk);
+        // Between chunks, which is the only place the loop is interruptible
+        // without dropping what it already has.
+        wait_while_paused(track.id).await;
         // Best-effort: a closed window must not fail the download.
         let _ = app.emit(
             "download://progress",
@@ -261,6 +318,7 @@ async fn fetch_hls(
 
     let mut bytes: Vec<u8> = Vec::with_capacity(6 << 20);
     for (index, segment) in segments.iter().enumerate() {
+        wait_while_paused(track.id).await;
         let chunk = client
             .get(*segment)
             .send()

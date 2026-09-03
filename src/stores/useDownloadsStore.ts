@@ -3,6 +3,7 @@ import {
   clearDownloads,
   deleteDownload,
   downloadTrack,
+  pauseDownload,
   listDownloads,
   localFileUrl,
   onDownloadProgress,
@@ -25,6 +26,8 @@ export interface ActiveDownload {
   total: number | null;
   /** Set when the download failed; the row stays so the user sees why. */
   error: string | null;
+  /** Holding: the bytes stop arriving until it is resumed. */
+  paused: boolean;
 }
 
 interface DownloadsState {
@@ -77,6 +80,8 @@ interface DownloadsState {
   load: () => Promise<void>;
   start: (track: Track) => Promise<void>;
   remove: (trackId: number) => Promise<void>;
+  /** Hold or resume one running download. */
+  setPaused: (trackId: number, paused: boolean) => Promise<void>;
   /** Delete every downloaded file. Resolves with how many went. */
   clearAll: () => Promise<number>;
   /** Download a whole list, paced and interruptible. */
@@ -167,6 +172,7 @@ export const useDownloadsStore = create<DownloadsState>((set, get) => {
             received: 0,
             total: null,
             error: null,
+            paused: false,
           },
         },
       });
@@ -188,6 +194,24 @@ export const useDownloadsStore = create<DownloadsState>((set, get) => {
           },
         });
       }
+    },
+
+    async setPaused(trackId, paused) {
+      const current = get().active[trackId];
+      if (!current) return;
+      // Flipped here rather than on the way back: Rust answers immediately and
+      // the loop notices between chunks, so waiting for the round trip would
+      // leave the button showing the state it was pressed out of.
+      set({
+        active: { ...get().active, [trackId]: { ...current, paused } },
+      });
+      await pauseDownload(trackId, paused).catch(() => {
+        const back = get().active[trackId];
+        if (!back) return;
+        set({
+          active: { ...get().active, [trackId]: { ...back, paused: !paused } },
+        });
+      });
     },
 
     async remove(trackId) {

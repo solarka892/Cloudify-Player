@@ -92,6 +92,7 @@ pub fn run() {
             commands::download_track,
             commands::list_downloads,
             commands::delete_download,
+            commands::pause_download,
             commands::sc_get_profile,
             commands::sc_like_track,
             commands::sc_like_playlist,
