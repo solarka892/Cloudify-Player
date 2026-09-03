@@ -2,7 +2,24 @@ import { useEffect, useState } from "react";
 import { t } from "@/i18n";
 import { storageErase, storageReport, type StorageReport } from "@/lib/store";
 import { confirmAction } from "@/stores/useConfirmStore";
+import { useSettingsStore } from "@/stores/useSettingsStore";
 import { toast } from "@/stores/useToastStore";
+import { cn } from "@/lib/utils";
+
+/**
+ * How long the diary keeps what it records. `0` keeps everything.
+ *
+ * It used to sit in the diary's own header, where five buttons and a label took
+ * the whole strip and left the screen's title squeezed into a corner. It reads
+ * better here anyway: this is the page about what stays on the disk, and the
+ * diary's rows are one of the lines in the table below.
+ */
+const RETENTIONS: { days: number; label: () => string }[] = [
+  { days: 30, label: () => t.diary.days30 },
+  { days: 180, label: () => t.diary.days180 },
+  { days: 365, label: () => t.diary.days365 },
+  { days: 0, label: () => t.diary.forever },
+];
 
 /**
  * What is kept on this machine, in plain words, with a button to erase each of
@@ -21,6 +38,8 @@ import { toast } from "@/stores/useToastStore";
  */
 export function StorageSettings() {
   const [report, setReport] = useState<StorageReport | null>(null);
+  const diaryDays = useSettingsStore((s) => s.nit.diaryDays);
+  const setNit = useSettingsStore((s) => s.setNit);
 
   const refresh = () => void storageReport().then(setReport).catch(() => {});
   useEffect(refresh, []);
@@ -51,6 +70,29 @@ export function StorageSettings() {
       <div className="px-1">
         <h2 className="group-title">{t.storage.title}</h2>
         <p className="mt-0.5 text-sm text-muted-foreground">{t.storage.hint}</p>
+      </div>
+
+      <div className="panel flex flex-wrap items-center justify-between gap-3 px-4 py-[calc(0.75rem*var(--density))]">
+        <div className="min-w-0">
+          <div className="text-sm font-medium">{t.diary.keepFor}</div>
+          <div className="text-xs text-muted-foreground">{t.diary.hint}</div>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {RETENTIONS.map(({ days, label }) => (
+            <button
+              key={days}
+              onClick={() => setNit({ diaryDays: days })}
+              className={cn(
+                "rounded-[var(--radius-control)] border px-2.5 py-1 text-xs transition-colors duration-[var(--motion-fast)]",
+                diaryDays === days
+                  ? "border-brand bg-accent"
+                  : "border-border text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+              )}
+            >
+              {label()}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="panel divide-y divide-border">

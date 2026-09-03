@@ -69,6 +69,7 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
   const downloadedIds = useDownloadsStore((s) => s.ids);
   const active = useDownloadsStore((s) => s.active);
   const startDownload = useDownloadsStore((s) => s.start);
+  const removeDownload = useDownloadsStore((s) => s.remove);
 
   const visualizerOn = useSettingsStore((s) => s.audio.visualizer);
   const setAudio = useSettingsStore((s) => s.setAudio);
@@ -92,9 +93,12 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
   const art = useArtwork(current, "t500x500");
   const palette = useSettingsStore((s) => s.artworkPalette);
   const light = useSettingsStore((s) => s.backdrop.playerLight);
-  const lightStrength = useSettingsStore((s) => s.backdrop.playerLightStrength);
+  // Each light has its own pair of numbers; this is the one being drawn.
+  const lightStrength = useSettingsStore(
+    (s) => s.backdrop.playerLightStrength[s.backdrop.playerLight],
+  );
   const lightBrightness = useSettingsStore(
-    (s) => s.backdrop.playerLightBrightness,
+    (s) => s.backdrop.playerLightBrightness[s.backdrop.playerLight],
   );
 
   if (!current) return null;
@@ -441,7 +445,7 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
                     icon={<Download className="h-4 w-4" />}
                     label={
                       isDownloaded
-                        ? t.player.downloaded
+                        ? t.downloads.remove
                         : downloading
                           ? `${Math.round(
                               downloading.total
@@ -450,9 +454,13 @@ export function NowPlaying({ onClose }: { onClose: () => void }) {
                             )}%`
                           : t.player.download
                     }
-                    disabled={isDownloaded || !!downloading}
+                    disabled={!!downloading}
                     active={isDownloaded}
-                    onClick={() => void startDownload(current)}
+                    onClick={() =>
+                      void (isDownloaded
+                        ? removeDownload(current.id)
+                        : startDownload(current))
+                    }
                   />
 
                   <MenuGroup label={t.player.speed}>

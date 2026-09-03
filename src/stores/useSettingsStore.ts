@@ -73,8 +73,8 @@ export interface BackdropState {
    * find the version that was.
    */
   playerLight: "glow" | "blur";
-  /** How much of it, 0..1. Scales whichever of the two is on. */
-  playerLightStrength: number;
+  /** How much of it, 0..1. Per mode — see `LightAmount`. */
+  playerLightStrength: LightAmount;
   /**
    * How bright the light itself is, 0.5..2.
    *
@@ -83,7 +83,56 @@ export interface BackdropState {
    * lit the thing giving it off is. A dark sleeve at full strength is still a
    * dark glow — this is what lifts it.
    */
-  playerLightBrightness: number;
+  playerLightBrightness: LightAmount;
+}
+
+/**
+ * An amount of light, kept separately for each of the two lights.
+ *
+ * One number could not serve both. The glow is a lit object in a dark room and
+ * the blur is a wash of the cover's colour over the whole window, so the
+ * strength that suits one is visibly wrong on the other — and with a single
+ * pair of sliders behind the switch, looking at the other light meant
+ * re-tuning both of them, every time, in both directions.
+ */
+export interface LightAmount {
+  glow: number;
+  blur: number;
+}
+
+/**
+ * A pair from whatever is on disk, which for anyone who used the app before
+ * this is a single number that both lights shared.
+ *
+ * Spread across both, rather than dropped: their tuning was real, it just
+ * applied to whichever light they were looking at. Now they adjust the second
+ * one once instead of every time.
+ */
+function lightAmount(value: unknown, fallback: LightAmount): LightAmount {
+  if (typeof value === "number") return { glow: value, blur: value };
+  if (value && typeof value === "object") {
+    const saved = value as Partial<LightAmount>;
+    return {
+      glow: typeof saved.glow === "number" ? saved.glow : fallback.glow,
+      blur: typeof saved.blur === "number" ? saved.blur : fallback.blur,
+    };
+  }
+  return fallback;
+}
+
+/** A whole backdrop off disk or out of a theme file, with both pairs sane. */
+function normaliseBackdrop(backdrop: BackdropState): BackdropState {
+  return {
+    ...backdrop,
+    playerLightStrength: lightAmount(
+      backdrop.playerLightStrength,
+      DEFAULT_BACKDROP.playerLightStrength,
+    ),
+    playerLightBrightness: lightAmount(
+      backdrop.playerLightBrightness,
+      DEFAULT_BACKDROP.playerLightBrightness,
+    ),
+  };
 }
 
 export interface ThemeState {
@@ -172,7 +221,7 @@ const DEFAULT_THEME: ThemeState = {
   overrides: {},
 };
 
-const DEFAULT_BACKDROP: BackdropState = {
+export const DEFAULT_BACKDROP: BackdropState = {
   // The playing cover, blurred, is the app's default wallpaper — leaving this
   // at "none" meant the feature existed but nobody ever saw it.
   mode: "artwork",
@@ -186,9 +235,10 @@ const DEFAULT_BACKDROP: BackdropState = {
   saturate: 1.2,
   playerLight: "glow",
   // Short of full: at 1 the glow reaches the far corners, and light everywhere
-  // is a tint rather than a source.
-  playerLightStrength: 0.7,
-  playerLightBrightness: 1,
+  // is a tint rather than a source. The same starting point for both lights;
+  // what they are not is the same *afterwards*.
+  playerLightStrength: { glow: 0.7, blur: 0.7 },
+  playerLightBrightness: { glow: 1, blur: 1 },
 };
 
 /** Where the HUD appears, as a screen corner. */
@@ -541,7 +591,10 @@ export const useSettingsStore = create<SettingsState>()(
             // Merge onto the defaults so a theme written by an older version
             // (missing fields added since) still loads.
             theme: { ...DEFAULT_THEME, ...file.theme },
-            backdrop: { ...DEFAULT_BACKDROP, ...(file.backdrop ?? {}) },
+            backdrop: normaliseBackdrop({
+              ...DEFAULT_BACKDROP,
+              ...(file.backdrop ?? {}),
+            }),
             layout: file.layout ?? get().layout,
           });
           sync();
@@ -594,7 +647,7 @@ export const useSettingsStore = create<SettingsState>()(
     },
     {
       name: "cloudify.settings",
-      version: 8,
+      version: 9,
       merge: (persisted, current) => fillDefaults(current, persisted),
       // Runtime-only artwork state must not be written to disk.
       partialize: (s) => ({
@@ -721,6 +774,31 @@ export const useSettingsStore = create<SettingsState>()(
         if (from < 8 && state?.theme) {
           delete state.theme.apple;
           for (const preset of state.presets ?? []) delete preset?.theme?.apple;
+        }
+
+        // v9: the two light sliders became a pair of numbers each, one per
+        // light. What is on disk is a single number, and `fillDefaults` would
+        // hand it straight through — a number where the app now reads `.glow`,
+        // which is `undefined` in a CSS variable and a blank screen where the
+        // light should be. Both lights start from the saved number, so nothing
+        // the user tuned moves.
+        const withBackdrop = persisted as {
+          backdrop?: Record<string, unknown>;
+          presets?: { backdrop?: Record<string, unknown> }[];
+        } | null;
+        for (const backdrop of [
+          withBackdrop?.backdrop,
+          ...(withBackdrop?.presets ?? []).map((preset) => preset?.backdrop),
+        ]) {
+          if (!backdrop) continue;
+          backdrop.playerLightStrength = lightAmount(
+            backdrop.playerLightStrength,
+            DEFAULT_BACKDROP.playerLightStrength,
+          );
+          backdrop.playerLightBrightness = lightAmount(
+            backdrop.playerLightBrightness,
+            DEFAULT_BACKDROP.playerLightBrightness,
+          );
         }
 
         return state as never;

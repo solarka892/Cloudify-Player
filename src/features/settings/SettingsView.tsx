@@ -28,7 +28,7 @@ import {
   ACCENT_IDS,
 } from "@/theme/palettes";
 
-import { useSettingsStore } from "@/stores/useSettingsStore";
+import { DEFAULT_BACKDROP, useSettingsStore } from "@/stores/useSettingsStore";
 import { EFFECT_IDS } from "@/theme/particles";
 import type { Density, ThemeMode } from "@/theme/apply";
 import {
@@ -530,9 +530,11 @@ export function SettingsView() {
         hint={t.settings.playerLightHint}
         onReset={() =>
           setBackdrop({
-            playerLight: "glow",
-            playerLightStrength: 0.7,
-            playerLightBrightness: 1,
+            playerLight: DEFAULT_BACKDROP.playerLight,
+            // Both lights, not just the one on screen: this is the section's
+            // reset, and the numbers behind the switch are part of the section.
+            playerLightStrength: { ...DEFAULT_BACKDROP.playerLightStrength },
+            playerLightBrightness: { ...DEFAULT_BACKDROP.playerLightBrightness },
           })
         }
       >
@@ -555,25 +557,47 @@ export function SettingsView() {
           />
         </Row>
 
+        {/* Both sliders belong to the light that is on: the glow and the blur
+            are lit differently, and one pair of numbers behind the switch meant
+            re-tuning both every time you looked at the other one. Switching the
+            mode above now brings its own numbers back with it. */}
         <Row label={t.settings.playerLightStrength}>
           <Slider
-            value={Math.round(backdrop.playerLightStrength * 100)}
+            value={Math.round(
+              backdrop.playerLightStrength[backdrop.playerLight] * 100,
+            )}
             min={0}
             max={100}
             step={5}
             suffix="%"
-            onChange={(v) => setBackdrop({ playerLightStrength: v / 100 })}
+            onChange={(v) =>
+              setBackdrop({
+                playerLightStrength: {
+                  ...backdrop.playerLightStrength,
+                  [backdrop.playerLight]: v / 100,
+                },
+              })
+            }
           />
         </Row>
 
         <Row label={t.settings.playerLightBrightness}>
           <Slider
-            value={Math.round(backdrop.playerLightBrightness * 100)}
+            value={Math.round(
+              backdrop.playerLightBrightness[backdrop.playerLight] * 100,
+            )}
             min={50}
             max={200}
             step={10}
             suffix="%"
-            onChange={(v) => setBackdrop({ playerLightBrightness: v / 100 })}
+            onChange={(v) =>
+              setBackdrop({
+                playerLightBrightness: {
+                  ...backdrop.playerLightBrightness,
+                  [backdrop.playerLight]: v / 100,
+                },
+              })
+            }
           />
         </Row>
       </Group>
@@ -897,21 +921,45 @@ function Slider({
   suffix: string;
   onChange: (value: number) => void;
 }) {
+  // Where the fill stops. A settings slider does not always start at zero —
+  // brightness runs 50 to 200 — so it is the position within the range, not the
+  // value.
+  const percent = max > min ? ((value - min) / (max - min)) * 100 : 0;
+
   return (
     <div className="flex items-center gap-2.5">
-      {/* 112px, not 160. A settings row is a label and a control, and the
+      {/* Painted rather than left to the browser, and the same pair of classes
+          the player's volume uses — so a skin restyles every slider in the app
+          at once, and the two are the same weight when you look at them one
+          after the other. `accent-color` draws a track WebKit decides the
+          height of, and it decides thicker than anything else here: a fat bar
+          with a big white knob in a row of hairlines.
+
+          112px wide, not 160. A settings row is a label and a control, and the
           control was running most of the width of the panel for a value with
-          five useful positions in it. Narrow enough to read as a control beside
-          its own name. */}
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.currentTarget.value))}
-        className="h-1 w-28 cursor-pointer accent-[var(--brand)]"
-      />
+          five useful positions in it. */}
+      <div className="group/slider relative h-4 w-28">
+        <div className="seek-track pointer-events-none absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 overflow-hidden rounded-[var(--radius-round)] bg-secondary">
+          <div
+            className="seek-fill brand-gradient h-full rounded-[var(--radius-round)]"
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e) => onChange(Number(e.currentTarget.value))}
+          className="relative h-4 w-full cursor-pointer appearance-none bg-transparent
+            [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3
+            [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-[var(--radius-round)]
+            [&::-webkit-slider-thumb]:bg-foreground [&::-webkit-slider-thumb]:opacity-0
+            [&::-webkit-slider-thumb]:transition-opacity
+            group-hover/slider:[&::-webkit-slider-thumb]:opacity-100"
+        />
+      </div>
       {/* `.readout` rather than a bare mono class: the project keeps JetBrains
           Mono to digits and reaches it through this one name, so a font change
           lands everywhere at once. `tabular-nums` comes with it, which is what
